@@ -1,6 +1,7 @@
 import os
 import jwt
 import time
+import secrets
 
 from hashlib import blake2b
 
@@ -38,33 +39,34 @@ def validate_credentials(uid_slug: str, key: str) -> bool:
     :param key: The key associated with the user ID. A string.
     :return: True if the provided credentials are valid, False otherwise.
     """
+
     derived_key = _generate_uid_key(uid_slug)
-    return key == derived_key
+    return secrets.compare_digest(key, derived_key)
 
 
-def generate_token(uid_slug: str, key: str, time_to_live: int) -> str:
+def generate_token(uid_slug: str, key: str, time_to_live: int, access_point: str = None, resource: str = None,
+                   action: str = None) -> str:
     """
-    Generate Access Token
+    Generate an access token for a given user.
 
-    Generates an access token for the given user ID, key, and time to live.
-
-    :param uid_slug: The user ID.
-    :type uid_slug: str
-    :param key: The key for the user.
-    :type key: str
-    :param time_to_live: The time to live (in seconds) for the access token.
-    :type time_to_live: int
-    :return: The generated access token.
-    :rtype: str
-    :raises ValueError: If the provided credentials are invalid.
+    :param uid_slug: The unique identifier or slug for the user.
+    :param key: The key or password for the user.
+    :param time_to_live: The time (in seconds) that the token will remain valid.
+    :param access_point: (optional) The access point or endpoint for the user.
+    :param resource: (optional) The resource or object that the user intends to access.
+    :param action: (optional) The action or operation that the user intends to perform.
+    :return: The generated access token as a string.
+    :raises: ValueError if the provided credentials are invalid.
     """
-
     if validate_credentials(uid_slug, key):
         # generate access token if credentials are valid
         payload = {
             "uid": uid_slug,
             "key": key,
-            "time_to_live": time_to_live + time.time()
+            "time_to_live": time_to_live + time.time(),
+            "access_point": access_point,
+            "resource": resource,
+            "action": action
         }
 
         return jwt.encode(payload, os.getenv("ACCESS_TOKEN_SECRET"), algorithm="HS256")
@@ -72,20 +74,14 @@ def generate_token(uid_slug: str, key: str, time_to_live: int) -> str:
         raise ValueError("Invalid credentials")
 
 
-def validate_token(token: str) -> bool:
+def token_expired(token: str) -> bool:
     """
-    :param token: The access token to be validated.
-    :param action: Optional parameter specifying the action to be validated.
-    :return: Returns a boolean value indicating whether the access token is valid or not.
+    Check if the given token has expired.
 
-    This method validates the given access token. It decodes the token using the access_token_secret and checks if it has expired. If the token has not expired, it optionally validates the
-    * specified action. If the action is valid or no action is specified, it returns True indicating that the access token is valid. Otherwise, it returns False.
-
-    Example usage:
-        token = "abc123xyz"
-        action = ("read", "post")
-        is_valid = validate_access_token(token, action)
-        print(is_valid)  # Output: True
+    :param token: The token to be checked for expiry.
+    :type token: str
+    :return: True if the token is expired, False otherwise.
+    :rtype: bool
     """
     try:
         payload = jwt.decode(token, os.getenv("ACCESS_TOKEN_SECRET"), algorithms=["HS256"])
@@ -103,20 +99,20 @@ def decode_token(token: str):
     :param token: The JWT to be decoded.
     :return: The decoded JWT as a Python dictionary.
     """
-    return jwt.decode(token, os.getenv("ACCESS_TOKEN_SECRET"), algorithm="HS256")
+    return jwt.decode(token, os.getenv("ACCESS_TOKEN_SECRET"), algorithms=["HS256"])
 
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
 
-    load_dotenv("/Users/pmahon/Research/INN/Data Portal/DAM/src/api/.env")
+    load_dotenv("/Users/pmahon/Research/INN/Data Portal/DAM/src/api/config/.env")
     uid_slug_ = "pmahon@sfu.ca"
     _, key_ = generate_credentials(uid_slug_)
     print(f"uid_slug: {uid_slug_}")
     print(f"Key: {key_}")
 
-    access_token = generate_token(uid_slug=uid_slug_, key=key_, time_to_live=5)
+    access_token = generate_token(uid_slug=uid_slug_, key=key_, time_to_live=600)
     print(f"Access Token: {access_token}")
     print(jwt.decode(access_token, os.getenv("ACCESS_TOKEN_SECRET"), algorithms=["HS256"]))
 
-    print(validate_token(access_token))
+    print(token_expired(access_token))
