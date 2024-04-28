@@ -7,3 +7,5 @@ pydantic>=2.6.4
 python-dotenv>=1.0.1
 uvicorn>=0.29.0
 config>=0.5.1
+treelib>=1.7.0
+jinja2>=3.1.0
