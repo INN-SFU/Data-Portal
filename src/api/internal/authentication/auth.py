@@ -83,7 +83,7 @@ def token_expired(token: str) -> bool:
     :return: True if the token is expired, False otherwise.
     :rtype: bool
     """
-    try:
+    try: 
         payload = jwt.decode(token, os.getenv("ACCESS_TOKEN_SECRET"), algorithms=["HS256"])
         # check if token has expired
         if time.time() < payload["time_to_live"]:
@@ -105,7 +105,7 @@ def decode_token(token: str):
 if __name__ == '__main__':
     from dotenv import load_dotenv
 
-    load_dotenv("/Users/pmahon/Research/INN/Data Portal/DAM/src/api/config/.env")
+    load_dotenv("//src/api/config/.env")
     uid_slug_ = "pmahon@sfu.ca"
     _, key_ = generate_credentials(uid_slug_)
     print(f"uid_slug: {uid_slug_}")

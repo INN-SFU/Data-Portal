@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive File Trees</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <h1>File Trees by Project</h1>
+    {% for slug, tree_html in trees.items() %}
+        <h2>{{ slug }}</h2>
+        <div class="tree">{{ tree_html | safe }}</div>
+    {% endfor %}
+    <script src="/static/js/script.js"></script>
+</body>
+</html>

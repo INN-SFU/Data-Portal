@@ -1,62 +1,143 @@
 import boto3
 import json
+import treelib
 import os
 
+from uuid import uuid5, NAMESPACE_DNS
+from treelib.exceptions import DuplicatedNodeIdError
+from abc import ABC
 
-class ArbutusClient:
+
+class Agent(ABC):
+    def __init__(self, access_point_slug: str, endpoint: str):
+        self.access_point_slug = access_point_slug
+        self.endpoint = endpoint
+        self.file_tree: treelib.Tree = None
+
+    def _add_file_to_tree(self, path: str, parent: str = 'root'):
+        parts = path.rstrip('/').split('/')
+        parts = [parent] + parts
+        for i in range(1, len(parts)):
+            current_folder = parts[i]
+            try:
+                self.file_tree.create_node(current_folder, current_folder, parent=parts[i - 1])
+            except DuplicatedNodeIdError:
+                pass
+
+    def _load_file_tree(self):
+        raise NotImplementedError
+
+    def fetch_all_asset_paths(self):
+        raise NotImplementedError
+
+    # Generate HTML from the tree
+    def generate_html(self):
+        html_output = "<ul>"
+
+        def recurse(node):
+            nonlocal html_output
+            children = self.file_tree.children(node.identifier)
+            if children:  # Check if the node has children to determine if it's a folder
+                html_output += f"<li class='folder'>{node.tag}<ul style='display: none;'>"
+                for child in children:
+                    recurse(child)
+                html_output += "</ul></li>"
+            else:
+                html_output += f"<li class='file'>{node.tag}</li>"
+
+        root_node = self.file_tree.get_node(self.file_tree.root)
+        if root_node is not None:
+            recurse(root_node)
+        html_output += "</ul>"
+        return html_output
+
+
+class ArbutusAgent(Agent):
     def __init__(self):
-        # Initialize S3 client with custom endpoint URL and signature version
-        with open(os.getenv('ARBUTUS_CONFIG')) as f:
+        super().__init__('arbutus-cloud', 'https://object-arbutus.cloud.computecanada.ca:443')
+
+        # Initialize the S3 client
+        s3_config = os.path.join(os.path.dirname(__file__), 'arbutus_s3_config.json')
+        with open(s3_config, 'r') as f:
             config = json.load(f)
-            s3 = boto3.client('s3',
-                              endpoint_url='https://object-arbutus.cloud.computecanada.ca',
-                              aws_access_key_id=config['aws_access_key_id'],
-                              aws_secret_access_key=config['aws_secret_access_key'],
-                              config=boto3.session.Config(signature_version='s3v4'))
         f.close()
+        self.client = boto3.client('s3',
+                                   endpoint_url=self.endpoint,
+                                   aws_access_key_id=config['aws_access_key_id'],
+                                   aws_secret_access_key=config['aws_secret_access_key'])
 
-        self.client = s3
+        # Initialize the file tree
+        self.file_tree = treelib.Tree()
+        self._load_file_tree()
 
-    def list_buckets(self):
-        return self.client.list_buckets()
+    def _load_file_tree(self):
+        """
+        Initializes the file tree.
+        """
+        # Create the root node
+        self.file_tree.create_node('root', 'root')
 
-    def list_objects(self, bucket_name):
-        return self.client.list_objects(Bucket=bucket_name)
+        # Fetch all buckets
+        buckets = self.fetch_all_buckets()
 
-    def get_object(self, bucket_name, object_name):
-        return self.client.get_object(Bucket=bucket_name, Key=object_name)
+        # Add buckets to the file tree
+        for bucket in buckets:
+            self.file_tree.create_node(bucket, bucket, parent='root')
 
-    def put_object(self, bucket_name, object_name, data):
-        return self.client.put_object(Bucket=bucket_name, Key=object_name, Body=data)
+        # Fetch all objects in each bucket
+        for bucket in buckets:
+            objects = self.fetch_all_bucket_keys(bucket)
+            # Add folders to the file tree
+            for obj in objects:
+                self._add_file_to_tree(obj, parent=bucket)
 
-    def delete_object(self, bucket_name, object_name):
-        return self.client.delete_object(Bucket=bucket_name, Key=object_name)
+    def fetch_all_buckets(self):
+        """
+        Fetches all buckets.
+        """
+        response = self.client.list_buckets()
+        buckets = []
+        for bucket in response['Buckets']:
+            buckets.append(bucket['Name'])
+        return buckets
 
-    def create_bucket(self, bucket_name):
-        return self.client.create_bucket(Bucket=bucket_name)
+    def fetch_all_bucket_keys(self, bucket):
+        """
+        Fetches all objects in a bucket.
+        """
+        response = self.client.list_objects_v2(Bucket=bucket)
+        objects = []
+        for obj in response['Contents']:
+            objects.append(obj['Key'])
+        return objects
 
-    def delete_bucket(self, bucket_name):
-        return self.client.delete_bucket(Bucket=bucket_name)
+    def fetch_all_asset_paths(self):
+        """
+        Fetches all object paths from S3 buckets.
 
-    def generate_presigned_url(self, bucket_name: str, object_name: str, method: str, ttl: int) -> (
-            str):
-        return self.client.generate_presigned_url(ClientMethod=method,
-                                                  Params={'Bucket': bucket_name,
-                                                          'Key': object_name},
-                                                  ExpiresIn=ttl)
+        :return: A list of all object paths.
+        :rtype: list
+        """
+        s3 = self.client
+        all_keys = []
+
+        # List all buckets
+        buckets_response = s3.list_buckets()
+        buckets = [bucket['Name'] for bucket in buckets_response['Buckets']]
+
+        # Fetch object keys from each bucket and format them
+        for bucket_name in buckets:
+            paginator = s3.get_paginator('list_objects_v2')
+
+            for page in paginator.paginate(Bucket=bucket_name):
+                if 'Contents' in page:
+                    all_keys.extend([f"{bucket_name}/{obj['Key']}" for obj in page['Contents']])
+
+        return all_keys
 
 
-if __name__ == "__main__":
-    import dotenv
+agents = [ArbutusAgent()]
 
-    dotenv.load_dotenv('/Users/pmahon/Research/INN/Data Portal/DAM/src/api/config/.env')
-    def format_json(obj):
-        return json.dumps(obj, indent=4, sort_keys=True, default=str)
-
-
-    agent = ArbutusClient()
-
-    upload_folder = "Users/pmahon/Desktop/test_folder"
-
-    agent.put_folder(upload_folder, "def-rmcintos-dev-test", "test_folder")
-
+if __name__ == '__main__':
+    agent = ArbutusAgent()
+    print(agent.file_tree.__str__())

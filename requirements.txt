@@ -5,3 +5,5 @@ cryptography>=42.0.5
 casbin>=1.36.0
 pydantic>=2.6.4
 python-dotenv>=1.0.1
+uvicorn>=0.29.0
+config>=0.5.1

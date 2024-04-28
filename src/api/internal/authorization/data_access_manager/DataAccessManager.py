@@ -125,27 +125,65 @@ class DataAccessManager:
             uuid = self.uuids.get(uid_slug)
             self._write_user_policies(uid_slug, uuid)
 
-    def get_policy(self, uid_slug: str, access_point_slug: str, resource: str, action: str):
+    def get_user_policies(self, uid_slug: str):
         """
-        Get the filtered policy based on the provided parameters.
+        Get the user policies.
 
-        :param uid_slug: User ID or user slug.
+        :param uid_slug: The unique identifier for the user.
         :type uid_slug: str
-
-        :param access_point_slug: Access point identifier or access point slug.
-        :type access_point_slug: str
-
-        :param resource: Resource identifier or resource slug.
-        :type resource: str
-
-        :param action: Action identifier or action slug.
-        :type action: str
-
-        :return: Filtered policy matching the provided parameters.
-        :rtype: list
-
+        :return: The filtered user policies.
+        :rtype: list[str]
         """
-        return self.enforcer.get_filtered_policy({'p': [uid_slug, access_point_slug, resource, action]})
+        return self.enforcer.get_filtered_policy(0, uid_slug)
+
+    def get_access_point_policies(self, access_point_slug: str):
+        """
+        Get the access point policies.
+
+        :param access_point_slug: The unique identifier for the access point.
+        :type access_point_slug: str
+        :return: The filtered access point policies.
+        :rtype: list[str]
+        """
+        return self.enforcer.get_filtered_policy(1, access_point_slug)
+
+    def get_resource_policies(self, resource: str):
+        """
+        Get the resource policies.
+
+        :param resource: The resource to be accessed.
+        :type resource: str
+        :return: The filtered resource policies.
+        :rtype: list[str]
+        """
+        return self.enforcer.get_filtered_policy(2, resource)
+
+    def get_action_policies(self, action: str):
+        """
+        Get the action policies.
+
+        :param action: The action to be performed on the resource.
+        :type action: str
+        :return: The filtered action policies.
+        :rtype: list[str]
+        """
+        return self.enforcer.get_filtered_policy(3, action)
+
+    def get_all_user_assets(self, uid_slug: str):
+        """
+        Get all assets a user has access to.
+
+        :param uid_slug: The unique identifier of the user.
+        :type uid_slug: str
+        :return: A list of all assets the user has access to.
+        :rtype: list
+        """
+        policies = self.enforcer.get_filtered_policy(0, uid_slug)
+        access_points = set([policy[1] for policy in policies])
+        assets = dict.fromkeys(access_points, [])
+        for policy in policies:
+            assets[policy[1]].append(policy[2])
+        return assets
 
     def add_user_policy(self, uid_slug: str, access_point_slug: str, resource: str, action: str):
         """
@@ -302,7 +340,7 @@ if __name__ == "__main__":
     from uuid import uuid5
     import os
 
-    dotenv.load_dotenv("/Users/pmahon/Research/INN/Data Portal/DAM/src/api/config/.env")
+    dotenv.load_dotenv("//src/api/config/.env")
 
     # Load DataAccessManager
     dam = DataAccessManager()

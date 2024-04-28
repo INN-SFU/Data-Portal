@@ -1,10 +1,10 @@
 from uuid import uuid5, NAMESPACE_DNS
-
 from fastapi import Request, Depends, HTTPException, APIRouter
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
 from src.api.internal.authentication.auth import validate_credentials
-from src.api.config import dam
+from src.api.internal.connectivity import agents
+from src.api.config import dam, templates
 
 security = HTTPBasic()
 router = APIRouter(prefix='/admin')
@@ -159,3 +159,25 @@ async def remove_policy(request: Request):
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=e.__str__())
+
+
+@router.get("/assets/{access_point}", dependencies=[Depends(is_admin)])
+async def get_all_assets(request: Request, access_point: str):
+    """
+    Handler for the get all assets endpoint.
+
+    :return: The rendered all_assets.html template.
+    :rtype: templates.TemplateResponse
+    """
+    trees = {}
+    if access_point == "all":
+        for agent in agents:
+            trees[agent.access_point_slug] = agent.generate_html()
+    else:
+        for agent in agents:
+            if agent.access_point_slug == access_point:
+                trees[agent.access_point_slug] = agent.generate_html()
+                break
+        raise HTTPException(status_code=404, detail="Access point not found")
+
+    return templates.TemplateResponse("file_tree.html", {"request": request, "trees": trees})
