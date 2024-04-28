@@ -15,6 +15,13 @@ class Agent(ABC):
         self.file_tree: treelib.Tree = None
 
     def _add_file_to_tree(self, path: str, parent: str = 'root'):
+        """
+        Add a file to the file tree.
+
+        :param path: The path of the file to be added.
+        :param parent: The parent folder of the file. Default is 'root'.
+        :return: None
+        """
         parts = path.rstrip('/').split('/')
         parts = [parent] + parts
         for i in range(1, len(parts)):
@@ -32,6 +39,11 @@ class Agent(ABC):
 
     # Generate HTML from the tree
     def generate_html(self):
+        """
+        Generate HTML representation of the file tree.
+
+        :return: HTML string representing the file tree.
+        """
         html_output = "<ul>"
 
         def recurse(node):
@@ -53,6 +65,16 @@ class Agent(ABC):
 
 
 class ArbutusAgent(Agent):
+    """
+    ArbutusAgent is a class that represents an agent for interacting with the Arbutus Cloud Object Store service.
+
+    Inherits from Agent.
+
+    Attributes:
+        endpoint (str): The endpoint URL of the Arbutus Cloud service.
+        client (boto3.client): The S3 client for interacting with the Arbutus Cloud service.
+        file_tree (treelib.Tree): The file tree representing the structure of objects in the Arbutus Cloud service.
+    """
     def __init__(self):
         super().__init__('arbutus-cloud', 'https://object-arbutus.cloud.computecanada.ca:443')
 
@@ -72,7 +94,9 @@ class ArbutusAgent(Agent):
 
     def _load_file_tree(self):
         """
-        Initializes the file tree.
+        Load the file tree by creating nodes for buckets and adding objects to it.
+
+        :return: None
         """
         # Create the root node
         self.file_tree.create_node('root', 'root')
