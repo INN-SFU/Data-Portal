@@ -3,7 +3,6 @@ import json
 import treelib
 import os
 
-from uuid import uuid5, NAMESPACE_DNS
 from treelib.exceptions import DuplicatedNodeIdError
 from abc import ABC
 
