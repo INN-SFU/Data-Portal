@@ -1,3 +1,5 @@
+from typing import List
+
 import boto3
 import json
 import treelib
@@ -8,9 +10,30 @@ from abc import ABC
 
 
 class Agent(ABC):
+    """
+    Agent
+
+    Class representing an agent.
+
+    Methods:
+    - __init__()
+    - _add_file_to_tree()
+    - _load_file_tree()
+    - fetch_all_asset_paths()
+    - generate_html()
+    """
     def __init__(self, access_point_slug: str, endpoint: str):
+        """
+        Initialize a new instance of the class.
+
+        :param access_point_slug: The slug for the access point.
+        :type access_point_slug: str
+        :param endpoint: The endpoint for the access point.
+        :type endpoint: str
+        """
         self.access_point_slug = access_point_slug
         self.endpoint = endpoint
+        # File tree to store the structure of objects im the access point
         self.file_tree: treelib.Tree = None
 
     def _add_file_to_tree(self, path: str, parent: str = 'root'):
@@ -31,13 +54,23 @@ class Agent(ABC):
                 pass
 
     def _load_file_tree(self):
+        """
+        Loads the file tree.
+
+        :return: None
+        """
         raise NotImplementedError
 
-    def fetch_all_asset_paths(self):
+    def fetch_all_asset_paths(self) -> List[str]:
+        """
+        Fetches all asset paths.
+
+        :return: A list of strings representing the asset paths.
+        """
         raise NotImplementedError
 
     # Generate HTML from the tree
-    def generate_html(self):
+    def generate_html(self) -> str:
         """
         Generate HTML representation of the file tree.
 
@@ -74,18 +107,23 @@ class ArbutusAgent(Agent):
         client (boto3.client): The S3 client for interacting with the Arbutus Cloud service.
         file_tree (treelib.Tree): The file tree representing the structure of objects in the Arbutus Cloud service.
     """
+
     def __init__(self):
-        super().__init__('arbutus-cloud', 'https://object-arbutus.cloud.computecanada.ca:443')
+        # Access point slug for Arbutus Cloud, needs a matching entry in agents.json file referenced by
+        # ACCESS_AGENT_CONFIG
+        ACCESS_POINT_SLUG = 'arbutus-cloud'
 
         # Initialize the S3 client
-        s3_config = os.path.join(os.path.dirname(__file__), 'arbutus_s3_config.json')
-        with open(s3_config, 'r') as f:
-            config = json.load(f)
+        with open(os.getenv('ACCESS_AGENT_CONFIG'), 'r') as f:
+            config = json.load(f)[ACCESS_POINT_SLUG]
         f.close()
+
+        super().__init__(ACCESS_POINT_SLUG, config['endpoint'])
+
         self.client = boto3.client('s3',
                                    endpoint_url=self.endpoint,
-                                   aws_access_key_id=config['aws_access_key_id'],
-                                   aws_secret_access_key=config['aws_secret_access_key'])
+                                   aws_access_key_id=config['credentials']['aws_access_key_id'],
+                                   aws_secret_access_key=config['credentials']['aws_secret_access_key'])
 
         # Initialize the file tree
         self.file_tree = treelib.Tree()
@@ -114,9 +152,12 @@ class ArbutusAgent(Agent):
             for obj in objects:
                 self._add_file_to_tree(obj, parent=bucket)
 
-    def fetch_all_buckets(self):
+    def fetch_all_buckets(self) -> List[str]:
         """
-        Fetches all buckets.
+        Fetches all buckets from the S3 client.
+
+        :return: List of bucket names.
+        :rtype: List[str]
         """
         response = self.client.list_buckets()
         buckets = []
@@ -124,9 +165,13 @@ class ArbutusAgent(Agent):
             buckets.append(bucket['Name'])
         return buckets
 
-    def fetch_all_bucket_keys(self, bucket):
+    def fetch_all_bucket_keys(self, bucket) -> List[str]:
         """
-        Fetches all objects in a bucket.
+        Fetches all the keys of the objects in the given bucket.
+
+        :param bucket: The name of the bucket.
+        :return: A list of all the keys of the objects in the bucket.
+        :rtype: list[str]
         """
         response = self.client.list_objects_v2(Bucket=bucket)
         objects = []
@@ -134,31 +179,27 @@ class ArbutusAgent(Agent):
             objects.append(obj['Key'])
         return objects
 
-    def fetch_all_asset_paths(self):
+    def fetch_all_keys(self) -> List[str]:
         """
-        Fetches all object paths from S3 buckets.
+        Fetches all object keys from S3 buckets.
 
-        :return: A list of all object paths.
-        :rtype: list
+        :return: A list of all object keys (i.e. paths).
+        :rtype: list[str]
         """
-        s3 = self.client
         all_keys = []
 
-        # List all buckets
-        buckets_response = s3.list_buckets()
-        buckets = [bucket['Name'] for bucket in buckets_response['Buckets']]
+        # fetch all buckets
+        buckets = self.fetch_all_buckets()
 
-        # Fetch object keys from each bucket and format them
-        for bucket_name in buckets:
-            paginator = s3.get_paginator('list_objects_v2')
-
-            for page in paginator.paginate(Bucket=bucket_name):
-                if 'Contents' in page:
-                    all_keys.extend([f"{bucket_name}/{obj['Key']}" for obj in page['Contents']])
+        # fetch all objects in each bucket
+        for bucket in buckets:
+            objects = self.fetch_all_bucket_keys(bucket)
+            all_keys.extend(objects)
 
         return all_keys
 
 
+# Initialize the agents for the application
 agents = [ArbutusAgent()]
 
 if __name__ == '__main__':

@@ -8,6 +8,8 @@ import json
 
 from uuid import UUID
 from casbin import Enforcer
+import treelib
+from treelib.exceptions import DuplicatedNodeIdError
 
 
 class DataAccessManager:
@@ -61,7 +63,7 @@ class DataAccessManager:
     """
 
     def __init__(self):
-        self.enforcer = Enforcer(os.getenv('ENFORCER_MODEL'), None, enable_log=True)
+        self.enforcer = Enforcer(os.getenv('ENFORCER_MODEL'), os.getenv('ENFORCER_POLICY'), enable_log=True)
         self.user_policies_folder = os.getenv('USER_POLICIES')
 
         # Load uuids
@@ -70,6 +72,38 @@ class DataAccessManager:
 
         # Load all user policies to enforcer
         self._load_user_policies()
+
+        # Generate the file tree
+        self.file_tree = treelib.Tree()
+
+    def _add_file_to_tree(self, path: str, parent: str = 'root'):
+        """
+        Add a file to the file tree.
+
+        :param path: The path of the file to be added.
+        :param parent: The parent folder of the file. Default is 'root'.
+        :return: None
+        """
+        parts = path.rstrip('/').split('/')
+        parts = [parent] + parts
+        for i in range(1, len(parts)):
+            current_folder = parts[i]
+            try:
+                self.file_tree.create_node(current_folder, current_folder, parent=parts[i - 1])
+            except DuplicatedNodeIdError:
+                pass
+
+    def _load_file_tree(self):
+        """
+        Load the file tree from the file system.
+
+        :return: None
+        """
+        for policy in self.enforcer.get_policy():
+            if policy[1] not in self.file_tree.nodes:
+                self.file_tree.create_node(policy[1], policy[1], parent='root')
+            self._add_file_to_tree(policy[2], parent=policy[1])
+
 
     def _load_user_policies(self):
         """
@@ -340,7 +374,7 @@ if __name__ == "__main__":
     from uuid import uuid5
     import os
 
-    dotenv.load_dotenv("//src/api/config/.env")
+    dotenv.load_dotenv("/src/api/.env")
 
     # Load DataAccessManager
     dam = DataAccessManager()

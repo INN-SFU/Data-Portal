@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from src.api.internal.authorization import DataAccessManager
 
 
+
 # Initialize logger
 # Make uvicorn and casbin loggers use the same format
 # uvicorn logger
@@ -19,10 +20,6 @@ LOGGING_CONFIG["formatters"]["access"]["fmt"] = ('%(asctime)s [%(name)s]\t%(leve
 DEFAULT_LOGGING["formatters"]["casbin_formatter"]["format"] = "{asctime} [{name}]\t{levelname}:\t\t{message}"
 
 logger = logging.getLogger(__name__)
-
-# Load environment variables from .env file
-logger.log(logging.INFO, "Loading environment variables...")
-load_dotenv()
 
 # Initialize Jinja2Templates
 logger.log(logging.INFO, "Initializing Jinja2Templates...")
