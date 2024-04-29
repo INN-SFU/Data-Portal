@@ -105,7 +105,7 @@ def decode_token(token: str):
 if __name__ == '__main__':
     from dotenv import load_dotenv
 
-    load_dotenv("//src/api/config/.env")
+    load_dotenv("//src/api/settings/.env")
     uid_slug_ = "pmahon@sfu.ca"
     _, key_ = generate_credentials(uid_slug_)
     print(f"uid_slug: {uid_slug_}")

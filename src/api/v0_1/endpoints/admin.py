@@ -2,12 +2,12 @@ from uuid import uuid5, NAMESPACE_DNS
 from fastapi import Request, Depends, HTTPException, APIRouter
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
-from src.api.internal.authentication.auth import validate_credentials
-from src.api.internal.connectivity import agents
-from src.api.config import dam, templates
+from src.core.authentication.auth import validate_credentials
+from src.core.connectivity import agents
+from src.core.settings import dam
 
 security = HTTPBasic()
-router = APIRouter(prefix='/admin')
+admin_router = APIRouter(prefix='/admin')
 
 
 # Endpoint Access Control
@@ -25,13 +25,13 @@ def is_admin(credentials: HTTPBasicCredentials = Depends(security)):
 
 
 # ADMIN ENDPOINTS
-@router.get("", dependencies=[Depends(is_admin)])
+@admin_router.get("", dependencies=[Depends(is_admin)])
 async def admin_route():
     return {"message": "Welcome, administrator!"}
 
 
 # Admin User Endpoints
-@router.get("/user/{uid}", dependencies=[Depends(is_admin)])
+@admin_router.get("/user/{uid}", dependencies=[Depends(is_admin)])
 async def get_user_(uid: str):
     """
     Handler for the get user endpoint.
@@ -52,7 +52,7 @@ async def get_user_(uid: str):
     return dam.get_user(uid)
 
 
-@router.put("/user/{uid}", dependencies=[Depends(is_admin)])
+@admin_router.put("/user/{uid}", dependencies=[Depends(is_admin)])
 async def add_user_(request: Request, uid: str):
     """
     Handler for the add user endpoint.
@@ -77,7 +77,7 @@ async def add_user_(request: Request, uid: str):
     return {"success": "User added successfully."}
 
 
-@router.delete("/user/{uid}", dependencies=[Depends(is_admin)])
+@admin_router.delete("/user/{uid}", dependencies=[Depends(is_admin)])
 async def remove_user(uid: str):
     """
     :param uid: The unique ID of the user to be removed.
@@ -96,7 +96,7 @@ async def remove_user(uid: str):
 
 # Admin Policy Endpoints
 
-@router.get("/policy", dependencies=[Depends(is_admin)])
+@admin_router.get("/policy", dependencies=[Depends(is_admin)])
 async def get_policies(request: Request):
     """
     Handler for the get policies endpoint.
@@ -112,7 +112,7 @@ async def get_policies(request: Request):
     return dam.get_policy(uid, access_point, resource, action)
 
 
-@router.put("/policy", dependencies=[Depends(is_admin)])
+@admin_router.put("/policy", dependencies=[Depends(is_admin)])
 async def add_policy(request: Request):
     """
     Handler for the add policy endpoint.
@@ -135,7 +135,7 @@ async def add_policy(request: Request):
     return {"success": "Policy added successfully."}
 
 
-@router.delete("/policy", dependencies=[Depends(is_admin)])
+@admin_router.delete("/policy", dependencies=[Depends(is_admin)])
 async def remove_policy(request: Request):
     """
     Handler for the remove policy endpoint.
@@ -161,7 +161,7 @@ async def remove_policy(request: Request):
         raise HTTPException(status_code=400, detail=e.__str__())
 
 
-@router.get("/assets/{access_point}", dependencies=[Depends(is_admin)])
+@admin_router.get("/assets/{access_point}", dependencies=[Depends(is_admin)])
 async def get_all_assets(request: Request, access_point: str):
     """
     Handler for the get all assets endpoint.

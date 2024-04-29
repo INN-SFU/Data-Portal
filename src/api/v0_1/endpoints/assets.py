@@ -2,11 +2,11 @@ import os
 from fastapi import Request, HTTPException, APIRouter, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from src.api.internal.authentication import auth
-from src.api.config import dam, templates
+from src.core.authentication import auth
+from src.core.settings.config import dam
 
 security = HTTPBasic()
-router = APIRouter(prefix='/assets')
+asset_router = APIRouter(prefix='/assets')
 
 
 # ENDPOINT ACCESS CONTROL
@@ -24,7 +24,7 @@ def validate_credentials(credentials: HTTPBasicCredentials = Depends(security)):
 
 
 # GENERAL AND USER ENDPOINTS
-@router.get("/list")
+@asset_router.get("/list")
 def read_assets(creds: str = Depends(validate_credentials)):
     """
     Retrieves assets for a user.
@@ -42,7 +42,7 @@ def read_assets(creds: str = Depends(validate_credentials)):
     return {"assets": assets}
 
 
-@router.get("")
+@asset_router.get("")
 def retrieve_asset(request: Request, creds: str = Depends(validate_credentials)):
     """
     This method is used to generate a presigned URL for uploading assets to a resource.
@@ -69,7 +69,7 @@ def retrieve_asset(request: Request, creds: str = Depends(validate_credentials))
         raise HTTPException(status_code=403, detail="User does not have read access to this resource")
 
 
-@router.put("")
+@asset_router.put("")
 def put_asset(request: Request, uid: str = Depends(validate_credentials)):
     """
     This method is used to generate a presigned URL for uploading assets to a resource.

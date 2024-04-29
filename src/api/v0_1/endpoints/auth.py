@@ -4,13 +4,13 @@ import jwt
 from fastapi import Request, Depends, HTTPException, APIRouter
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
-from src.api.internal.authentication.auth import validate_credentials, generate_token, token_expired
+from src.core.authentication import validate_credentials, generate_token, token_expired
 
 security = HTTPBasic()
-router = APIRouter(prefix='/auth')
+auth_router = APIRouter(prefix='/auth')
 
 
-@router.get("")
+@auth_router.get("")
 def auth(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
     """
     Handler for the auth endpoint.
@@ -25,7 +25,7 @@ def auth(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
-@router.get("/token")
+@auth_router.get("/token")
 def get_token(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
     """
     Handler for the get token endpoint.
@@ -42,7 +42,7 @@ def get_token(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
-@router.post("/token/{token}")
+@auth_router.post("/token/{token}")
 def validate_token_(request: Request, token: str):
     """
     Handler for the validate token endpoint.

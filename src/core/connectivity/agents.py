@@ -1,5 +1,3 @@
-from typing import List
-
 import boto3
 import json
 import treelib
@@ -7,6 +5,7 @@ import os
 
 from treelib.exceptions import DuplicatedNodeIdError
 from abc import ABC
+from typing import List
 
 
 class Agent(ABC):
@@ -22,6 +21,7 @@ class Agent(ABC):
     - fetch_all_asset_paths()
     - generate_html()
     """
+
     def __init__(self, access_point_slug: str, endpoint: str):
         """
         Initialize a new instance of the class.
@@ -198,9 +198,6 @@ class ArbutusAgent(Agent):
 
         return all_keys
 
-
-# Initialize the agents for the application
-agents = [ArbutusAgent()]
 
 if __name__ == '__main__':
     agent = ArbutusAgent()
