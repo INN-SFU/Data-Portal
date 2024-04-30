@@ -2,10 +2,10 @@ import os
 from fastapi import Request, HTTPException, APIRouter, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from src.core.authentication import auth
-from src.core.settings.config import dam
+from core.authentication import auth
+from core.settings.config import dam
 
-from src.api.v0_1.templates import templates
+from api.v0_1.templates import templates
 
 security = HTTPBasic()
 asset_router = APIRouter(prefix='/assets')

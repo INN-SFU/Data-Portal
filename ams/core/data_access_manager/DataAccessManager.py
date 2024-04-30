@@ -393,7 +393,7 @@ if __name__ == "__main__":
     from uuid import uuid5
     import os
 
-    dotenv.load_dotenv("/src/api/.env")
+    dotenv.load_dotenv("/ams/api/.env")
 
     # Load DataAccessManager
     dam = DataAccessManager()

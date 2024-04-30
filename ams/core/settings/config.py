@@ -2,13 +2,8 @@ from uvicorn.config import LOGGING_CONFIG
 from casbin.util.log import DEFAULT_LOGGING
 
 
-from src.core.data_access_manager import DataAccessManager
-from src.core.connectivity.agents import ArbutusAgent
-
-from .SYS_RESET import SYS_RESET
-
-if False:
-    SYS_RESET()
+from core.data_access_manager import DataAccessManager
+from core.connectivity.agents import ArbutusAgent
 
 # Make uvicorn and casbin loggers use the same format
 # uvicorn logger

@@ -3,6 +3,8 @@ import os
 from uuid import uuid5, NAMESPACE_DNS
 
 from ..data_access_manager import DataAccessManager
+from ._generate_secrets import _generate_secrets
+from core.authentication.auth import generate_credentials
 
 
 def SYS_RESET():
@@ -13,8 +15,6 @@ def SYS_RESET():
         print('Exiting...')
         exit()
 
-    from ._generate_secrets import _generate_secrets
-    from src.core.authentication.auth import generate_credentials
     print('Cleaning...')
     users_policies = os.listdir(os.getenv('USER_POLICIES'))
     for policy in users_policies:

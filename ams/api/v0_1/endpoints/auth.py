@@ -4,7 +4,7 @@ import jwt
 from fastapi import Request, Depends, HTTPException, APIRouter
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
-from src.core.authentication import validate_credentials, generate_token, token_expired
+from core.authentication import validate_credentials, generate_token, token_expired
 
 
 security = HTTPBasic()
