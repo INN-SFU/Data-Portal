@@ -1,9 +1,19 @@
+# Load environment variables
 import dotenv
+import os
+
 dotenv.load_dotenv("./core/settings/.env")
+
+path_envs = ['UUID_STORE', 'ENFORCER_MODEL', 'ENFORCER_POLICY', 'USER_POLICIES', 'JINJA_TEMPLATES',
+             'ACCESS_AGENT_CONFIG', 'STATIC_FILES']
+
+# Accessing path variables and converting to absolute paths
+for path in path_envs:
+    os.environ[path] = os.path.abspath(os.getenv(path))
+
 dotenv.load_dotenv("./core/settings/.secrets")
 
 import src.api.v0_1.endpoints as endpoints
-import os
 
 from fastapi import Request, FastAPI
 from fastapi.staticfiles import StaticFiles
