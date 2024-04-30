@@ -19,7 +19,10 @@ def SYS_RESET():
     users_policies = os.listdir(os.getenv('USER_POLICIES'))
     for policy in users_policies:
         file = os.path.join(os.getenv('USER_POLICIES'), policy)
-        os.remove(file)
+        try:
+            os.remove(file)
+        except OSError:
+            pass
 
     with open(os.getenv('UUID_STORE'), 'w') as file:
         json.dump({}, file)

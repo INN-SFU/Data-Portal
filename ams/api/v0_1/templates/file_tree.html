@@ -2,15 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Interactive File Trees</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <title>File Explorer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
 </head>
 <body>
-    <h1>File Trees by Project</h1>
-    {% for slug, tree_html in trees.items() %}
-        <h2>{{ slug }}</h2>
-        <div class="tree">{{ tree_html | safe }}</div>
-    {% endfor %}
-    <script src="/static/js/script.js"></script>
+<div id="tree_json"></div>
+<script>
+    $(function() {
+        $('#tree_json').jstree({
+            'core' : {
+                'data' : {{ tree_json | safe }}
+            }
+        });
+    });
+</script>
 </body>
 </html>

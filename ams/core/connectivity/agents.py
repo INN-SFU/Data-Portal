@@ -70,30 +70,13 @@ class Agent(ABC):
         raise NotImplementedError
 
     # Generate HTML from the tree
-    def generate_html(self) -> str:
-        """
-        Generate HTML representation of the file tree.
-
-        :return: HTML string representing the file tree.
-        """
-        html_output = "<ul>"
-
+    def tree_to_jstree_json(self):
         def recurse(node):
-            nonlocal html_output
-            children = self.file_tree.children(node.identifier)
-            if children:  # Check if the node has children to determine if it's a folder
-                html_output += f"<li class='folder'>{node.tag}<ul style='display: none;'>"
-                for child in children:
-                    recurse(child)
-                html_output += "</ul></li>"
-            else:
-                html_output += f"<li class='file'>{node.tag}</li>"
+            children = [recurse(child) for child in self.file_tree.children(node.identifier)]
+            return {"text": node.tag, "children": children}
 
         root_node = self.file_tree.get_node(self.file_tree.root)
-        if root_node is not None:
-            recurse(root_node)
-        html_output += "</ul>"
-        return html_output
+        return json.dumps([recurse(root_node)])
 
 
 class ArbutusAgent(Agent):

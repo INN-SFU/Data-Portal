@@ -171,15 +171,8 @@ async def get_all_assets(request: Request, access_point: str):
     :return: The rendered all_assets.html template.
     :rtype: templates.TemplateResponse
     """
-    trees = {}
-    if access_point == "all":
-        for agent in agents:
-            trees[agent.access_point_slug] = agent.generate_html()
-    else:
-        for agent in agents:
-            if agent.access_point_slug == access_point:
-                trees[agent.access_point_slug] = agent.generate_html()
-                break
-        raise HTTPException(status_code=404, detail="Access point not found")
+    for agent in agents:
+        if agent.access_point_slug == access_point:
+            return templates.TemplateResponse("file_tree.html", {"request": request, "tree_json": agent.tree_to_jstree_json()})
+    raise HTTPException(status_code=404, detail="Access point not found")
 
-    return templates.TemplateResponse("file_tree.html", {"request": request, "trees": trees})
