@@ -6,6 +6,7 @@ from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
 from src.core.authentication import validate_credentials, generate_token, token_expired
 
+
 security = HTTPBasic()
 auth_router = APIRouter(prefix='/auth')
 

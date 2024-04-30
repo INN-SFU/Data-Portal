@@ -5,6 +5,8 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from src.core.authentication import auth
 from src.core.settings.config import dam
 
+from src.api.v0_1.templates import templates
+
 security = HTTPBasic()
 asset_router = APIRouter(prefix='/assets')
 

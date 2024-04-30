@@ -3,8 +3,10 @@ from fastapi import Request, Depends, HTTPException, APIRouter
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 
 from src.core.authentication.auth import validate_credentials
-from src.core.connectivity import agents
+from src.core.settings import agents
 from src.core.settings import dam
+
+from src.api.v0_1.templates import templates
 
 security = HTTPBasic()
 admin_router = APIRouter(prefix='/admin')

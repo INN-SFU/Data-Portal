@@ -1,13 +1,13 @@
 import dotenv
-import os
-
 dotenv.load_dotenv("./core/settings/.env")
+dotenv.load_dotenv("./core/settings/.secrets")
 
 import src.api.v0_1.endpoints as endpoints
+import os
 
 from fastapi import Request, FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from src.api.v0_1.templates import templates
 
 # Initialize security
 app = FastAPI()
@@ -19,9 +19,6 @@ app.include_router(endpoints.auth_router)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory=os.getenv('STATIC_FILES')), name="static")
-
-# Initialize Jinja2Templates
-templates = Jinja2Templates(os.getenv("JINJA_TEMPLATES"))
 
 # Root endpoint
 @app.get("/")
