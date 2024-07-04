@@ -15,14 +15,12 @@ def SYS_RESET():
         print('Exiting...')
         exit()
 
-    print('Cleaning...')
-    users_policies = os.listdir(os.getenv('USER_POLICIES'))
-    for policy in users_policies:
-        file = os.path.join(os.getenv('USER_POLICIES'), policy)
-        try:
-            os.remove(file)
-        except OSError:
-            pass
+    dam = DataAccessManager()
+
+    if dam.get_users() is not None:
+        print('Removing existing users and associated data...')
+        for user in dam.get_users():
+            dam.remove_user(user)
 
     with open(os.getenv('UUID_STORE'), 'w') as file:
         json.dump({}, file)
@@ -36,6 +34,5 @@ def SYS_RESET():
     admin_uid = input()
     _, admin_key = generate_credentials(admin_uid)
 
-    dam = DataAccessManager()
     dam.add_user(admin_uid, uuid5(NAMESPACE_DNS, admin_key), 'admin')
     print(f'Admin User ID:\t{admin_uid}\nAdmin Key:\t\t{admin_key}')

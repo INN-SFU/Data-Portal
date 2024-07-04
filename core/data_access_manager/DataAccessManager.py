@@ -316,7 +316,7 @@ class DataAccessManager(metaclass=SingletonMeta):
         """
         Remove User
 
-        Removes a user from the system based on a unique identifier.
+        Removes a user from the system based on their uid_slug. All associated data is also removed (policy files etc.)
 
         :param uid_slug: The unique identifier of the user to remove.
         :type uid_slug: str

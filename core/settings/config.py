@@ -3,7 +3,7 @@ from casbin.util.log import DEFAULT_LOGGING
 
 
 from core.data_access_manager import DataAccessManager
-from core.connectivity.agents import ArbutusAgent
+from core.connectivity.arbutus import ArbutusAgent
 
 # Make uvicorn and casbin loggers use the same format
 # uvicorn logger

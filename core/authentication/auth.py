@@ -6,14 +6,14 @@ import secrets
 from hashlib import blake2b
 
 
-def _generate_uid_key(uid_slug: str) -> str:
+def _generate_uid_secret_key(uid_slug: str) -> str:
     """
     Generates the uid_slug key for a given uuid
 
     :param uid_slug: The users uid.
     :return: The generated uid_slug key as a string.
     """
-    j = blake2b(digest_size=int(os.getenv("DIGEST_SIZE")), key=os.getenv("PASS_SECRET").encode())
+    j = blake2b(digest_size=int(os.getenv("DIGEST_SIZE")), key=os.getenv("UID_KEY_SECRET").encode())
     j.update(uid_slug.encode('utf-8'))
 
     return j.hexdigest()
@@ -28,7 +28,7 @@ def generate_credentials(uid_slug: str) -> (str, str):
     :return: The generated credentials consisting of uuid and key.
     :rtype: tuple[str, str]
     """
-    return uid_slug, _generate_uid_key(uid_slug)
+    return uid_slug, _generate_uid_secret_key(uid_slug)
 
 
 def validate_credentials(uid_slug: str, key: str) -> bool:
@@ -40,7 +40,7 @@ def validate_credentials(uid_slug: str, key: str) -> bool:
     :return: True if the provided credentials are valid, False otherwise.
     """
 
-    derived_key = _generate_uid_key(uid_slug)
+    derived_key = _generate_uid_secret_key(uid_slug)
     return secrets.compare_digest(key, derived_key)
 
 
@@ -69,7 +69,7 @@ def generate_token(uid_slug: str, key: str, time_to_live: int, access_point: str
             "action": action
         }
 
-        return jwt.encode(payload, os.getenv("ACCESS_TOKEN_SECRET"), algorithm="HS256")
+        return jwt.encode(payload, os.getenv("JWT_TOKEN_SECRET"), algorithm="HS256")
     else:
         raise ValueError("Invalid credentials")
 
@@ -84,7 +84,7 @@ def token_expired(token: str) -> bool:
     :rtype: bool
     """
     try: 
-        payload = jwt.decode(token, os.getenv("ACCESS_TOKEN_SECRET"), algorithms=["HS256"])
+        payload = jwt.decode(token, os.getenv("JWT_TOKEN_SECRET"), algorithms=["HS256"])
         # check if token has expired
         if time.time() < payload["time_to_live"]:
             return True
@@ -99,7 +99,7 @@ def decode_token(token: str):
     :param token: The JWT to be decoded.
     :return: The decoded JWT as a Python dictionary.
     """
-    return jwt.decode(token, os.getenv("ACCESS_TOKEN_SECRET"), algorithms=["HS256"])
+    return jwt.decode(token, os.getenv("JWT_TOKEN_SECRET"), algorithms=["HS256"])
 
 
 if __name__ == '__main__':
@@ -113,6 +113,6 @@ if __name__ == '__main__':
 
     access_token = generate_token(uid_slug=uid_slug_, key=key_, time_to_live=600)
     print(f"Access Token: {access_token}")
-    print(jwt.decode(access_token, os.getenv("ACCESS_TOKEN_SECRET"), algorithms=["HS256"]))
+    print(jwt.decode(access_token, os.getenv("JWT_TOKEN_SECRET"), algorithms=["HS256"]))
 
     print(token_expired(access_token))

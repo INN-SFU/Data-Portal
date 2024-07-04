@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Files</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip-utils/0.1.0/jszip-utils.min.js"></script>
+</head>
+<body>
+    <button id="download-btn">Download Files</button>
+
+    <script>
+        document.getElementById('download-btn').addEventListener('click', () => {
+            const presignedUrls = {{ presigned_urls|tojson }};
+            const objectKeys = {{ object_keys|tojson }};
+            const zip = new JSZip();
+            const promises = [];
+
+            presignedUrls.forEach((url, index) => {
+                const objectKey = objectKeys[index];
+                promises.push(
+                    JSZipUtils.getBinaryContent(url, (err, data) => {
+                        if (err) {
+                            throw err;
+                        }
+                        zip.file(objectKey, data, { binary: true });
+                    })
+                );
+            });
+
+            Promise.all(promises).then(() => {
+                zip.generateAsync({ type: 'blob' }).then((content) => {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(content);
+                    link.download = 'files.zip';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
+            }).catch(error => {
+                console.error('Error creating ZIP:', error);
+            });
+        });
+    </script>
+</body>
+</html>

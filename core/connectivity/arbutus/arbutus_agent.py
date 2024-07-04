@@ -1,82 +1,16 @@
-import boto3
+import (
+
+    boto3)
 import json
 import treelib
 import os
+import openstack
+import swiftclient
 
-from treelib.exceptions import DuplicatedNodeIdError
-from abc import ABC
 from typing import List
 
 
-class Agent(ABC):
-    """
-    Agent
-
-    Class representing an agent.
-
-    Methods:
-    - __init__()
-    - _add_file_to_tree()
-    - _load_file_tree()
-    - fetch_all_asset_paths()
-    - generate_html()
-    """
-
-    def __init__(self, access_point_slug: str, endpoint: str):
-        """
-        Initialize a new instance of the class.
-
-        :param access_point_slug: The slug for the access point.
-        :type access_point_slug: str
-        :param endpoint: The endpoint for the access point.
-        :type endpoint: str
-        """
-        self.access_point_slug = access_point_slug
-        self.endpoint = endpoint
-        # File tree to store the structure of objects im the access point
-        self.file_tree: treelib.Tree = None
-
-    def _add_file_to_tree(self, path: str, parent: str = 'root'):
-        """
-        Add a file to the file tree.
-
-        :param path: The path of the file to be added.
-        :param parent: The parent folder of the file. Default is 'root'.
-        :return: None
-        """
-        parts = path.rstrip('/').split('/')
-        parts = [parent] + parts
-        for i in range(1, len(parts)):
-            current_folder = parts[i]
-            try:
-                self.file_tree.create_node(current_folder, current_folder, parent=parts[i - 1])
-            except DuplicatedNodeIdError:
-                pass
-
-    def _load_file_tree(self):
-        """
-        Loads the file tree.
-
-        :return: None
-        """
-        raise NotImplementedError
-
-    def fetch_all_asset_paths(self) -> List[str]:
-        """
-        Fetches all asset paths.
-
-        :return: A list of strings representing the asset paths.
-        """
-        raise NotImplementedError
-
-    # Generate HTML from the tree
-    def tree_to_jstree_json(self):
-        def recurse(node):
-            children = [recurse(child) for child in self.file_tree.children(node.identifier)]
-            return {"text": node.tag, "children": children}
-
-        root_node = self.file_tree.get_node(self.file_tree.root)
-        return json.dumps([recurse(root_node)])
+from core.connectivity.agent import Agent
 
 
 class ArbutusAgent(Agent):
@@ -87,7 +21,7 @@ class ArbutusAgent(Agent):
 
     Attributes:
         endpoint (str): The endpoint URL of the Arbutus Cloud service.
-        client (boto3.client): The S3 client for interacting with the Arbutus Cloud service.
+        s3_client (boto3.client): The S3 client for interacting with the Arbutus Cloud service.
         file_tree (treelib.Tree): The file tree representing the structure of objects in the Arbutus Cloud service.
     """
 
@@ -103,10 +37,20 @@ class ArbutusAgent(Agent):
 
         super().__init__(ACCESS_POINT_SLUG, config['endpoint'])
 
-        self.client = boto3.client('s3',
-                                   endpoint_url=self.endpoint,
-                                   aws_access_key_id=config['credentials']['aws_access_key_id'],
-                                   aws_secret_access_key=config['credentials']['aws_secret_access_key'])
+        self.s3_client = boto3.client('s3',
+                                      endpoint_url=self.endpoint,
+                                      aws_access_key_id=config['credentials']['aws_access_key_id'],
+                                      aws_secret_access_key=config['credentials']['aws_secret_access_key'])
+
+        # Keystone client is used for generating keys for the S3 client
+        self.conn = openstack.connect(
+            user_domain_name=os.getenv('OS_USER_DOMAIN_NAME'),
+            username=os.getenv('OS_USERNAME'),
+            password=os.getenv('OS_PASSWORD'),
+            project_domain_name=os.getenv('OS_PROJECT_ID'),
+            project_name=os.getenv('OS_PROJECT_NAME'),
+            auth_url=os.getenv('OS_AUTH_URL')
+        )
 
         # Initialize the file tree
         self.file_tree = treelib.Tree()
@@ -142,7 +86,7 @@ class ArbutusAgent(Agent):
         :return: List of bucket names.
         :rtype: List[str]
         """
-        response = self.client.list_buckets()
+        response = self.s3_client.list_buckets()
         buckets = []
         for bucket in response['Buckets']:
             buckets.append(bucket['Name'])
@@ -156,10 +100,13 @@ class ArbutusAgent(Agent):
         :return: A list of all the keys of the objects in the bucket.
         :rtype: list[str]
         """
-        response = self.client.list_objects_v2(Bucket=bucket)
+        response = self.s3_client.list_objects_v2(Bucket=bucket)
         objects = []
-        for obj in response['Contents']:
-            objects.append(obj['Key'])
+        try:
+            for obj in response['Contents']:
+                objects.append(obj['Key'])
+        except KeyError:
+            pass
         return objects
 
     def fetch_all_keys(self) -> List[str]:
@@ -181,7 +128,18 @@ class ArbutusAgent(Agent):
 
         return all_keys
 
+    def generate_access_link(self, asset_key: os.PathLike, method: str):
 
-if __name__ == '__main__':
-    agent = ArbutusAgent()
-    print(agent.file_tree.__str__())
+        # Swift connection
+        swift_conn = swiftclient.Connection(session=conn.session)
+
+        # Set the temporary URL key (once per container)
+        swift_conn.post_container(container_name, {'X-Container-Meta-Temp-URL-Key': temp_url_key})
+
+        # Generate the temporary URL
+        method = 'PUT'
+        path = f'/v1/AUTH_{conn.session.get_project_id()}/{container_name}/{object_name}'
+        expires = int(time.time() + ttl)
+        hmac_body = f'{method}\n{expires}\n{path}'
+        signature = hmac.new(temp_url_key.encode(), hmac_body.encode(), hashlib.sha1).hexdigest()
+        temp_url = f'https://{conn.session.auth.auth_url.split("//")[1]}/v1/AUTH_{conn.session.get_project_id()}/{container_name}/{object_name}?temp_url_sig={signature}&temp_url_expires={expires}'

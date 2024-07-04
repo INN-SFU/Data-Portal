@@ -3,15 +3,14 @@ import os
 import dotenv
 import pathlib
 
-from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
-
+from cryptography.fernet import Fernet
 
 def _generate_secrets():
     print('Updating secrets...')
     secrets = {
-        "UID_SECRET": ChaCha20Poly1305.generate_key(),
-        "PASS_SECRET": os.urandom(32),
-        "ACCESS_TOKEN_SECRET": os.urandom(32),
+        "UID_KEY_SECRET": os.urandom(32),
+        "JWT_TOKEN_SECRET": os.urandom(32),
+        "ARBUTUS_AGENT_ACCESS_KEY_SECRET": Fernet.generate_key()
     }
     settings_directory = pathlib.Path(__file__).parent.resolve()
     for secret in secrets.keys():

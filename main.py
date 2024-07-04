@@ -1,7 +1,11 @@
-import dotenv
 import os
 
-dotenv.load_dotenv("./core/settings/.env")
+from dotenv import load_dotenv
+
+# Get .env relative path
+prefix = os.path.abspath(os.path.dirname(__file__))
+env_path = prefix + '/core/settings/.env'
+load_dotenv(env_path)
 
 path_envs = ['UUID_STORE', 'ENFORCER_MODEL', 'ENFORCER_POLICY', 'USER_POLICIES', 'JINJA_TEMPLATES',
              'ACCESS_AGENT_CONFIG', 'STATIC_FILES']
@@ -10,7 +14,7 @@ path_envs = ['UUID_STORE', 'ENFORCER_MODEL', 'ENFORCER_POLICY', 'USER_POLICIES',
 for path in path_envs:
     os.environ[path] = os.path.abspath(os.getenv(path))
 
-dotenv.load_dotenv("./core/settings/.secrets")
+load_dotenv("core/settings/.secrets")
 
 import api.v0_1.endpoints as endpoints
 

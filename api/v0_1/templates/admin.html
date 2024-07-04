@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin File Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
+    <style>
+        .selected {
+            background-color: #d3d3d3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Admin File Management</h1>
+    <div>
+        <h3>Select Files or Folders</h3>
+        <div id="asset-list">
+            {% for endpoint, items in assets.items() %}
+                <div class="endpoint" data-endpoint="{{ endpoint }}">
+                    <strong>{{ endpoint }}</strong>
+                    <div id="tree-{{ loop.index }}" class="file-tree"></div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div>
+        <h3>User Permissions</h3>
+        <form id="admin-form">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+            <br>
+            <label for="read">Read:</label>
+            <input type="checkbox" id="read" name="permissions" value="read">
+            <label for="write">Write:</label>
+            <input type="checkbox" id="write" name="permissions" value="write">
+            <br>
+            <button type="submit">Update Policy</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            {% for endpoint, items in assets.items() %}
+                $('#tree-{{ loop.index }}').jstree({
+                    'core': {
+                        'data': {{ items|tojson }}
+                    },
+                    'plugins': ["checkbox"]
+                });
+            {% endfor %}
+        });
+
+        document.getElementById('admin-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const selectedNodes = $('.jstree-node').has('.jstree-checkbox.jstree-checked');
+            if (selectedNodes.length === 0) {
+                alert("Please select at least one file or folder.");
+                return;
+            }
+
+            const username = document.getElementById('username').value;
+            if (!username) {
+                alert("Please enter a username.");
+                return;
+            }
+
+            const permissions = [];
+            if (document.getElementById('read').checked) permissions.push('read');
+            if (document.getElementById('write').checked) permissions.push('write');
+            if (permissions.length === 0) {
+                alert("Please select at least one permission.");
+                return;
+            }
+
+            const updates = [];
+            selectedNodes.each(function() {
+                const endpoint = $(this).closest('.endpoint').data('endpoint');
+                const resource = $(this).attr('data-id');
+                permissions.forEach(permission => {
+                    updates.push(fetch(`/admin/policy?uid=${encodeURIComponent(username)}&access_point=${encodeURIComponent(endpoint)}&resource=${encodeURIComponent(resource)}&action=${encodeURIComponent(permission)}`, {
+                        method: 'PUT',
+                        credentials: 'include'
+                    }));
+                });
+            });
+
+            try {
+                await Promise.all(updates);
+                alert('Policies updated successfully.');
+            } catch (error) {
+                console.error('Error updating policies:', error);
+                alert('An error occurred while updating the policies.');
+            }
+        });
+    </script>
+</body>
+</html>
