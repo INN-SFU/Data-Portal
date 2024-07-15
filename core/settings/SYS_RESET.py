@@ -35,4 +35,4 @@ def SYS_RESET():
     _, admin_key = generate_credentials(admin_uid)
 
     dam.add_user(admin_uid, uuid5(NAMESPACE_DNS, admin_key), 'admin')
-    print(f'Admin User ID:\t{admin_uid}\nAdmin Key:\t\t{admin_key}')
+    print(f'Admin User ID:\t{admin_uid}\nAdmin Key:\t{admin_key}')

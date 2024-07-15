@@ -1,6 +1,17 @@
-self.addEventListener('fetch', event => {
-  // Generalize the condition to match any presigned URL pattern
-  if (event.request.url.includes('AWSAccessKeyId') && event.request.url.includes('Signature')) {
-    event.respondWith(fetch(event.request));
-  }
+self.addEventListener('fetch', function(event) {
+    event.respondWith(
+        fetch(event.request).then(function(response) {
+            if (response.ok) {
+                return response.blob().then(function(blob) {
+                    return new Response(blob, {
+                        headers: response.headers
+                    });
+                });
+            }
+            return response;
+        }).catch(function(error) {
+            console.error('Fetching failed:', error);
+            throw error;
+        })
+    );
 });

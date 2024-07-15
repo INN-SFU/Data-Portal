@@ -1,14 +1,35 @@
 import os
+import logging
 from fastapi import Request, HTTPException, APIRouter, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
+from treelib import Tree
 
 from core.authentication import auth
 from core.settings.config import dam
-
-from api.v0_1.templates import templates
+from core.settings.config import agents
 
 security = HTTPBasic()
 asset_router = APIRouter(prefix='/assets')
+
+templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
+
+logger = logging.getLogger("uvicorn")
+
+
+# UTILITES/HELPER FUNCTIONS
+def convert_file_tree_to_dict(tree: Tree):
+    tree_data = []
+    for node in tree.all_nodes():
+        if node.tag != 'root':  # Skip the 'root' node
+            parent = tree.parent(node.identifier)
+            # If the parent is 'root', treat this node as a top-level node
+            parent_id = '#' if parent is None or parent.tag == 'root' else parent.identifier
+            tree_data.append(
+                {"id": node.identifier, "parent": parent_id, "text": node.tag, "li_attr": {"data-id": node.identifier}}
+            )
+    return tree_data
 
 
 # ENDPOINT ACCESS CONTROL
@@ -47,45 +68,126 @@ def read_assets(creds: str = Depends(validate_credentials)):
 @asset_router.get("")
 def retrieve_asset(request: Request, creds: str = Depends(validate_credentials)):
     """
-    This method is used to generate a presigned URL for uploading assets to a resource.
+    This method is used to generate presigned URLs for assets and serve an HTML template with these URLs.
 
     :param request: The request object containing relevant query parameters.
     :param creds: The user ID and key used to validate user credentials.
-    :return: A dictionary containing the presigned URL for uploading the asset.
-    :raises HTTPException: If the user does not have write access to the resource.
+    :return: HTML template with presigned URLs for the assets.
+    :raises HTTPException: If the user does not have read access to the resource.
     """
     uid = creds[0]
-    key = creds[1]
 
     resource = request.query_params.get("resource")
     access_point = request.query_params.get("access_point")
 
     if dam.validate_user_access(uid, access_point, resource, "read"):
-        token = auth.generate_token(uid_slug=uid, key=key, time_to_live=300, access_point=access_point,
-                                    resource=resource, action="get-object")
-
-        url = f"http://{os.getenv('DCS_HOST')}:{os.getenv('DCS_PORT')}/stream?token={token}"
-        return templates.TemplateResponse("dcs_link.html", {"request": request, "url": url})
-
+        for agent in agents:
+            if agent.access_point_slug == access_point:
+                try:
+                    presigned_urls, object_keys = agent.generate_access_links(resource, 'GET', 3600)
+                    return templates.TemplateResponse("download.html",
+                                                      {"request": request, "presigned_urls": presigned_urls,
+                                                       "object_keys": object_keys})
+                except ValueError as e:
+                    raise HTTPException(status_code=404, detail=str(e))
     else:
         raise HTTPException(status_code=403, detail="User does not have read access to this resource")
 
 
-@asset_router.put("")
-def put_asset(request: Request, uid: str = Depends(validate_credentials)):
+# UPLOAD AND DOWNLOAD FORMS
+@asset_router.get("/upload", response_class=HTMLResponse)
+def upload_form(request: Request, creds: str = Depends(validate_credentials)):
     """
-    This method is used to generate a presigned URL for uploading assets to a resource.
+    This method is used to render the upload form page.
 
-    :param request: The request object containing relevant query parameters.
-    :param uid: The user ID used to validate user credentials.
-    :return: A dictionary containing the presigned URL for uploading the asset.
-    :raises HTTPException: If the user does not have write access to the resource.
+    :param request: The HTTP request information.
+    :type request: Request
+    :param creds: The validated user credentials.
+    :type creds: str
+    :return: The rendered upload form page.
+    :rtype: TemplateResponse
     """
+    uid = creds[0]
+    assets = {}
+    for agent in agents:
+        assets[agent.access_point_slug] = convert_file_tree_to_dict(agent.get_user_file_tree(uid, 'write', dam))
+    return templates.TemplateResponse("upload.html", {"request": request, "assets": assets})
+
+
+# Endpoint to render the download form
+@asset_router.get("/download", response_class=HTMLResponse)
+def download_form(request: Request, creds: str = Depends(validate_credentials)):
+    """
+    This method is used to render the download form page.
+    :param request: The HTTP request information.
+    :param creds: The validated user credentials.
+    :return: The rendered download form page.
+    """
+    uid = creds[0]
+    assets = {}
+    for agent in agents:
+        assets[agent.access_point_slug] = convert_file_tree_to_dict(agent.get_user_file_tree(uid, 'read', dam))
+    return templates.TemplateResponse("download.html", {"request": request, "assets": assets})
+
+
+# UPLOAD AND DOWNLOAD PRESIGNED URL ENDPOINTS
+@asset_router.put("/upload")
+def put_asset(request: Request, creds: str = Depends(validate_credentials)) -> dict:
+    """
+    Sends a PUT request to the asset router to generate a presigned URL for uploading a file.
+
+    :param request: The request object.
+    :type request: Request
+    :param creds: The credentials required for authentication.
+    :type creds: str
+    :return: The presigned URL for uploading the file.
+    :rtype: dict
+    :raises HTTPException 404: If the asset router URL is not found or the file cannot be uploaded.
+    :raises HTTPException 403: If the user does not have write access to the resource.
+    """
+    uid = creds[0]
     resource = request.query_params.get("resource")
-    asset_name = request.query_params.get("asset_name")
-    asset = request.query_params.get("asset")
+    access_point = request.query_params.get("access_point")
 
-    if dam.validate_user_access(uid, resource, "write"):
-        pass
+    if dam.validate_user_access(uid, access_point, resource, "write"):
+        for agent in agents:
+            if agent.access_point_slug == access_point:
+                try:
+                    presigned_urls, file_paths = agent.generate_access_links(f"{resource}", 'PUT', 3600)
+                    return {"presigned_urls": presigned_urls, 'file_paths': file_paths}
+                except ValueError as e:
+                    raise HTTPException(status_code=404, detail=str(e))
     else:
         raise HTTPException(status_code=403, detail="User does not have write access to this resource")
+
+
+# Endpoint to generate presigned URLs for downloading assets
+@asset_router.put("/download")
+def get_asset(request: Request, creds: str = Depends(validate_credentials)) -> dict:
+    """
+    Get presigned URLs for downloading the specified asset.
+
+    :param request: The request object.
+    :type request: Request
+    :param creds: The user credentials.
+    :type creds: str
+    :return: The presigned URLs for the asset.
+    :rtype: dict
+
+    :raises HTTPException 404: If the asset is not found.
+    :raises HTTPException 403: If the user does not have access to the asset.
+    """
+    uid = creds[0]
+    resource = request.query_params.get("resource")
+    access_point = request.query_params.get("access_point")
+
+    if dam.validate_user_access(uid, access_point, resource, "read"):
+        for agent in agents:
+            if agent.access_point_slug == access_point:
+                try:
+                    presigned_urls, file_paths = agent.generate_access_links(resource, 'GET', 600)
+                    return {"presigned_urls": presigned_urls, 'file_paths': file_paths}
+                except ValueError as e:
+                    raise HTTPException(status_code=404, detail=str(e))
+    else:
+        raise HTTPException(status_code=403, detail="User does not have access to the specified resource")

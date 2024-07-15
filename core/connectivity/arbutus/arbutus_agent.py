@@ -1,16 +1,15 @@
-import (
-
-    boto3)
+import boto3
 import json
 import treelib
 import os
-import openstack
-import swiftclient
+import time
+import logging
 
 from typing import List
 
-
 from core.connectivity.agent import Agent
+
+logger = logging.getLogger("casbin")
 
 
 class ArbutusAgent(Agent):
@@ -42,16 +41,6 @@ class ArbutusAgent(Agent):
                                       aws_access_key_id=config['credentials']['aws_access_key_id'],
                                       aws_secret_access_key=config['credentials']['aws_secret_access_key'])
 
-        # Keystone client is used for generating keys for the S3 client
-        self.conn = openstack.connect(
-            user_domain_name=os.getenv('OS_USER_DOMAIN_NAME'),
-            username=os.getenv('OS_USERNAME'),
-            password=os.getenv('OS_PASSWORD'),
-            project_domain_name=os.getenv('OS_PROJECT_ID'),
-            project_name=os.getenv('OS_PROJECT_NAME'),
-            auth_url=os.getenv('OS_AUTH_URL')
-        )
-
         # Initialize the file tree
         self.file_tree = treelib.Tree()
         self._load_file_tree()
@@ -70,14 +59,14 @@ class ArbutusAgent(Agent):
 
         # Add buckets to the file tree
         for bucket in buckets:
-            self.file_tree.create_node(bucket, bucket, parent='root')
+            self._add_file_to_tree(bucket)
 
         # Fetch all objects in each bucket
         for bucket in buckets:
             objects = self.fetch_all_bucket_keys(bucket)
             # Add folders to the file tree
             for obj in objects:
-                self._add_file_to_tree(obj, parent=bucket)
+                self._add_file_to_tree(os.path.join(bucket, obj))
 
     def fetch_all_buckets(self) -> List[str]:
         """
@@ -128,18 +117,44 @@ class ArbutusAgent(Agent):
 
         return all_keys
 
-    def generate_access_link(self, asset_key: os.PathLike, method: str):
+    def generate_access_links(self, resource: str, method: str, ttl: int):
+        """
+        Generate a presigned URL for accessing the resource.
 
-        # Swift connection
-        swift_conn = swiftclient.Connection(session=conn.session)
+        :param resource: The resource to generate the presigned URL for. Resources are always referenced from the root
+            which is literally labelled 'root'.
+            E.g:    root/bucket/object
+        :param method: The method to generate the presigned URL for.
+        :param ttl: The time-to-live for the presigned URL.
+        :return: The presigned URL.
+        """
+        urls = []
+        paths = []
 
-        # Set the temporary URL key (once per container)
-        swift_conn.post_container(container_name, {'X-Container-Meta-Temp-URL-Key': temp_url_key})
+        # GET request handling
+        if method == 'GET':
+            # Get the file paths for the resource
+            logger.info(f"Getting file identifiers for resource: {resource}")
+            paths = self.get_file_identifiers(resource)
+            logger.info(f"Found {len(paths)} paths for resource: {resource}")
+        # PUT request handling
+        elif method == 'PUT':
+            # Get the file paths for the resource
+            paths = [resource]
+        else:
+            raise ValueError(f"Method {method} not supported")
 
-        # Generate the temporary URL
-        method = 'PUT'
-        path = f'/v1/AUTH_{conn.session.get_project_id()}/{container_name}/{object_name}'
-        expires = int(time.time() + ttl)
-        hmac_body = f'{method}\n{expires}\n{path}'
-        signature = hmac.new(temp_url_key.encode(), hmac_body.encode(), hashlib.sha1).hexdigest()
-        temp_url = f'https://{conn.session.auth.auth_url.split("//")[1]}/v1/AUTH_{conn.session.get_project_id()}/{container_name}/{object_name}?temp_url_sig={signature}&temp_url_expires={expires}'
+        logger.info("Generating presigned URLs for {len(paths)} paths")
+        for path in paths:
+            urls.append(self._generate_presigned_url(path, ttl))
+        logger.info(f"Generated urls: {urls}")
+
+        return urls, paths
+
+    def _generate_presigned_url(self, path, ttl):
+        bucket = path.split("/")[0]
+        key = "/".join(path.split("/")[1:])
+        logger.info(f"Generating presigned URL for bucket: {bucket}, key: {key}, TTL: {ttl}")
+        return self.s3_client.generate_presigned_url('get_object',
+                                                     Params={'Bucket': bucket, 'Key': key},
+                                                     ExpiresIn=ttl)

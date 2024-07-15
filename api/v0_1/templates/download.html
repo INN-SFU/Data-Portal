@@ -4,43 +4,113 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Download Files</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip-utils/0.1.0/jszip-utils.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+        .selected {
+            background-color: #d3d3d3;
+        }
+    </style>
 </head>
 <body>
-    <button id="download-btn">Download Files</button>
+    <h1>Download Files</h1>
+    <div>
+        <h3>Select File or Folder to Download</h3>
+        <div id="asset-list">
+            {% for endpoint, items in assets.items() %}
+                <div class="endpoint" data-endpoint="{{ endpoint }}">
+                    <strong>{{ endpoint }}</strong>
+                    <div id="tree-{{ loop.index }}" class="file-tree"></div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    <button id="download-button">Download</button>
 
     <script>
-        document.getElementById('download-btn').addEventListener('click', () => {
-            const presignedUrls = {{ presigned_urls|tojson }};
-            const objectKeys = {{ object_keys|tojson }};
-            const zip = new JSZip();
-            const promises = [];
+        // Register the service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/js/service-worker.js').then(() => {
+                console.log('Service Worker registered successfully.');
+            }).catch(error => {
+                console.log('Service Worker registration failed:', error);
+            });
+        }
 
-            presignedUrls.forEach((url, index) => {
-                const objectKey = objectKeys[index];
-                promises.push(
-                    JSZipUtils.getBinaryContent(url, (err, data) => {
-                        if (err) {
-                            throw err;
+        document.addEventListener('DOMContentLoaded', () => {
+            {% for endpoint, items in assets.items() %}
+                $('#tree-{{ loop.index }}').jstree({
+                    'core': {
+                        'data': {{ items|tojson }}
+                    }
+                }).on('select_node.jstree', function (e, data) {
+                    $('.jstree-node').removeClass('selected');
+                    $(`[data-id='${data.node.id}']`).addClass('selected');
+                });
+            {% endfor %}
+        });
+
+        document.getElementById('download-button').addEventListener('click', async () => {
+            const selectedNode = document.querySelector('.jstree-node.selected');
+
+            if (!selectedNode) {
+                alert("Please select a file or folder to download.");
+                return;
+            }
+
+            const selectedEndpointElement = selectedNode.closest('.endpoint');
+            if (!selectedEndpointElement) {
+                alert("Endpoint not found.");
+                return;
+            }
+
+            const selectedEndpoint = selectedEndpointElement.dataset.endpoint;
+            const resource = selectedNode.dataset.id;
+
+            try {
+                const presignedUrlResponse = await fetch(`/assets/download?resource=${encodeURIComponent(resource)}&access_point=${encodeURIComponent(selectedEndpoint)}`, {
+                    method: 'PUT',
+                    credentials: 'include'
+                });
+
+                if (!presignedUrlResponse.ok) {
+                    throw new Error('Failed to get presigned URL for ' + resource);
+                }
+
+                const { presigned_urls, file_paths } = await presignedUrlResponse.json();
+                console.log('Presigned URLs:', presigned_urls);
+                console.log('File paths:', file_paths);
+
+                if (presigned_urls.length !== file_paths.length) {
+                    throw new Error('Mismatch between presigned URLs and file paths.');
+                }
+
+                const zip = new JSZip();
+                const fetchPromises = presigned_urls.map((url, index) =>
+                    fetch(url, { mode: 'no-cors' }).then(response => {
+                        if (response.ok || response.type === 'opaque') {
+                            return response.blob();
                         }
-                        zip.file(objectKey, data, { binary: true });
+                        throw new Error(`Error fetching ${url}: ${response.statusText}`);
+                    }).then(blob => {
+                        zip.file(file_paths[index], blob);
+                    }).catch(error => {
+                        console.error(`Error fetching ${url}:`, error);
                     })
                 );
-            });
 
-            Promise.all(promises).then(() => {
+                await Promise.all(fetchPromises);
                 zip.generateAsync({ type: 'blob' }).then((content) => {
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(content);
-                    link.download = 'files.zip';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    saveAs(content, 'download.zip');
+                }).catch((err) => {
+                    console.error('Error generating ZIP file:', err);
                 });
-            }).catch(error => {
-                console.error('Error creating ZIP:', error);
-            });
+            } catch (error) {
+                console.error('Error processing fetch promises:', error);
+            }
         });
     </script>
 </body>

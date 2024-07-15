@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Files</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
+    <style>
+        .selected {
+            background-color: #d3d3d3;
+        }
+    </style>
+</head>
+<body>
+    <h1>Upload Files</h1>
+    <div>
+        <h3>Select Destination Folder</h3>
+        <div id="asset-list">
+            {% for endpoint, items in assets.items() %}
+                <div class="endpoint" data-endpoint="{{ endpoint }}">
+                    <strong>{{ endpoint }}</strong>
+                    <div id="tree-{{ loop.index }}" class="file-tree"></div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    <input type="file" id="file-input" webkitdirectory directory multiple>
+    <button id="upload-button">Upload</button>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            {% for endpoint, items in assets.items() %}
+                $('#tree-{{ loop.index }}').jstree({
+                    'core': {
+                        'data': {{ items|tojson }}
+                    }
+                }).on('select_node.jstree', function (e, data) {
+                    $('.jstree-node').removeClass('selected');
+                    $(`[data-id='${data.node.id}']`).addClass('selected');
+                });
+            {% endfor %}
+        });
+
+        document.getElementById('upload-button').addEventListener('click', async () => {
+            const selectedNode = document.querySelector('.jstree-node.selected');
+
+            if (!selectedNode) {
+                alert("Please select a destination folder.");
+                return;
+            }
+
+            const selectedEndpointElement = selectedNode.closest('.endpoint');
+            if (!selectedEndpointElement) {
+                alert("Endpoint not found.");
+                return;
+            }
+
+            const selectedEndpoint = selectedEndpointElement.dataset.endpoint;
+            const destinationPath = selectedNode.dataset.id;
+            const files = document.getElementById('file-input').files;
+
+            if (files.length === 0) {
+                alert("Please select files to upload.");
+                return;
+            }
+
+            console.log(`Selected Endpoint: ${selectedEndpoint}`);
+            console.log(`Destination Path: ${destinationPath}`);
+
+            try {
+                for (const file of files) {
+                    const uploadPath = `${destinationPath}/${file.webkitRelativePath || file.name}`;
+                    console.log(`Uploading file to: ${uploadPath}`);
+
+                    // Check if uploadPath is correctly defined
+                    if (!uploadPath) {
+                        console.error('uploadPath is undefined or empty');
+                        continue;
+                    }
+
+                    const presignedUrlResponse = await fetch(`/assets/upload?resource=${encodeURIComponent(uploadPath)}&access_point=${encodeURIComponent(selectedEndpoint)}`, {
+                        method: 'PUT',
+                        credentials: 'include'
+                    });
+
+                    if (!presignedUrlResponse.ok) {
+                        throw new Error('Failed to get presigned URL for ' + uploadPath);
+                    }
+
+                    const { presigned_url } = await presignedUrlResponse.json();
+                    console.log(`Presigned URL for ${file.name}: ${presigned_url}`);
+                    const uploadResponse = await fetch(presigned_url, {
+                        method: 'PUT',
+                        body: file
+                    });
+
+                    if (!uploadResponse.ok) {
+                        throw new Error(`Failed to upload ${file.name}`);
+                    }
+
+                    console.log(`Uploaded file: ${file.name}`);
+                }
+
+                alert('Files uploaded successfully.');
+            } catch (error) {
+                console.error('Error uploading files:', error);
+                alert('An error occurred while uploading the files.');
+            }
+        });
+    </script>
+</body>
+</html>

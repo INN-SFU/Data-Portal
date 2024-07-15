@@ -1,10 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Access Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
+    <style>
+        .selected {
+            background-color: #d3d3d3;
+        }
+        .user-list {
+            margin-bottom: 20px;
+        }
+        .file-tree-container {
+            display: none;
+        }
+        .file-tree-view {
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-$END$
+    <h1>User Access Management</h1>
+    <div class="user-list">
+        <h3>Select User</h3>
+        <ul id="user-list">
+            {% for user in users %}
+                <li class="user" data-user="{{ user }}">{{ user }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="file-tree-container">
+        <h3>File Tree for <span id="selected-user"></span></h3>
+        <div id="file-trees">
+            {% for user, file_trees in user_file_trees.items() %}
+                <div class="file-tree" data-user="{{ user }}" style="display:none;">
+                    {% for endpoint, tree in file_trees.items() %}
+                        <div class="endpoint" data-endpoint="{{ endpoint }}">
+                            <strong>{{ endpoint }}</strong>
+                            <div id="tree-{{ user }}-{{ endpoint }}" class="file-tree-view" data-tree='{{ tree | tojson }}'></div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            $('#user-list').on('click', '.user', function() {
+                const selectedUser = $(this).data('user');
+                $('#selected-user').text(selectedUser);
+                $('.file-tree-container').show();
+                $('.file-tree').hide();
+                $(`.file-tree[data-user="${selectedUser}"]`).show();
+
+                $(`.file-tree[data-user="${selectedUser}"] .file-tree-view`).each(function() {
+                    if (!$(this).data('initialized')) {
+                        const treeData = $(this).attr('data-tree');  // Use attr to get data attribute
+                        console.log(`Initializing jstree for user: ${selectedUser}, endpoint: ${$(this).closest('.endpoint').data('endpoint')}`);
+                        console.log(JSON.parse(treeData));  // Log the tree data for debugging
+                        $(this).jstree({
+                            'core': {
+                                'data': JSON.parse(treeData)
+                            }
+                        });
+                        $(this).data('initialized', true);
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

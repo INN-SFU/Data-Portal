@@ -11,6 +11,8 @@ from casbin import Enforcer
 import treelib
 from treelib.exceptions import DuplicatedNodeIdError
 
+from core.authentication.auth import generate_credentials
+
 
 class SingletonMeta(type):
     """
@@ -310,7 +312,10 @@ class DataAccessManager(metaclass=SingletonMeta):
             json.dump(self.uuids, f, indent=4)
         f.close()
 
-        return True
+        # Generate the users secret key
+        user_key = generate_credentials(uid_slug)[1]
+
+        return user_key
 
     def remove_user(self, uid_slug: str):
         """
@@ -409,10 +414,3 @@ if __name__ == "__main__":
     #
     #    print("Adding new user policy: ", new_user + ', ' + user_uuid.__str__())
     #    dam.add_user_policy(new_user, "data", "read")
-
-    new_user = 'pmahon@sfu.ca'
-    user_uuid = uuid5(uuid_.NAMESPACE_OID, new_user)
-    role_ = "admin"
-
-    # Add the new user to the uuid store
-    dam.add_user(new_user, user_uuid, role_)

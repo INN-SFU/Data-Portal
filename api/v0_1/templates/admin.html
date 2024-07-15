@@ -46,9 +46,11 @@
             {% for endpoint, items in assets.items() %}
                 $('#tree-{{ loop.index }}').jstree({
                     'core': {
-                        'data': {{ items|tojson }}
+                        'data': {{ items|tojson }},
                     },
                     'plugins': ["checkbox"]
+                }).on('changed.jstree', function (e, data) {
+                    console.log(`Tree ${this.id} changed:`, data.selected);
                 });
             {% endfor %}
         });
@@ -56,7 +58,21 @@
         document.getElementById('admin-form').addEventListener('submit', async (event) => {
             event.preventDefault();
 
-            const selectedNodes = $('.jstree-node').has('.jstree-checkbox.jstree-checked');
+            const selectedNodes = [];
+            $('.file-tree').each(function() {
+                const selected = $(this).jstree('get_selected', true);
+                console.log(`Selected nodes for tree: ${$(this).attr('id')}`, selected);  // Debugging: Log selected nodes
+                selected.forEach(node => {
+                    const isFolder = $(this).jstree('is_parent', node);
+                    selectedNodes.push({
+                        endpoint: $(this).closest('.endpoint').data('endpoint'),
+                        id: node.id + (isFolder ? '/*' : '')
+                    });
+                });
+            });
+
+            console.log("Selected Nodes:", selectedNodes);  // Debugging: Log all selected nodes
+
             if (selectedNodes.length === 0) {
                 alert("Please select at least one file or folder.");
                 return;
@@ -76,26 +92,63 @@
                 return;
             }
 
+            try {
+                await updatePolicies(username, selectedNodes, permissions);
+                alert('Policies updated successfully.');
+            } catch (error) {
+                if (error.message.includes('User not found')) {
+                    const create = confirm("User does not exist. Do you want to create this user?");
+                    if (create) {
+                        const role = prompt("Enter the role for the new user:");
+                        if (role) {
+                            try {
+                                const userSecretKey = await createUser(username, role);
+                                await updatePolicies(username, selectedNodes, permissions);
+                                alert(`User created and policies updated successfully.\nUser Secret Key: ${userSecretKey}`);
+                            } catch (createError) {
+                                alert(`Error creating user: ${createError.message}`);
+                            }
+                        } else {
+                            alert("Role is required to create a new user.");
+                        }
+                    }
+                } else {
+                    alert(`Error updating policies: ${error.message}`);
+                }
+            }
+        });
+
+        async function updatePolicies(username, selectedNodes, permissions) {
             const updates = [];
-            selectedNodes.each(function() {
-                const endpoint = $(this).closest('.endpoint').data('endpoint');
-                const resource = $(this).attr('data-id');
+            selectedNodes.forEach(node => {
                 permissions.forEach(permission => {
-                    updates.push(fetch(`/admin/policy?uid=${encodeURIComponent(username)}&access_point=${encodeURIComponent(endpoint)}&resource=${encodeURIComponent(resource)}&action=${encodeURIComponent(permission)}`, {
+                    updates.push(fetch(`/admin/policy?uid=${encodeURIComponent(username)}&access_point=${encodeURIComponent(node.endpoint)}&resource=${encodeURIComponent(node.id)}&action=${encodeURIComponent(permission)}`, {
                         method: 'PUT',
                         credentials: 'include'
+                    }).then(response => {
+                        if (!response.ok) {
+                            return response.json().then(error => {
+                                throw new Error(error.detail);
+                            });
+                        }
                     }));
                 });
             });
+            await Promise.all(updates);
+        }
 
-            try {
-                await Promise.all(updates);
-                alert('Policies updated successfully.');
-            } catch (error) {
-                console.error('Error updating policies:', error);
-                alert('An error occurred while updating the policies.');
+        async function createUser(username, role) {
+            const response = await fetch(`/admin/user/${encodeURIComponent(username)}?role=${encodeURIComponent(role)}`, {
+                method: 'PUT',
+                credentials: 'include'
+            });
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail);
             }
-        });
+            const data = await response.json();
+            return data.secret_key;
+        }
     </script>
 </body>
 </html>
