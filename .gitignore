@@ -1,7 +1,7 @@
 _*/
 .*/
-/ams/core/internal/arbutus_connectivity/*
+/core/internal/arbutus_connectivity/*
 *.policies
-/ams/core/settings/.env
-/ams/core/user_policies/
-/ams/core/authentication/uuids.json
+/core/settings/.env
+/core/user_policies/
+/core/authentication/uuids.json
