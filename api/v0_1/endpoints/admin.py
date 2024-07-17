@@ -1,7 +1,7 @@
 import os
 
 from uuid import uuid5, NAMESPACE_DNS
-from fastapi import Request, Depends, HTTPException, APIRouter
+from fastapi import Request, Depends, HTTPException, APIRouter, Form
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -72,8 +72,8 @@ async def get_user_(uid: str):
     return dam.get_user(uid)
 
 
-@admin_router.put("/user/{uid}", dependencies=[Depends(is_admin)])
-async def add_user_(request: Request, uid: str):
+@admin_router.put("/user/", dependencies=[Depends(is_admin)])
+async def add_user_(request: Request, uid: str = Form(...), role: str = Form(...)):
     """
     Handler for the add user endpoint.
 
@@ -83,7 +83,6 @@ async def add_user_(request: Request, uid: str):
     :return: The rendered add_user.html template.
     :rtype: templates.TemplateResponse
     """
-    role = request.query_params.get("role")
     uuid = uuid5(NAMESPACE_DNS, uid)
 
     if not role:
@@ -202,7 +201,7 @@ async def get_all_assets(request: Request, access_point: str):
     raise HTTPException(status_code=404, detail="Access point not found")
 
 
-# Policy Management GUIs
+# ADMIN GUIS
 @admin_router.get("/file-management", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
 async def admin_file_management(request: Request, uid: str = Depends(is_admin)):
     assets = {}
@@ -214,11 +213,33 @@ async def admin_file_management(request: Request, uid: str = Depends(is_admin)):
 # Endpoint to display users and their file access
 @admin_router.get("/user-access", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
 async def user_access(request: Request):
+    """
+    View function for user access page.
+
+    :param request: The HTTP request object.
+    :return: The response object with user access page.
+    """
     users = dam.get_users()
     user_file_trees = {}
     for uid in users:
         user_file_trees[uid] = {}
         for agent in agents:
-            user_file_trees[uid][agent.access_point_slug] = convert_file_tree_to_dict(agent.get_user_file_tree(uid, 'read', dam))
+            user_file_trees[uid][agent.access_point_slug] = convert_file_tree_to_dict(
+                agent.get_user_file_tree(uid, 'read', dam))
     return templates.TemplateResponse("user_access.html", {"request": request, "users": users,
                                                            "user_file_trees": user_file_trees})
+
+
+@admin_router.get("/new-user", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
+async def create_user(request: Request):
+    """
+    Create User
+
+    Endpoint to create a new user.
+
+    :param request: The incoming request containing information about the user being created.
+    :type request: Request
+    :return: The HTML response with the user creation form template and the request object.
+    :rtype: TemplateResponse
+    """
+    return templates.TemplateResponse("add_user.html", {"request": request})
