@@ -1,12 +1,40 @@
 # Policy Derived Data Access Management Platform for Heterogenous Storage Endpoints
 
-# Overview
+## Overview
 
 This system is a prototype for a Data Access Management (DAM) serice/application to manage access to data assets on various storage enpoints (SE) via a centralized service. The primary goal is to create a one to one relation between a legal agreement defining the terms of use for a restricted data asset and the underlying technical implementation of that access with signed users of that policy. The implementation should be
-i.    agnostic as to the nature of SEs
-ii.   allow direct connection to SE for data transfer (as opposed to a connection via the DAM service host) where such connection is limited only to those assets granted by the signed policy,    iii.  provide an easy to use and intuitibe web based GUI for data asset administrators.
 
-# Admin File Management Application
+1.  Agnostic about the nature of SEs
+2.  Allow direct connection to SE for data transfer (as opposed to a connection via the DAM service host) where such connection is limited only to those assets granted by the signed policy
+3.  Provide an easy to use and intuitive web based GUI for data asset administrators
+
+This is a "glue code" application; the goal is not to develop a new standard or system, rather a generic tool and framework for connecting and managing policy restricted data assets. To this end three basic technical interfaces need to be defined
+
+1.  Users - Data Access Manager
+2.  Data Access Manager - Storage Enpoints
+3.  Users - Storage Endpoints
+
+These in effect form a trangular interaction whose connections are granted, but not necessarily directly mediated, via the DAM. 
+
+```mermaid
+graph TD;
+    User<-->DAM;
+    SE<-->DAM;
+    User<-->SE;
+```
+
+Here the User - SE connection is token based where the token fully determines the parameters of the interaction (i.e. time expiry and scope). Tokens are granted via the User - DAM interface, derived from secrets shared between the DAM and SEs.
+
+
+## User - Data Access Manager Interface
+
+## Data Access Manager - Storage Enpoint Interface
+
+## User - Storage Endpoint Interface
+
+Users interact with the DAM via a web based API. Ultimately all access requests are requested and granted through the DAM, with the DAM returning the mechanism of access (e.g. the relevant implementation of the User - SE interface). 
+
+## Admin File Management Application
 
 ## Overview
 
