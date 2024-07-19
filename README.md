@@ -1,5 +1,48 @@
 # Policy Derived Data Access Management Platform for Heterogenous Storage Endpoints
 
+## Administrator Access Management System
+
+## Overview
+
+Data assets are managed by asset administrators allowing access to files and folders within a specified system. It provides functionalities to view, create, and update user policies, including the ability to create new users and assign specific read/write permissions to them. The application uses FastAPI as the backend framework and Jinja2 for templating, with the file trees displayed using the `jstree` JavaScript plugin. The UI is rudimentary and are meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator.
+
+## Endpoints
+
+### Admin Endpoints (`admin.py`)
+
+The admin endpoints provide functionality for managing users and their access policies. These endpoints are protected and only accessible by users with administrative privileges.
+
+- **User Management**
+  - **Get User Information**: Retrieve information about a specific user or list all users.
+  - **Add User**: Create a new user with a specified role and return the user's secret key.
+  - **Remove User**: Delete an existing user from the system.
+
+- **Policy Management**
+  - **Get Policies**: Retrieve access policies for a specific user and resource.
+  - **Add Policy**: Create a new policy granting a user access to a specified resource.
+  - **Remove Policy**: Delete an existing policy for a user.
+
+- **Asset Management**
+  - **Get All Assets**: Retrieve and display all assets for a specific access point.
+  - **File Management GUI**: Display an interface for managing files and folders, allowing administrators to assign user permissions.
+
+### Asset Endpoints (`assets.py`)
+
+The asset endpoints provide functionality for users to interact with their files and folders. These endpoints require user authentication and are designed to facilitate file uploads, downloads, and listing of user assets.
+
+- **General and User Endpoints**
+  - **List Assets**: Retrieve a list of all assets available to the authenticated user.
+  - **Retrieve Asset**: Generate presigned URLs for accessing specific assets and serve an HTML template with these URLs.
+
+- **Forms and User Interaction**
+  - **Upload Form**: Render a form for uploading files, allowing users to select and upload files to the system.
+  - **Download Form**: Render a form for downloading files, displaying available files and generating download links.
+
+- **Presigned URL Endpoints**
+  - **Generate Upload URL**: Create a presigned URL for uploading a file to the system.
+  - **Generate Download URL**: Create presigned URLs for downloading assets, providing secure access to user files.
+
+
 ## Overview
 
 This system is a prototype for a Data Access Management (DAM) serice/application to manage access to data assets on various storage enpoints (SE) via a centralized service. The primary goal is to create a one to one relation between a legal agreement defining the terms of use for a restricted data asset and the underlying technical implementation of that access with signed users of that policy. The implementation should be
@@ -41,45 +84,3 @@ Each SE flavour (e.g. object store, posix based file server, etc..) will require
 ## User - Storage Endpoint Interface
 
 The nature of this interface is ultimately determined by the storage endpoint in question. For object storage endpoints, presigned urls are generated for data assets by the DAM and returned to the user. This leverages the existing token based access infrastructure of object store endpoints. For other systems, e.g. posix systems, it's likely custom service applications will need to be running on the storage endpoints to implement similar functionality. This will require futher design and engineering decisions that have yet to be considered.
-
-## Admin File Management Application
-
-## Overview
-
-The Admin File Management Application is designed to allow administrators to manage user access to files and folders within a specified system. It provides functionalities to view, create, and update user policies, including the ability to create new users and assign specific read/write permissions to them. The application uses FastAPI as the backend framework and Jinja2 for templating, with the file trees displayed using the `jstree` JavaScript plugin. The UI is rudimentary and are meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator.
-
-## Endpoints
-
-### Admin Endpoints (`admin.py`)
-
-The admin endpoints provide functionality for managing users and their access policies. These endpoints are protected and only accessible by users with administrative privileges.
-
-- **User Management**
-  - **Get User Information**: Retrieve information about a specific user or list all users.
-  - **Add User**: Create a new user with a specified role and return the user's secret key.
-  - **Remove User**: Delete an existing user from the system.
-
-- **Policy Management**
-  - **Get Policies**: Retrieve access policies for a specific user and resource.
-  - **Add Policy**: Create a new policy granting a user access to a specified resource.
-  - **Remove Policy**: Delete an existing policy for a user.
-
-- **Asset Management**
-  - **Get All Assets**: Retrieve and display all assets for a specific access point.
-  - **File Management GUI**: Display an interface for managing files and folders, allowing administrators to assign user permissions.
-
-### Asset Endpoints (`assets.py`)
-
-The asset endpoints provide functionality for users to interact with their files and folders. These endpoints require user authentication and are designed to facilitate file uploads, downloads, and listing of user assets.
-
-- **General and User Endpoints**
-  - **List Assets**: Retrieve a list of all assets available to the authenticated user.
-  - **Retrieve Asset**: Generate presigned URLs for accessing specific assets and serve an HTML template with these URLs.
-
-- **Forms and User Interaction**
-  - **Upload Form**: Render a form for uploading files, allowing users to select and upload files to the system.
-  - **Download Form**: Render a form for downloading files, displaying available files and generating download links.
-
-- **Presigned URL Endpoints**
-  - **Generate Upload URL**: Create a presigned URL for uploading a file to the system.
-  - **Generate Download URL**: Create presigned URLs for downloading assets, providing secure access to user files.
