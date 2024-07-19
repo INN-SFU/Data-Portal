@@ -1,3 +1,12 @@
+# Policy Derived Data Access Management Platform for Heterogenous Storage Endpoints
+
+# Overview
+
+This system is a prototype for a Data Access Management (DAM) serice/application to manage access to data assets on various storage enpoints (SE) via a centralized service. The primary goal is to create a one to one relation between a legal agreement defining the terms of use for a restricted data asset and the underlying technical implementation of that access with signed users of that policy. The implementation should be ...
+
+  i.    agnostic as to the nature of SEs
+  ii.   allow direct connection to SE for data transfer (as opposed to a connection via the DAM service host) where such connection is limited only to those assets granted by the signed policy,    iii.  provide an easy to use and intuitibe web based GUI for data asset administrators.
+
 # Admin File Management Application
 
 ## Overview
