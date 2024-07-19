@@ -14,12 +14,12 @@ This is a "glue code" application; the goal is not to develop a new standard or 
 2.  Data Access Manager - Storage Enpoints
 3.  Users - Storage Endpoints
 
-These in effect form a trangular interaction whose connections are granted, but not necessarily directly mediated, via the DAM. 
+These in effect form a trangular interaction whose connections are granted, but not conducted through, the DAM service.
 
 ```mermaid
 graph TD;
     User<-->DAM;
-    SE<-->DAM;
+    DAM<-->SE;
     User<-->SE;
 ```
 
