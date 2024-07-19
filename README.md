@@ -36,7 +36,7 @@ A user can see which assets they have access to and request a download or upload
 
 The DAM is, in effect, a proxying authority for user access to SEs. Users themselves do not have credentials or access keys registered with the SE, however the DAM has credentials registered with the SEs. The reference structure to assets accross SE's needs to be standardized from the perspective of the DAM. To this end all SE are treated as hierarchical file systems, represented by a file tree, regardless of the SE's underlying file system. The generic class for this interface is defined by a [storage agent](https://github.com/INN-SFU/Data-Portal/blob/main/core/connectivity/agent.py).
 
-Each SE flavour (e.g. object store, posix based file server, etc..) will require a different, specific implementation of the agent class to interact with storage endpoint and return connections that mediate the User - Storage Endpoint interaction.
+Each SE flavour (e.g. object store, posix based file server, etc..) will require a different, specific implementation of the agent class to interact with storage endpoint and return connections that mediate the User - SE interaction.
 
 ## User - Storage Endpoint Interface
 
