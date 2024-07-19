@@ -28,11 +28,19 @@ Here the User - SE connection is token based where the token fully determines th
 
 ## User - Data Access Manager Interface
 
+The User interacts with the DAM via web based API. Upon registration a user recieves a DAM access key. Administrators can then add user access to given assets according to their signed user policies. User policies are managed via an open source access control authorization library, (Casbin)[https://casbin.org/].  User policies in the casbin policy manager contain a reference to the storage end point, the file path string of the asset or assets (regular expressions can be used to cover sets of files according standard regular expression string matching), and the permission type: read or write. 
+
+A user can see which assets they have access to and request a download or upload link to the asset/asset location. Requests are validated against the Casbin policy manager. If the request is valid, the DAM returns a token based access link to the relevant asset on the SE.
+
 ## Data Access Manager - Storage Enpoint Interface
+
+The DAM is, in effect, a proxying authority for user access to SEs. Users themselves do not have credentials or access keys registered with the SE, however the DAM has credentials registered with the SEs. The reference structure to assets accross SE's needs to be standardized from the perspective of the DAM. To this end all SE are treated as hierarchical file systems, represented by a file tree, regardless of the SE's underlying file system. The generic class for this interface is defined by a (storage agent)[https://github.com/INN-SFU/Data-Portal/blob/main/core/connectivity/agent.py].
+
+Each SE flavour (e.g. object store, posix based file server, etc..) will require a different, specific implementation of the agent class to interact with storage endpoint and return connections that mediate the User - Storage Endpoint interaction.
 
 ## User - Storage Endpoint Interface
 
-Users interact with the DAM via a web based API. Ultimately all access requests are requested and granted through the DAM, with the DAM returning the mechanism of access (e.g. the relevant implementation of the User - SE interface). 
+The nature of this interface is ultimately determined by the storage endpoint in question. For object storage endpoints, presigned urls are generated for data assets by the DAM and returned to the user. This leverages the existing token based access infrastructure of object store endpoints. For other systems, e.g. posix systems, it's likely custom service applications will need to be running on the storage endpoints to implement similar functionality. This will require futher design and engineering decisions that have yet to be considered.
 
 ## Admin File Management Application
 
