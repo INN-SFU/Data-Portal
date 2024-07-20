@@ -17,7 +17,7 @@ Restrictions on project time lines and horizons prevented the prioritization of 
 
 ### Timeline
 
-The above essential components 1-3, ***need to be completed no later than the end of September 2023***. This is because the stake holder most exposed to the failure of an past due first version, the *Institute for Neuroscience and Neurotechnology*, has significant strategic timelines dependent on the ***October Annual Research Platforms and Proposals Application*** which requires the demonstration of a viable first version.
+The above essential components 1-3, ***need to be completed no later than the end of September 2023***. This is because the stake holder most exposed to the failure of a past due first version, the *Institute for Neuroscience and Neurotechnology*, has significant strategic timelines dependent on the ***October Annual Research Platforms and Proposals Application*** which requires the demonstration of a viable first version.
 
 ## The Platform
 
