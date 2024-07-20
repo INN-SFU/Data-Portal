@@ -8,9 +8,9 @@ Data assets are managed by asset administrators allowing access to files and fol
 
 ## Endpoints
 
-### Admin Endpoints (`admin.py`)
+### Asset Administrator Endpoints (`admin.py`)
 
-The admin endpoints provide functionality for managing users and their access policies. These endpoints are protected and only accessible by users with administrative privileges.
+The [admin endpoints](https://github.com/INN-SFU/Data-Portal/blob/main/api/v0_1/endpoints/admin.py) provide functionality for managing users and their access policies. These endpoints are protected and only accessible by users with administrative privileges.
 
 - **User Management**
   - **Get User Information**: Retrieve information about a specific user or list all users.
