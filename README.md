@@ -40,7 +40,7 @@ The asset endpoints provide functionality for users to interact with their files
 - **Presigned URL Endpoints**
   - **Generate Upload URL**: Create a presigned URL for uploading a file to the system.
   - **Generate Download URL**: Create presigned URLs for downloading assets, providing secure access to user files.
-  - **Note**: *Currently object storage endpoints are the only ``flavour'' of endpoints integrated at this time. Further upload and download mechanisms will need to be developed for other systems (e.g. posix), likely with the assistance of system administrators and developers familiar with the underlying structure and network contstraints of these endpoints.*
+  - **Note**: *Currently object storage endpoints are the only "flavour" of endpoints integrated at this time. Further upload and download mechanisms will need to be developed for other systems (e.g. posix), likely with the assistance of system administrators and developers familiar with the underlying structure and network contstraints of these endpoints.*
 
 ## Design
 
@@ -82,4 +82,4 @@ Each SE flavour (e.g. object store, posix based file server, etc..) will require
 
 ### User - Storage Endpoint Interface
 
-The nature of this interface is ultimately determined by the storage endpoint in question. For object storage endpoints, presigned urls are generated for data assets by the DAM and returned to the user. This leverages the existing token based access infrastructure of object store endpoints. For other systems, e.g. posix systems, it's likely custom service applications will need to be running on the storage endpoints to implement similar functionality (i.e. the generation of ``presigned access urls'' to access the system. *This will require futher design and engineering decisions that have yet to be considered and require the skill and expertise of system and administrators and developers familiar with the underlying structure and network contstraints of these endpoints.*
+The nature of this interface is ultimately determined by the storage endpoint in question. For object storage endpoints, presigned urls are generated for data assets by the DAM and returned to the user. This leverages the existing token based access infrastructure of object store endpoints. For other systems, e.g. posix systems, it's likely custom service applications will need to be running on the storage endpoints to implement similar functionality (i.e. the generation of "presigned access urls" to access the system. *This will require futher design and engineering decisions that have yet to be considered and require the skill and expertise of system and administrators and developers familiar with the underlying structure and network contstraints of these endpoints.*
