@@ -13,7 +13,7 @@ Following these fundamental areas a fourth development goal should be targeted p
 
 4. Scaling optimizations.
 
-Restrictions on project time lines and horizons prevented the prioritization of such features (e.g. caching, threading, etc.) in the prototype stages. The application has been designed to not fundamentally restrict the integration of scaling optimizations for future development stages, when such demand requires there implementation.
+Restrictions on project time lines and horizons prevented the prioritization of such features (e.g. caching, threading, etc.) in the prototype stages. The application has been designed to not fundamentally restrict the integration of scaling optimizations for future development stages, when demand requires such implementation.
 
 ### Timeline
 
