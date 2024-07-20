@@ -15,11 +15,15 @@ The following have been identified as areas in need of development to reach a fi
 2.  QA Testing
 3.  CI Tooling
 
+It is likely all of that a(an) additional developer(s) with expertise in these areas will be needed.
+
 Following these fundamental areas a fourth development goal should be targeted post initial release:
 
 4. Scaling optimizations.
 
 Restrictions on project time lines and horizons prevented the prioritization of such features (e.g. caching, threading, etc.) in the prototype stages. The application has been designed to not fundamentally restrict the integration of scaling optimizations for future development stages, when demand requires such implementation.
+
+***Currently the UI is rudimentary and is meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator. Limited developer hours during the early stages of development forced prioritization of middle and back end development. The functional components of the api have been designed to be decoupled from the UI and with the intent to provide the raw underlying components necessary for more skilled UI/UX development devlopers to work their magic.*** 
 
 ### Timeline
 
