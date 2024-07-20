@@ -15,7 +15,7 @@ The following have been identified as areas in need of development to reach a fi
 2.  QA Testing
 3.  CI Tooling
 
-**Additional developer(s) with expertise in these areas will be needed to meet project timelines.**
+*Additional developer(s) with expertise in these areas will be needed to meet project timelines.*
 
 Following these fundamental areas a fourth development goal should be targeted post initial release:
 
@@ -23,7 +23,7 @@ Following these fundamental areas a fourth development goal should be targeted p
 
 Restrictions on project time lines and horizons prevented the prioritization of such features (e.g. caching, threading, etc.) in the prototype stages. The application has been designed to not fundamentally restrict the integration of scaling optimizations for future development stages, when demand requires such implementation.
 
-***Currently the UI is rudimentary and is meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator. Limited developer hours during the early stages of development forced prioritization of middle and back end development. The functional components of the api have been designed to be decoupled from the UI and with the intent to provide the raw underlying components necessary for more skilled UI/UX development devlopers to work their magic.*** 
+*Currently the UI is rudimentary and is meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator. Limited developer hours during the early stages of development forced prioritization of middle and back end development. The functional components of the api have been designed to be decoupled from the UI and with the intent to provide the raw underlying components necessary for more skilled UI/UX development devlopers to work their magic.*
 
 ### Timeline
 
@@ -45,7 +45,7 @@ This is because the stake holder most exposed to the failure of a past due first
 
 Data assets are managed by asset administrators allowing access to files and folders within a specified system. It provides functionalities to view, create, and update user policies, including the ability to create new users and assign specific read/write permissions to them. The application uses FastAPI as the backend framework and Jinja2 for templating. 
 
-***The UI is rudimentary and is meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator. Limited developer hours during the early stages of development forced prioritization of middle and back end development. The functional components of the api have been designed to be decoupled from the UI and with the intent to provide the raw underlying components necessary for more skilled UI/UX development devlopers to work their magic.*** 
+*The UI is rudimentary and is meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator. Limited developer hours during the early stages of development forced prioritization of middle and back end development. The functional components of the api have been designed to be decoupled from the UI and with the intent to provide the raw underlying components necessary for more skilled UI/UX development devlopers to work their magic.*
 
 The underlying api has been implemented to reflect the irreducible functional interactions a user and asset adminstrator can conduct with the system. The docs auto generated directly from the code can, while the service is operational, be found [here](http://neuro-institute.research.sfu.ca:5000/docs). Here is a more general overview of these functional components.
 
