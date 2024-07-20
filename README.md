@@ -1,12 +1,29 @@
 # Policy Derived Data Access Management Platform for Heterogenous Storage Endpoints
 
-## Introduction
+## What's Next?
+
+### To Be Implemented
+The following have been identified as areas in need of development to reach a first version of a fully developed final product:
+
+1.  UI/UX Development
+2.  QA Testing
+3.  CI Tooling
+
+Following these fundamental areas a fourth development goal should be targeted post initial release: (4.) Scaling optimizations. The application design has been developed to not fundamentally restrict the integration of scaling optimizations over time, restrictions of project time lines and horizons prevented the prioritization of the implementation of such features (e.g. caching, threading, etc.) in the prototype stages.
+
+### Timeline
+
+The above essential components 1-3, ***need to be completed no later than the end of September 2023***. This is because the primary stake holder for the first version, the *Institute for Neuroscience and Neurotechnology*, will be requesting funds whose approval is dependent on a viable and ready to ship first version of the product.
+
+## The Platform
+
+### Introduction
 
 Data assets are managed by asset administrators allowing access to files and folders within a specified system. It provides functionalities to view, create, and update user policies, including the ability to create new users and assign specific read/write permissions to them. The application uses FastAPI as the backend framework and Jinja2 for templating. ***The UI is rudimentary and is meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator. Limited developer hours during the early stages of development forced prioritization of middle and back end development. The functional components of the api have been designed to be decoupled from the UI and with the intent to provide the raw underlying components necessary for more skilled UI/UX development devlopers to work their magic.*** The underlying api has been implemented to reflect the irreducible functional interactions a user and asset adminstrator can conduct with the system. The docs auto generated directly from the code can, while the service is operational, be found [here](http://neuro-institute.research.sfu.ca:5000/docs). Here is a more general overview of these functional components.
 
-## Description of Serviceable Endpoints
+### Description of Serviceable Endpoints
 
-### Asset Administrator Endpoints (`admin.py`)
+#### Asset Administrator Endpoints (`admin.py`)
 
 The [admin endpoints](https://github.com/INN-SFU/Data-Portal/blob/main/api/v0_1/endpoints/admin.py) provide functionality for managing users and their access policies. These endpoints are protected and only accessible by users with administrative privileges.
 
@@ -24,7 +41,7 @@ The [admin endpoints](https://github.com/INN-SFU/Data-Portal/blob/main/api/v0_1/
   - **Get All Assets**: Retrieve and display all assets for a specific access point.
   - **File Management GUI**: Display an interface for managing files and folders, allowing administrators to assign user permissions. *To reiterate, this is not intended to be the final UI/UX design, merely an efficient means of exposes the fundamental service to ease the development process*.
 
-### Asset Endpoints (`assets.py`)
+#### Asset Endpoints (`assets.py`)
 
 The asset endpoints provide functionality for users to interact with their files and folders. These endpoints require user authentication and are designed to facilitate file uploads, downloads, and listing of user assets.
 
@@ -42,7 +59,7 @@ The asset endpoints provide functionality for users to interact with their files
   - **Generate Download URL**: Create presigned URLs for downloading assets, providing secure access to user files.
   - **Note**: *Currently object storage endpoints are the only "flavour" of endpoints integrated at this time. Further upload and download mechanisms will need to be developed for other systems (e.g. posix), likely with the assistance of system administrators and developers familiar with the underlying structure and network contstraints of these endpoints.*
 
-## Design
+### Design
 
 This system is a prototype for a Data Access Management (DAM) serice/application to manage access to data assets on various storage enpoints (SE) via a centralized service. The primary goal is to create a one to one relation between a legal agreement defining the terms of use for a restricted data asset and the underlying technical implementation of that access with signed users of that policy. The implementation should be
 
@@ -68,18 +85,20 @@ graph TD;
 Here the User - SE connection is token based where the token fully determines the parameters of the interaction (i.e. time expiry and scope). Tokens are granted via the User - DAM interface, derived from secrets shared between the DAM and SEs.
 
 
-### User - Data Access Manager Interface
+#### User - Data Access Manager Interface
 
 The User interacts with the DAM via web based API. Upon registration a user recieves a DAM access key. Administrators can then add user access to given assets according to their signed user policies. User policies are managed via an open source access control authorization library, [Casbin](https://casbin.org/).  User policies in the casbin policy manager contain a reference to the storage end point (r.e. domain), the file path string (r.e. object) of the asset or assets (regular expressions can be used to cover sets of files according standard regular expression string matching), and the permission type: read or write (r.e. action). [This](https://github.com/INN-SFU/Data-Portal/blob/main/core/data_access_manager/model.conf) is the model defining the access policies where a subject (sub), domain (dom), object (obj), and action (act), define access to a given asset on a given endpoint. All fields must match for a request to be granted.
 
 A user can see which assets they have access to and request a download or upload link to the asset/asset location. Requests are validated against the Casbin policy manager. If the request is valid, the DAM returns a token based access link to the relevant asset on the SE.
 
-### Data Access Manager - Storage Enpoint Interface
+#### Data Access Manager - Storage Enpoint Interface
 
 The DAM is, in effect, a proxying authority for user access to SEs. Users themselves do not have credentials or access keys registered with the SE, however the DAM has credentials registered with the SEs. The reference structure to assets accross SE's needs to be standardized from the perspective of the DAM. To this end all SE are treated as hierarchical file systems, represented by a file tree, regardless of the SE's underlying file system. The generic class for this interface is defined by a [storage agent](https://github.com/INN-SFU/Data-Portal/blob/main/core/connectivity/agent.py).
 
 Each SE flavour (e.g. object store, posix based file server, etc..) will require a different, specific implementation of the agent class to interact with storage endpoint and return connections that mediate the User - SE interaction.
 
-### User - Storage Endpoint Interface
+#### User - Storage Endpoint Interface
 
 The nature of this interface is ultimately determined by the storage endpoint in question. For object storage endpoints, presigned urls are generated for data assets by the DAM and returned to the user. This leverages the existing token based access infrastructure of object store endpoints. For other systems, e.g. posix systems, it's likely custom service applications will need to be running on the storage endpoints to implement similar functionality (i.e. the generation of "presigned access urls" to access the system. *This will require futher design and engineering decisions that have yet to be considered and require the skill and expertise of system and administrators and developers familiar with the underlying structure and network contstraints of these endpoints.*
+
+
