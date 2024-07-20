@@ -3,8 +3,8 @@
 This document outlines the project in two sections.
 1.  What's Next: What needs to be completed for a "shippable" finished first version including timelines determining date of failure.
 2.  The Platform: What has been implemented, namely the design and high level implementation details.
-   i.  Serviceable (i.e. public) Endpoints
-   ii.  Application Core
+   1.  Serviceable (i.e. public) Endpoints
+   2.  Application Core
 
 ## What's Next?
 
