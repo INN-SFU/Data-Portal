@@ -13,7 +13,7 @@ Following these fundamental areas a fourth development goal should be targeted p
 
 ### Timeline
 
-The above essential components 1-3, ***need to be completed no later than the end of September 2023***. This is because the primary stake holder for the first version, the *Institute for Neuroscience and Neurotechnology*, will be requesting funds whose approval is dependent on a viable and ready to ship first version of the product.
+The above essential components 1-3, ***need to be completed no later than the end of September 2023***. This is because the stake holder most exposed to the failure of an past due first version, the *Institute for Neuroscience and Neurotechnology*, has significant strategic timelines dependent on the ***October Annual Research Platforms and Proposals Application*** which requires the demonstration of a viable first version.
 
 ## The Platform
 
