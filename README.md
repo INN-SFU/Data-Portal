@@ -9,7 +9,11 @@ The following have been identified as areas in need of development to reach a fi
 2.  QA Testing
 3.  CI Tooling
 
-Following these fundamental areas a fourth development goal should be targeted post initial release: (4.) Scaling optimizations. The application design has been developed to not fundamentally restrict the integration of scaling optimizations over time, restrictions of project time lines and horizons prevented the prioritization of the implementation of such features (e.g. caching, threading, etc.) in the prototype stages.
+Following these fundamental areas a fourth development goal should be targeted post initial release:
+
+4. Scaling optimizations.
+
+The application design has been developed to not fundamentally restrict the integration of scaling optimizations over time, restrictions of project time lines and horizons prevented the prioritization of the implementation of such features (e.g. caching, threading, etc.) in the prototype stages.
 
 ### Timeline
 
