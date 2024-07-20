@@ -1,5 +1,11 @@
 # Policy Derived Data Access Management Platform for Heterogenous Storage Endpoints
 
+This document outlines the project in two sections.
+1.  What's Next: What needs to be completed for a "shippable" finished first version including timelines determining date of failure.
+2.  The Platform: What has been implemented, namely the design and high level implementation details.
+   i.  Serviceable (i.e. public) Endpoints
+   ii.  Application Core
+
 ## What's Next?
 
 ### To Be Implemented
@@ -25,7 +31,7 @@ The above essential components 1-3, ***need to be completed no later than the en
 
 Data assets are managed by asset administrators allowing access to files and folders within a specified system. It provides functionalities to view, create, and update user policies, including the ability to create new users and assign specific read/write permissions to them. The application uses FastAPI as the backend framework and Jinja2 for templating. ***The UI is rudimentary and is meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator. Limited developer hours during the early stages of development forced prioritization of middle and back end development. The functional components of the api have been designed to be decoupled from the UI and with the intent to provide the raw underlying components necessary for more skilled UI/UX development devlopers to work their magic.*** The underlying api has been implemented to reflect the irreducible functional interactions a user and asset adminstrator can conduct with the system. The docs auto generated directly from the code can, while the service is operational, be found [here](http://neuro-institute.research.sfu.ca:5000/docs). Here is a more general overview of these functional components.
 
-### Description of Serviceable Endpoints
+### Design of Serviceable Endpoints
 
 #### Asset Administrator Endpoints (`admin.py`)
 
@@ -63,7 +69,7 @@ The asset endpoints provide functionality for users to interact with their files
   - **Generate Download URL**: Create presigned URLs for downloading assets, providing secure access to user files.
   - **Note**: *Currently object storage endpoints are the only "flavour" of endpoints integrated at this time. Further upload and download mechanisms will need to be developed for other systems (e.g. posix), likely with the assistance of system administrators and developers familiar with the underlying structure and network contstraints of these endpoints.*
 
-### Design
+### Application Core
 
 This system is a prototype for a Data Access Management (DAM) serice/application to manage access to data assets on various storage enpoints (SE) via a centralized service. The primary goal is to create a one to one relation between a legal agreement defining the terms of use for a restricted data asset and the underlying technical implementation of that access with signed users of that policy. The implementation should be
 
