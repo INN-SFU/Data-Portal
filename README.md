@@ -15,7 +15,7 @@ The following have been identified as areas in need of development to reach a fi
 2.  QA Testing
 3.  CI Tooling
 
-It is likely all of that a(an) additional developer(s) with expertise in these areas will be needed.
+It is likely all of that an additional developer(s) with expertise in these areas will be needed.
 
 Following these fundamental areas a fourth development goal should be targeted post initial release:
 
