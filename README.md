@@ -35,9 +35,9 @@ The asset endpoints provide functionality for users to interact with their files
   - **Retrieve Asset**: Generate presigned URLs for accessing specific assets and serve an HTML template with these URLs.
 
 - **Forms and User Interaction**
-  - **Note** *To reiterate, this is not intended to be the final UI/UX design, merely an efficient means of exposes the fundamental service to ease the development process. The underlying upload and download endpoints are descirbed below*.
   - **Upload Form**: Render a form for uploading files, allowing users to select and upload files to the system.
   - **Download Form**: Render a form for downloading files, displaying available files and generating download links.
+  - **Note**: *To reiterate, this is not intended to be the final UI/UX design, merely an efficient means of exposes the fundamental service to ease the development process. The underlying upload and download endpoints are descirbed below*.
 
 - **Presigned URL Endpoints**
   - **Generate Upload URL**: Create a presigned URL for uploading a file to the system.
