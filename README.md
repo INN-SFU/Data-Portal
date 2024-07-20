@@ -25,11 +25,13 @@ Restrictions on project time lines and horizons prevented the prioritization of 
 
 The above essential components 1-3, ***need to be completed no later than the end of September 2023***. 
 
-Behold (calendar date order not to scale):
+Behold that all ye have been hence forth notified:
 
 <p align="center">
 <img src="https://github.com/user-attachments/assets/f5d7c0c3-e028-4db9-8b62-5cad23413fa8" width="500" height="500">
 </p>
+
+(calendar date order not to scale)
 
 This is because the stake holder most exposed to the failure of a past due first version, the *Institute for Neuroscience and Neurotechnology*, has significant strategic timelines dependent on the ***October Annual Research Platforms and Proposals Application*** which requires the demonstration of a viable first version. 
 
