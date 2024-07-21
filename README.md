@@ -115,7 +115,7 @@ Here the User - SE connection is token based where the token fully determines th
 The otrhodox software design pattern from the perspective of a administrative user should match the Model-View-Controller:
 
 <p align="center">
-<img src="https://github.com/user-attachments/assets/f5d7c0c3-e028-4db9-8b62-5cad23413fa8" width="500" height="500">
+<img src="https://github.com/user-attachments/assets/1aae872d-8210-43ea-9329-77535ffce718" width="500" height="500">
 </p>
 
 #### User - Data Access Manager Interface
