@@ -112,6 +112,11 @@ graph TD;
 
 Here the User - SE connection is token based where the token fully determines the parameters of the interaction (i.e. time expiry and scope). Tokens are granted via the User - DAM interface, derived from secrets shared between the DAM and SEs.
 
+The otrhodox software design pattern from the perspective of a administrative user should match the Model-View-Controller:
+
+<p align="center">
+<img src="https://github.com/user-attachments/assets/f5d7c0c3-e028-4db9-8b62-5cad23413fa8" width="500" height="500">
+</p>
 
 #### User - Data Access Manager Interface
 
