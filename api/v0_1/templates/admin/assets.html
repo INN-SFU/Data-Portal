@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin File Management</title>
+    <title>Asset Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
@@ -14,9 +14,9 @@
     </style>
 </head>
 <body>
-    <h1>Admin File Management</h1>
+    <h1>Assets</h1>
     <div>
-        <h3>Select Files or Folders</h3>
+        <h3>Files or Folders</h3>
         <div id="asset-list">
             {% for endpoint, items in assets.items() %}
                 <div class="endpoint" data-endpoint="{{ endpoint }}">
@@ -27,9 +27,9 @@
         </div>
     </div>
     <div>
-        <h3>User Permissions</h3>
+        <h3>User and Action</h3>
         <form id="admin-form">
-            <label for="username">Username:</label>
+            <label for="username">User ID:</label>
             <input type="text" id="username" name="username" required>
             <br>
             <label for="read">Read:</label>
