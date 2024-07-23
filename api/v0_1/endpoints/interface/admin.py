@@ -53,48 +53,7 @@ async def user_management(request: Request):
         for agent in agents:
             user_file_trees[uid][agent.access_point_slug] = convert_file_tree_to_dict(
                 agent.get_user_file_tree(uid, 'read', dam))
-    return templates.TemplateResponse("/admin/user_management/user_management.html",
+    return templates.TemplateResponse("/admin/user_management.html",
                                       {"request": request, "users": users,
                                        "user_file_trees": user_file_trees})
 
-
-@admin_ui_router.get("/home/user-management/add-user", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
-async def add_user(request: Request):
-    """
-    Create a user.
-
-    :param request: The incoming request containing information about the user being created.
-    :type request: Request
-    :return: The HTML response with the user creation form template and the request object.
-    :rtype: TemplateResponse
-    """
-    return templates.TemplateResponse("/admin/user_management/add_user.html", {"request": request})
-
-
-@admin_ui_router.get("/home/user-management/delete-user", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
-async def delete_user(request: Request):
-    """
-    Create a user.
-
-    :param request: The incoming request containing information about the user being created.
-    :type request: Request
-    :return: The HTML response with the user creation form template and the request object.
-    :rtype: TemplateResponse
-    """
-    return templates.TemplateResponse("/admin/user_management/delete_user.html", {"request": request})
-
-
-# Asset View
-@admin_ui_router.get("/home/assets/{access_point}", dependencies=[Depends(is_admin)])
-async def get_all_assets(request: Request, access_point: str):
-    """
-    View the file tree of a storage endpoint.
-
-    :return: The rendered all_assets.html template.
-    :rtype: templates.TemplateResponse
-    """
-    for agent in agents:
-        if agent.access_point_slug == access_point:
-            return templates.TemplateResponse("home.html",
-                                              {"request": request, "tree_json": agent.tree_to_jstree_json()})
-    raise HTTPException(status_code=404, detail="Access point not found")
