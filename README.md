@@ -1,4 +1,4 @@
-# Policy Derived Data Access Management Platform for a Decentralized Network of Heterogenous Storage Endpoints
+# Policy Derived Data Access Management Platform for a Network of Heterogenous Storage Endpoints
 
 This document outlines the project in two sections.
 1.  What's Next: What needs to be completed for a "shippable" finished first version including timelines determining date of failure.
