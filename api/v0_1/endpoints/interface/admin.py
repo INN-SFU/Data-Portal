@@ -1,6 +1,6 @@
 import os
 
-from fastapi import Request, Depends, HTTPException, APIRouter
+from fastapi import Request, Depends, APIRouter, status
 from fastapi.security import HTTPBasic
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -16,20 +16,32 @@ admin_ui_router = APIRouter(prefix='/admin')
 templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
 
-# Admin Home Page
-@admin_ui_router.get("/home")
+@admin_ui_router.get("/home", response_class=HTMLResponse)
 async def admin_home(request: Request, uid: str = Depends(is_admin)):
+    """
+    Admin home page.
+
+    Parameters:
+    - **request** (Request): The HTTP request object containing information about the incoming request.
+    - **uid** (str): The unique identifier of the admin user.
+
+    Returns:
+    - **TemplateResponse**: The HTML response containing the admin home page.
+    """
     return templates.TemplateResponse("/admin/home.html", {"request": request})
 
 
 @admin_ui_router.get("/home/asset-management", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
-async def admin_management(request: Request, uid: str = Depends(is_admin)):
+async def asset_management(request: Request, uid: str = Depends(is_admin)):
     """
     Admin home page that displays the storage endpoints and file trees.
 
-    :param request: The HTTP request object containing information about the incoming request.
-    :param uid: The unique identifier of the admin user.
-    :return: The HTML response containing the admin management interface.
+    Parameters:
+    - **request** (Request): The HTTP request object containing information about the incoming request.
+    - **uid** (str): The unique identifier of the admin user.
+
+    Returns:
+    - **TemplateResponse**: The HTML response containing the admin management interface.
     """
     assets = {}
     for agent in agents:
@@ -37,14 +49,16 @@ async def admin_management(request: Request, uid: str = Depends(is_admin)):
     return templates.TemplateResponse("/admin/assets.html", {"request": request, "assets": assets})
 
 
-# Endpoint to display users and their file access
 @admin_ui_router.get("/home/user-management", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
 async def user_management(request: Request):
     """
     View function for user access page.
 
-    :param request: The HTTP request object.
-    :return: The response object with user access page.
+    Parameters:
+    - **request** (Request): The HTTP request object.
+
+    Returns:
+    - **TemplateResponse**: The response object with user access page.
     """
     users = dam.get_all_users()
     user_file_trees = {}
@@ -56,4 +70,3 @@ async def user_management(request: Request):
     return templates.TemplateResponse("/admin/user_management.html",
                                       {"request": request, "users": users,
                                        "user_file_trees": user_file_trees})
-
