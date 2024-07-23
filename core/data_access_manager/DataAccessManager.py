@@ -368,7 +368,7 @@ class DataAccessManager(metaclass=SingletonMeta):
 
         return {"uid": uid, "uuid": uuid, "role": role, "policies": policies}
 
-    def get_users(self):
+    def get_all_users(self):
         """
         Returns a list of all users.
 

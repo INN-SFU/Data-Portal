@@ -1,7 +1,7 @@
+
 uvicorn:
   host: 0.0.0.0
   port: 5000
-  reset: false
   reload: true
   debug: true
 
@@ -13,3 +13,6 @@ logging:
     uvicorn_access: INFO
     casbin: INFO
     app: INFO
+
+system:
+  reset: false

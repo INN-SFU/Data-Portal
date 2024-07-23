@@ -24,8 +24,22 @@
 </head>
 <body>
     <h1>User Access Management</h1>
+    <div>
+        <h2>New User</h2>
+        <form hx-put="/service/admin/user/" hx-target="#response" hx-swap="innerHTML">
+            <label for="uid">User ID:</label>
+            <input type="text" id="uid" name="uid" required>
+            <br>
+            <label for="role">Role:</label>
+            <input type="text" id="role" name="role" required>
+            <br>
+            <button type="submit">Create User</button>
+        </form>
+        <div id="response"></div>
+    </div>
+
     <div class="user-list">
-        <h3>Select User</h3>
+        <h2>Existing Users</h2>
         <ul id="user-list">
             {% for user in users %}
                 <li class="user" data-user="{{ user }}">{{ user }}</li>
@@ -45,6 +59,9 @@
                     {% endfor %}
                 </div>
             {% endfor %}
+        </div>
+        <div>
+            <a href="/interface/admin/delete-user"><button>Delete User</button></a>
         </div>
     </div>
 
