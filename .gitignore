@@ -1,8 +1,8 @@
 _*/
 .*/
-/core/internal/arbutus_connectivity/*
+core/internal/arbutus_connectivity/*
 *.policies
-/core/settings/.env
-/core/user_policies/
-/core/authentication/uuids.json
+core/settings/.env
+core/user_policies/
+core/authentication/uuids.json
 *.log
