@@ -2,7 +2,7 @@ from typing import Annotated
 
 import jwt
 
-from fastapi import Request, Depends, HTTPException, APIRouter, status
+from fastapi import Request, Depends, HTTPException, APIRouter, status, FastAPI
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 from fastapi.responses import JSONResponse
 
@@ -18,31 +18,50 @@ def auth(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
     """
     Authenticate the user using the provided credentials.
 
-    :param credentials: The HTTP basic authentication credentials, an uid (username) and key (password).
-    :type credentials: HTTPBasicCredentials
-    :return: A JSON response indicating whether the credentials are valid or not.
-    :rtype: JSONResponse
-    :raises HTTPException: If the credentials are invalid.
+    Parameters:
+    - **credentials** (HTTPBasicCredentials): The HTTP basic authentication credentials, including:
+        - **username**: The user's username.
+        - **password**: The user's password.
+
+    Returns:
+    - **JSONResponse**: A JSON response indicating whether the credentials are valid or not.
+
+    Raises:
+    - **HTTPException**: If the credentials are invalid.
     """
     uid = credentials.username
     password = credentials.password
     if validate_credentials(uid, password):
         return JSONResponse(status_code=status.HTTP_200_OK, content={"success": "Valid credentials"})
     else:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
 
-# Handle login submission
 @auth_router.post("/login", response_class=JSONResponse)
 def login(credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Authenticate a user and retrieve their role based on the provided credentials.
 
+    Parameters:
+    - **credentials** (HTTPBasicCredentials): An instance of the `HTTPBasicCredentials` class containing:
+        - **username**: The user's username.
+        - **password**: The user's password.
+
+    Returns:
+    - **JSONResponse**: If the credentials are valid, returns a JSONResponse object containing:
+        - **uid**: The user's UID (username).
+        - **role**: The user's role.
+
+    Raises:
+    - **HTTPException**: If the credentials are invalid, raises an HTTPException with a status code of 401 and a detail message indicating the invalid credentials.
+    """
     uid = credentials.username
     key = credentials.password
 
     if uid not in dam.get_all_users():
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     elif not validate_credentials(uid, key):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     else:
         role = dam.get_user(uid)['role']
         return JSONResponse(status_code=status.HTTP_200_OK, content={'uid': uid, 'role': role})
@@ -52,10 +71,18 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
 def get_token(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
     """
     Handler for the get token endpoint.
-    :param credentials:
-    :return:
-    """
 
+    Parameters:
+    - **credentials** (HTTPBasicCredentials): The HTTP basic authentication credentials, including:
+        - **username**: The user's username.
+        - **password**: The user's password.
+
+    Returns:
+    - **JSONResponse**: A JSON response containing the generated token.
+
+    Raises:
+    - **HTTPException**: If the credentials are invalid.
+    """
     uid = credentials.username
     password = credentials.password
     if validate_credentials(uid, password):
@@ -70,11 +97,15 @@ def validate_token_(request: Request, token: str):
     """
     Handler for the validate token endpoint.
 
-    :param token: The token to be validated.
-    :param request: The incoming request object.
-    :type request: Request
-    :return: The rendered validate_token.html template.
-    :rtype: templates.TemplateResponse
+    Parameters:
+    - **token** (str): The token to be validated.
+    - **request** (Request): The incoming request object.
+
+    Returns:
+    - **dict**: A dictionary with a success message if the token is valid.
+
+    Raises:
+    - **HTTPException**: If the token is invalid.
     """
     if not token:
         raise HTTPException(status_code=400, detail="No token provided")
