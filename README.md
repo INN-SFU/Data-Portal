@@ -1,141 +1,377 @@
-# Policy Derived Data Access Management Platform for a Decentralized Network of Heterogenous Storage Endpoints
+# Policy Derived Decentralized Data Access Management Framework for a Network of Heterogenous Storage Endpoints
 
-This document outlines the project in two sections.
-1.  What's Next: What needs to be completed for a "shippable" finished first version including timelines determining date of failure.
-2.  The Platform: What has been implemented, namely the design and high level implementation details.
-      - Serviceable (i.e. public) Endpoints
-      - Application Core
+## 1. Overview
+This system enables administrators to manage access to resources across multiple, heterogeneous storage endpoints using blockchain technology for decentralized authentication and authorization. The centralized management interface provides a unified view and control panel for administrators, allowing them to manage access policies, monitor usage, and perform administrative tasks efficiently.
 
-## What's Next?
+## 2. Components
 
-### To Be Implemented
-The following have been identified as areas in need of development to reach a first version of a fully developed final product:
+### 2.1 Blockchain Network
+- **Blockchain Platform:** Hyperledger Fabric, Ethereum, or a similar platform.
+- **Smart Contracts:** Implemented to manage access policies and handle verification.
+- **Nodes:** Each storage endpoint acts as a node in the blockchain network.
 
-1.  UI/UX Development
-2.  QA Testing
-3.  CI Tooling
+### 2.2 Storage Endpoints
+- **Types:** POSIX, UNIX, object storage (e.g., AWS S3), etc.
+- **Local API:** Each endpoint hosts an API for managing access control and handling user requests.
 
-*Additional developer(s) with expertise in these areas will be needed to meet project timelines.*
+### 2.3 Centralized Management Interface
+- **Dashboard:** Web-based interface for administrators.
+- **API Gateway:** Central entry point for interacting with storage endpoints.
+- **Backend:** Handles API interactions and communicates with the blockchain network.
 
-Following these fundamental areas a fourth development goal should be targeted post initial release:
+## 3. Detailed Implementation
 
-4. Scaling optimizations.
+### 3.1 Blockchain Setup
 
-Restrictions on project time lines and horizons prevented the prioritization of such features (e.g. caching, threading, etc.) in the prototype stages. The application has been designed to not fundamentally restrict the integration of scaling optimizations for future development stages, when demand requires such implementation.
+#### Choose a Blockchain Platform:
+- Example: Hyperledger Fabric for enterprise-grade blockchain implementation.
 
-*Currently the UI is rudimentary and is meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator. Limited developer hours during the early stages of development forced prioritization of middle and back end development. The functional components of the api have been designed to be decoupled from the UI and with the intent to provide the raw underlying components necessary for more skilled UI/UX development devlopers to work their magic.*
+#### Deploy Blockchain Network:
+- Configure nodes for each storage endpoint.
+- Deploy smart contracts to manage access policies.
 
-### Timeline
+```solidity
+// Example Solidity Smart Contract for Access Control
+pragma solidity ^0.8.0;
 
-The above essential components 1-3, ***need to be completed no later than the end of September 2023***. 
+contract AccessControl {
+    struct Policy {
+        string userID;
+        string resourcePattern;
+        string access;
+    }
 
-Behold that all ye have been hence forth notified:
+    mapping(string => Policy[]) policies;
 
-<p align="center">
-<img src="https://github.com/user-attachments/assets/f5d7c0c3-e028-4db9-8b62-5cad23413fa8" width="500" height="500" data-background-color="white">
-</p>
+    function addPolicy(string memory userID, string memory resourcePattern, string memory access) public {
+        Policy memory newPolicy = Policy(userID, resourcePattern, access);
+        policies[userID].push(newPolicy);
+    }
 
-(calendar date order not to scale)
+    function removePolicy(string memory userID, string memory resourcePattern, string memory access) public {
+        Policy[] storage userPolicies = policies[userID];
+        for (uint i = 0; i < userPolicies.length; i++) {
+            if (keccak256(abi.encodePacked(userPolicies[i].resourcePattern)) == keccak256(abi.encodePacked(resourcePattern)) &&
+                keccak256(abi.encodePacked(userPolicies[i].access)) == keccak256(abi.encodePacked(access))) {
+                delete userPolicies[i];
+                userPolicies[i] = userPolicies[userPolicies.length - 1];
+                userPolicies.pop();
+                break;
+            }
+        }
+    }
 
-This is because the stake holder most exposed to the failure of a past due first version, the *Institute for Neuroscience and Neurotechnology*, has significant strategic timelines dependent on the ***October Annual Research Platforms and Proposals Application*** which requires the demonstration of a viable first version. 
+    function checkPermission(string memory userID, string memory resource, string memory action) public view returns (bool) {
+        Policy[] memory userPolicies = policies[userID];
+        for (uint i = 0; i < userPolicies.length; i++) {
+            if (matches(userPolicies[i].resourcePattern, resource) &&
+                keccak256(abi.encodePacked(userPolicies[i].access)) == keccak256(abi.encodePacked(action))) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-## The Platform
-
-### Introduction
-
-Data assets are managed by asset administrators allowing access to files and folders within a specified system. It provides functionalities to view, create, and update user policies, including the ability to create new users and assign specific read/write permissions to them. The application uses FastAPI as the backend framework and Jinja2 for templating. 
-
-*The UI is rudimentary and is meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator. Limited developer hours during the early stages of development forced prioritization of middle and back end development. The functional components of the api have been designed to be decoupled from the UI and with the intent to provide the raw underlying components necessary for more skilled UI/UX development devlopers to work their magic.*
-
-The underlying api has been implemented to reflect the irreducible functional interactions a user and asset adminstrator can conduct with the system. The docs auto generated directly from the code can, while the service is operational, be found [here](http://neuro-institute.research.sfu.ca:5000/docs). Here is a more general overview of these functional components.
-
-### Design of Serviceable Endpoints
-
-#### Asset Administrator Endpoints (`admin.py`)
-
-The [admin endpoints](https://github.com/INN-SFU/Data-Portal/blob/main/api/v0_1/endpoints/admin.py) provide functionality for managing users and their access policies. These endpoints are protected and only accessible by users with administrative privileges.
-
-- **User Management**
-  - **Get User Information**: Retrieve information about a specific user or list all users.
-  - **Add User**: Create a new user with a specified role and return the user's secret key.
-  - **Remove User**: Delete an existing user from the system.
-
-- **Policy Management**
-  - **Get Policies**: Retrieve access policies for a specific user and resource.
-  - **Add Policy**: Create a new policy granting a user access to a specified resource.
-  - **Remove Policy**: Delete an existing policy for a user.
-
-- **Asset Management**
-  - **Get All Assets**: Retrieve and display all assets for a specific access point.
-  - **File Management GUI**: Display an interface for managing files and folders, allowing administrators to assign user permissions. *To reiterate, this is not intended to be the final UI/UX design, merely an efficient means of exposes the fundamental service to ease the development process*.
-
-#### Asset Endpoints (`assets.py`)
-
-The asset endpoints provide functionality for users to interact with their files and folders. These endpoints require user authentication and are designed to facilitate file uploads, downloads, and listing of user assets.
-
-- **General and User Endpoints**
-  - **List Assets**: Retrieve a list of all assets available to the authenticated user.
-  - **Retrieve Asset**: Generate presigned URLs for accessing specific assets and serve an HTML template with these URLs.
-
-- **Forms and User Interaction**
-  - **Upload Form**: Render a form for uploading files, allowing users to select and upload files to the system.
-  - **Download Form**: Render a form for downloading files, displaying available files and generating download links.
-  - **Note**: *To reiterate, this is not intended to be the final UI/UX design, merely an efficient means of exposes the fundamental service to ease the development process. The underlying upload and download endpoints are descirbed below*.
-
-- **Presigned URL Endpoints**
-  - **Generate Upload URL**: Create a presigned URL for uploading a file to the system.
-  - **Generate Download URL**: Create presigned URLs for downloading assets, providing secure access to user files.
-  - **Note**: *Currently object storage endpoints are the only "flavour" of endpoints integrated at this time. Further upload and download mechanisms will need to be developed for other systems (e.g. posix), likely with the assistance of system administrators and developers familiar with the underlying structure and network contstraints of these endpoints.*
-
-### Application Core
-
-This system is a prototype for a Data Access Management (DAM) serice/application to manage access to data assets on various storage enpoints (SE) via a centralized service. The primary goal is to create a one to one relation between a legal agreement defining the terms of use for a restricted data asset and the underlying technical implementation of that access with signed users of that policy. The implementation should be
-
-1.  Agnostic about the nature of SEs
-2.  Allow direct connection to SE for data transfer (as opposed to a connection via the DAM service host) where such connection is limited only to those assets granted by the signed policy
-3.  Provide an easy to use and intuitive web based GUI for data asset administrators
-
-This is a "glue code" application; the goal is not to develop a new standard or system, rather a generic tool and framework for connecting and managing policy restricted data assets. To this end three basic technical interfaces need to be defined
-
-1.  Users - Data Access Manager
-2.  Data Access Manager - Storage Enpoints
-3.  Users - Storage Endpoints
-
-These in effect form a trangular interaction whose connections are granted, but not conducted through, the DAM service.
-
-```mermaid
-graph TD;
-    User<-->DAM;
-    DAM<-->SE;
-    User<-->SE;
+    function matches(string memory pattern, string memory str) internal pure returns (bool) {
+        return keccak256(abi.encodePacked(pattern)) == keccak256(abi.encodePacked(str));
+    }
+}
 ```
 
-Here the User - SE connection is token based where the token fully determines the parameters of the interaction (i.e. time expiry and scope). Tokens are granted via the User - DAM interface, derived from secrets shared between the DAM and SEs.
+## 3.2 Local API for Storage Endpoints
 
-The orthodox software design pattern from the perspective of a administrative user should match the Model-View-Controller:
+### 1. Install Python Environment
 
-<p align="center">
-<img src="https://github.com/user-attachments/assets/1aae872d-8210-43ea-9329-77535ffce718" width="300" height="300">
-</p>
+- **Ensure Python is installed.**
+- **Install necessary libraries:**
 
-#### User - Data Access Manager Interface
+```bash
+pip install flask web3 boto3
+```
 
-The User interacts with the DAM via web based API. Upon registration a user recieves a DAM access key. Administrators can then add user access to given assets according to their signed user policies. User policies are managed via an open source access control authorization library, [Casbin](https://casbin.org/).  
+### 2. Implement Local API
+```python
+from flask import Flask, request, jsonify
+from web3 import Web3
 
-User policies in the casbin policy manager contain a reference to the storage end point (r.e. domain), the file path string (r.e. object) of the asset or assets (regular expressions can be used to cover sets of files according standard regular expression string matching), and the permission type: read or write (r.e. action). [This](https://github.com/INN-SFU/Data-Portal/blob/main/core/data_access_manager/model.conf) is the model defining the access policies where a subject (sub), domain (dom), object (obj), and action (act), define access to a given asset on a given endpoint. All fields must match for a request to be granted.
+app = Flask(__name__)
+w3 = Web3(Web3.HTTPProvider('http://localhost:8545'))
+contract_address = 'your_contract_address'
+contract_abi = 'your_contract_abi'
+contract = w3.eth.contract(address=contract_address, abi=contract_abi)
 
-A user can see which assets they have access to and request a download or upload link to the asset/asset location. Requests are validated against the Casbin policy manager. If the request is valid, the DAM returns a token based access link to the relevant asset on the SE.
+@app.route('/local-admin/add-access', methods=['POST'])
+def add_access():
+  did = request.json['did']
+  resource_pattern = request.json['resource_pattern']
+  access = request.json['access']
+  adapter.add_policy(did, resource_pattern, access)
+  tx_hash = contract.functions.addPolicy(did, resource_pattern, access).transact({'from': w3.eth.accounts[0]})
+  return jsonify({"status": "success", "tx_hash": tx_hash})
 
-#### Data Access Manager - Storage Enpoint Interface
+@app.route('/local-admin/remove-access', methods=['POST'])
+def remove_access():
+  did = request.json['did']
+  resource_pattern = request.json['resource_pattern']
+  access = request.json['access']
+  adapter.remove_policy(did, resource_pattern, access)
+  tx_hash = contract.functions.removePolicy(did, resource_pattern, access).transact({'from': w3.eth.accounts[0]})
+  return jsonify({"status": "success", "tx_hash": tx_hash})
 
-The DAM is, in effect, a proxying authority for user access to SEs. Users themselves do not have credentials or access keys registered with the SE, however the DAM has credentials registered with the SEs. The reference structure to assets accross SE's needs to be standardized from the perspective of the DAM. To this end all SE are treated as hierarchical file systems, represented by a file tree, regardless of the SE's underlying file system. The generic class for this interface is defined by a [storage agent](https://github.com/INN-SFU/Data-Portal/blob/main/core/connectivity/agent.py).
+@app.route('/access-request', methods=['POST'])
+def access_request():
+  did = request.json['did']
+  action = request.json['action']
+  resource = request.json['resource']
+  signature = request.json['signature']
+  if verify_did_signature(did, signature) and adapter.check_permission(did, resource, action):
+      presigned_url = generate_presigned_url(resource)
+      return jsonify({"status": "success", "url": presigned_url})
+  else:
+      return jsonify({"status": "error", "message": "Permission denied"})
 
-Each SE flavour (e.g. object store, posix based file server, etc..) will require a different, specific implementation of the agent class to interact with storage endpoint and return connections that mediate the User - SE interaction.
+def verify_did_signature(did, signature):
+  # Implement DID and signature verification
+  pass
 
-#### User - Storage Endpoint Interface
+def generate_presigned_url(resource):
+  # Implement presigned URL generation for object storage
+  pass
 
-The nature of this interface is ultimately determined by the storage endpoint in question. For object storage endpoints, presigned urls are generated for data assets by the DAM and returned to the user. This leverages the existing token based access infrastructure of object store endpoints. 
+if __name__ == '__main__':
+  app.run(debug=True)
+```
 
-For other systems, e.g. posix systems, it's likely custom service applications will need to be running on the storage endpoints to implement similar functionality (i.e. the generation of "presigned access urls" to access the system. *This will require futher design and engineering decisions that have yet to be considered and require the skill and expertise of system and administrators and developers familiar with the underlying structure and network contstraints of these endpoints.*
+## 3.3 Storage Adapters
 
+### 1. Define Adapter Interface
+
+```python
+class StorageAdapter:
+  def add_policy(self, did, resource_pattern, access):
+      raise NotImplementedError
+
+  def remove_policy(self, did, resource_pattern, access):
+      raise NotImplementedError
+
+  def check_permission(self, did, resource, action):
+      raise NotImplementedError
+```
+
+### 2. Implement Adapters for Each Storage Type
+
+```python
+# POSIX Adapter
+class POSIXAdapter(StorageAdapter):
+  def add_policy(self, did, resource_pattern, access):
+      # Implement POSIX-specific add policy logic
+      pass
+
+  def remove_policy(self, did, resource_pattern, access):
+      # Implement POSIX-specific remove policy logic
+      pass
+
+  def check_permission(self, did, resource, action):
+      # Implement POSIX-specific check permission logic
+      pass
+
+# S3 Adapter
+import boto3
+
+class S3Adapter(StorageAdapter):
+  def __init__(self, bucket_name):
+      self.s3 = boto3.client('s3')
+      self.bucket_name = bucket_name
+
+  def add_policy(self, did, resource_pattern, access):
+      # Implement S3-specific add policy logic
+      pass
+
+  def remove_policy(self, did, resource_pattern, access):
+      # Implement S3-specific remove policy logic
+      pass
+
+  def check_permission(self, did, resource, action):
+      # Implement S3-specific check permission logic
+      pass
+```
+
+## 3.4 API Gateway
+
+### 1. Set Up API Gateway
+
+- Use a tool like Kong or AWS API Gateway to route requests to the appropriate storage endpoint.
+
+```yaml
+# Kong API Gateway example configuration
+services:
+- name: posix-service
+  url: http://posix-endpoint.local
+- name: s3-service
+  url: http://s3-endpoint.local
+
+routes:
+- name: posix-route
+  service: posix-service
+  paths:
+    - /posix
+- name: s3-route
+  service: s3-service
+  paths:
+    - /s3
+```
+
+## 3.5 Backend Logic
+
+### 1. Implement Backend Endpoints
+
+```python
+from flask import Flask, request, jsonify
+import requests
+
+app = Flask(__name__)
+
+API_GATEWAY_URL = 'http://api-gateway.local'
+
+@app.route('/admin/add-access', methods=['POST'])
+def add_access():
+  data = request.json
+  storage_type = data['storage_type']
+  response = requests.post(f"{API_GATEWAY_URL}/{storage_type}/local-admin/add-access", json=data)
+  return jsonify(response.json())
+
+@app.route('/admin/remove-access', methods=['POST'])
+def remove_access():
+  data = request.json
+  storage_type = data['storage_type']
+  response = requests.post(f"{API_GATEWAY_URL}/{storage_type}/local-admin/remove-access", json=data)
+  return jsonify(response.json())
+
+@app.route('/admin/view-policies', methods=['GET'])
+def view_policies():
+  storage_type = request.args.get('storage_type')
+  response = requests.get(f"{API_GATEWAY_URL}/{storage_type}/local-admin/view-policies")
+  return jsonify(response.json())
+
+if __name__ == '__main__':
+  app.run(debug=True)
+```
+
+## 3.6 Unified Dashboard
+
+### 1. Develop Frontend
+
+- Use a modern web framework like React, Angular, or Vue.js.
+- Create components for viewing, adding, updating, and deleting access policies.
+
+```javascript
+import React, { useState } from 'react';
+import axios from 'axios';
+
+const AddAccess = () => {
+const [did, setDid] = useState('');
+const [resourcePattern, setResourcePattern] = useState('');
+const [access, setAccess] = useState('');
+const [storageType, setStorageType] = useState('');
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  const data = { did, resource_pattern: resourcePattern, access, storage_type: storageType };
+  const response = await axios.post('/admin/add-access', data);
+  console.log(response.data);
+};
+
+return (
+  <form onSubmit={handleSubmit}>
+    <input type="text" placeholder="DID" value={did} onChange={(e) => setDid(e.target.value)} />
+    <input type="text" placeholder="Resource Pattern" value={resourcePattern} onChange={(e) => setResourcePattern(e.target.value)} />
+    <input type="text" placeholder="Access" value={access} onChange={(e) => setAccess(e.target.value)} />
+    <select value={storageType} onChange={(e) => setStorageType(e.target.value)}>
+      <option value="POSIX">POSIX</option>
+      <option value="S3">S3</option>
+    </select>
+    <button type="submit">Add Access</button>
+  </form>
+);
+};
+
+export default AddAccess;
+```
+
+## 4. Deployment and Security
+
+### 1. Deploy Flask Application
+
+- Deploy the Flask application on each storage endpoint.
+- Use a process manager like systemd to run the Flask app as a service.
+
+```bash
+# Create a systemd service file for the Flask application
+sudo nano /etc/systemd/system/flaskapp.service
+```
+
+```ini
+[Unit]
+Description=Gunicorn instance to serve Flask application
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/yourapp
+Environment="PATH=/home/ubuntu/yourapp/venv/bin"
+ExecStart=/home/ubuntu/yourapp/venv/bin/gunicorn --workers 3 --bind unix:yourapp.sock -m 007 wsgi:app
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+# Reload systemd to pick up the new service file
+sudo systemctl daemon-reload
+# Start and enable the service
+sudo systemctl start flaskapp
+sudo systemctl enable flaskapp
+```
+
+### 2. Configure API Gateway
+
+- Set up and configure the API gateway to route requests to the appropriate storage endpoints.
+
+```yaml
+# Kong API Gateway example configuration
+services:
+- name: posix-service
+  url: http://posix-endpoint.local
+- name: s3-service
+  url: http://s3-endpoint.local
+
+routes:
+- name: posix-route
+  service: posix-service
+  paths:
+    - /posix
+- name: s3-route
+  service: s3-service
+  paths:
+    - /s3
+```
+
+### 3. Secure the System
+
+- Ensure all communications are encrypted using HTTPS.
+- Implement authentication and authorization for API endpoints.
+- Regularly update and maintain the software and dependencies.
+
+### 4. Monitoring and Maintenance
+
+- Set up monitoring to track API performance and usage.
+- Use logging to audit access requests and policy changes.
+- Implement alerting for critical events (e.g., unauthorized access attempts).
+
+## 5. Summary
+
+This detailed report outlines the architecture and implementation of a decentralized access management system with a centralized management interface. The system leverages blockchain technology to ensure secure and transparent access control, allowing administrators to manage resources across multiple storage endpoints efficiently. The use of standardized APIs and storage adapters ensures consistency across different storage types, while the centralized dashboard provides a unified view for administrators.
+
+By following this implementation plan, you can achieve a scalable, secure, and efficient system for managing access to sensitive data across heterogeneous storage environments.
 
