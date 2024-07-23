@@ -5,3 +5,4 @@ _*/
 /core/settings/.env
 /core/user_policies/
 /core/authentication/uuids.json
+*.log
