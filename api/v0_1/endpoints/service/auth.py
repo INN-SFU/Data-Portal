@@ -1,32 +1,54 @@
 from typing import Annotated
 
 import jwt
-from fastapi import Request, Depends, HTTPException, APIRouter
+
+from fastapi import Request, Depends, HTTPException, APIRouter, status
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
+from fastapi.responses import JSONResponse
 
+from core.data_access_manager import dam
 from core.authentication import validate_credentials, generate_token, token_expired
-
 
 security = HTTPBasic()
 auth_router = APIRouter(prefix='/auth')
 
 
-@auth_router.get("")
+@auth_router.get("/test", response_class=JSONResponse)
 def auth(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
     """
-    Handler for the auth endpoint.
-    :param credentials:   The HTTP Basic credentials.
-    :return:
+    Authenticate the user using the provided credentials.
+
+    :param credentials: The HTTP basic authentication credentials, an uid (username) and key (password).
+    :type credentials: HTTPBasicCredentials
+    :return: A JSON response indicating whether the credentials are valid or not.
+    :rtype: JSONResponse
+    :raises HTTPException: If the credentials are invalid.
     """
     uid = credentials.username
     password = credentials.password
     if validate_credentials(uid, password):
-        return {"success": "Valid credentials"}
+        return JSONResponse(status_code=status.HTTP_200_OK, content={"success": "Valid credentials"})
     else:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
-@auth_router.get("/token")
+# Handle login submission
+@auth_router.post("/login", response_class=JSONResponse)
+def login(credentials: HTTPBasicCredentials = Depends(security)):
+
+    uid = credentials.username
+    key = credentials.password
+
+    if uid not in dam.get_all_users():
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    elif not validate_credentials(uid, key):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    else:
+        role = dam.get_user(uid)['role']
+        return JSONResponse(status_code=status.HTTP_200_OK, content={'uid': uid, 'role': role})
+
+
+@auth_router.get("/token", response_class=JSONResponse)
 def get_token(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
     """
     Handler for the get token endpoint.
@@ -38,7 +60,7 @@ def get_token(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
     password = credentials.password
     if validate_credentials(uid, password):
         token = generate_token(uid, password, 300)
-        return {"token": token}
+        return JSONResponse(status_code=200, content={"token": token})
     else:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 

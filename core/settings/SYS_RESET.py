@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from uuid import uuid5, NAMESPACE_DNS
 
 from ..data_access_manager import DataAccessManager
@@ -8,7 +9,7 @@ from core.authentication.auth import generate_credentials
 
 
 def SYS_RESET():
-    print("WARNING: This will reset the database and initialize the server secrets.\n All existing user and admin data "
+    print("WARNING: This will reset the database and initialize the service secrets.\n All existing user and admin data "
           "and credentials will be lost.\n Do you want to continue? (y/n)")
     response = input().lower()
     if response != 'y':
@@ -25,6 +26,18 @@ def SYS_RESET():
     with open(os.getenv('UUID_STORE'), 'w') as file:
         json.dump({}, file)
     file.close()
+
+    print('Removing logs...')
+    for filename in os.listdir(os.getenv('LOG_FOLDER')):
+        file_path = os.path.join(os.getenv('LOG_FOLDER'), filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print('Failed to clear logs.')
+            print('Failed to delete %s. Reason: %s' % (file_path, e))
 
     _generate_secrets()
 

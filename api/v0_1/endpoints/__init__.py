@@ -1,3 +1,1 @@
-from .admin import admin_router
-from .auth import auth_router
-from .assets import asset_router
+from .router import application_router
