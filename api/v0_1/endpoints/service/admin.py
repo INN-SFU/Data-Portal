@@ -1,7 +1,7 @@
 import os
 from uuid import uuid5, NAMESPACE_DNS
 
-from fastapi import Request, Depends, HTTPException, APIRouter, Form
+from fastapi import Request, Depends, HTTPException, APIRouter, status
 from fastapi.security import HTTPBasic
 from fastapi.templating import Jinja2Templates
 
@@ -38,13 +38,13 @@ async def get_user_(uid: str):
     user = dam.get_user(uid)
 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
 
     return dam.get_user(uid)
 
 
 @admin_router.put("/user/", dependencies=[Depends(is_admin)])
-async def add_user_(request: Request, uid: str = Form(...), role: str = Form(...)):
+async def add_user_(request: Request):
     """
     Add a user.
 
@@ -55,15 +55,21 @@ async def add_user_(request: Request, uid: str = Form(...), role: str = Form(...
     :return: The rendered add_user.html template.
     :rtype: templates.TemplateResponse
     """
+    try:
+        uid = request.query_params.get('uid')
+        role = request.query_params.get('role')
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unable to retrieve uid or role: {e.__str__}")
+
     uuid = uuid5(NAMESPACE_DNS, uid)
 
     if role != "admin" or "user":
-        raise HTTPException(status_code=400, detail="Invalid role. \"admin\" or \"user\".")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role. \"admin\" or \"user\".")
 
     try:
         user_secret_key = dam.add_user(uid, uuid, role)
     except ValueError:
-        raise HTTPException(status_code=400, detail="User already exists.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists.")
 
     return {"success": "User added successfully", "uid": uid, "secret_key": user_secret_key}
 
@@ -84,7 +90,7 @@ async def remove_user(uid: str):
         else:
             raise ValueError("Failed to remove user.")
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=e.__str__())
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.__str__())
 
 
 # Policy View and Control
@@ -103,7 +109,7 @@ async def get_policies(request: Request):
     policy = dam.enforcer.get_policy(uid, access_point, resource, action)
 
     if policy is None:
-        return HTTPException(status_code=404, detail={"failed": "Policy not found."})
+        return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail={"failed": "Policy not found."})
 
     return {"policy": policy}
 
@@ -125,15 +131,15 @@ async def add_policy(request: Request):
 
     # Check if the user exists
     if uid not in dam.get_users():
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     # Check if the access point exists
     if access_point not in [agent.access_point_slug for agent in agents]:
-        raise HTTPException(status_code=404, detail="Access point not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Access point not found")
 
     try:
         dam.add_user_policy(uid, access_point, resource, action)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=e.__str__())
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.__str__())
 
     return {"success": "Policy added successfully."}
 
@@ -161,4 +167,4 @@ async def remove_policy(request: Request):
             raise ValueError("Failed to remove policy.")
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=e.__str__())
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.__str__())
