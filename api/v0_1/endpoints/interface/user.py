@@ -1,6 +1,6 @@
 import os
 
-from fastapi import Request, Depends, APIRouter, HTTPException
+from fastapi import Request, Depends, APIRouter, HTTPException, status
 from fastapi.security import HTTPBasic
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -16,18 +16,17 @@ user_ui_router = APIRouter(prefix='/user')
 templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
 
-# UPLOAD AND DOWNLOAD FORMS
 @user_ui_router.get("/upload", response_class=HTMLResponse)
 def upload_form(request: Request, creds: str = Depends(validate_credentials)):
     """
-    This method is used to render the upload form page.
+    Render the upload form page.
 
-    :param request: The HTTP request information.
-    :type request: Request
-    :param creds: The validated user credentials.
-    :type creds: str
-    :return: The rendered upload form page.
-    :rtype: TemplateResponse
+    Parameters:
+    - **request** (Request): The HTTP request information.
+    - **creds** (str): The validated user credentials.
+
+    Returns:
+    - **TemplateResponse**: The rendered upload form page.
     """
     uid = creds[0]
     assets = {}
@@ -36,14 +35,17 @@ def upload_form(request: Request, creds: str = Depends(validate_credentials)):
     return templates.TemplateResponse("/assets/upload.html", {"request": request, "assets": assets})
 
 
-# Endpoint to render the download form
 @user_ui_router.get("/download", response_class=HTMLResponse)
 def download_form(request: Request, creds: str = Depends(validate_credentials)):
     """
-    This method is used to render the download form page.
-    :param request: The HTTP request information.
-    :param creds: The validated user credentials.
-    :return: The rendered download form page.
+    Render the download form page.
+
+    Parameters:
+    - **request** (Request): The HTTP request information.
+    - **creds** (str): The validated user credentials.
+
+    Returns:
+    - **TemplateResponse**: The rendered download form page.
     """
     uid = creds[0]
     assets = {}
@@ -52,15 +54,20 @@ def download_form(request: Request, creds: str = Depends(validate_credentials)):
     return templates.TemplateResponse("/assets/download.html", {"request": request, "assets": assets})
 
 
-@user_ui_router.get("")
+@user_ui_router.get("", response_class=HTMLResponse)
 def retrieve_asset(request: Request, creds: str = Depends(validate_credentials)):
     """
-    This method is used to generate presigned URLs for assets and serve an HTML template with these URLs.
+    Generate presigned URLs for assets and serve an HTML template with these URLs.
 
-    :param request: The request object containing relevant query parameters.
-    :param creds: The user ID and key used to validate user credentials.
-    :return: HTML template with presigned URLs for the assets.
-    :raises HTTPException: If the user does not have read access to the resource.
+    Parameters:
+    - **request** (Request): The request object containing relevant query parameters.
+    - **creds** (str): The user ID and key used to validate user credentials.
+
+    Returns:
+    - **TemplateResponse**: HTML template with presigned URLs for the assets.
+
+    Raises:
+    - **HTTPException**: If the user does not have read access to the resource.
     """
     uid = creds[0]
 
@@ -76,6 +83,7 @@ def retrieve_asset(request: Request, creds: str = Depends(validate_credentials))
                                                       {"request": request, "presigned_urls": presigned_urls,
                                                        "object_keys": object_keys})
                 except ValueError as e:
-                    raise HTTPException(status_code=404, detail=str(e))
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     else:
-        raise HTTPException(status_code=403, detail="User does not have read access to this resource")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="User does not have read access to this resource")
