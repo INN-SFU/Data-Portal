@@ -46,14 +46,15 @@ class App:
 
         # Landing
         @self.app.get("/", response_class=HTMLResponse)
-        def read_root(request: Request):
+        def landing_page(request: Request):
             """
-            Handler for the root endpoint.
+            Root for serving basic landing page.
 
-            :param request: The incoming request object.
-            :type request: Request
-            :return: The rendered index.html template.
-            :rtype: templates.TemplateResponse
+            Parameters:
+            - **request** (Request): The request object.
+
+            Returns:
+            - **TemplateResponse**: The HTML response containing the landing page.
             """
             return templates.TemplateResponse("/landing/index.html", {"request": request})
 
