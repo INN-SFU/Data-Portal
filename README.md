@@ -7,3 +7,5 @@ Developed for use by:
 * Principal Architect and Development: [pmahon@sfu.ca](mailto:pmahon@sfu.ca) <sup>1,2</sup>
 * Consultation: [jpeltier@sfu.ca](mailto:jpeltier@sfu.ca) <sup>2</sup>
 * Consultation: [kshen@sfu.ca](mailto:kshen@sfu.ca) <sup>1</sup>
+
+For detailed info please wee the [wiki](https://github.com/INN-SFU/Data-Portal/wiki).
