@@ -47,7 +47,7 @@ Data assets are managed by asset administrators allowing access to files and fol
 
 *The UI is rudimentary and is meant solely for the purpose of exposing endpoints and conecptualizing the fundamental workflows for the administrator. Limited developer hours during the early stages of development forced prioritization of middle and back end development. The functional components of the api have been designed to be decoupled from the UI and with the intent to provide the raw underlying components necessary for more skilled UI/UX development devlopers to work their magic.*
 
-The underlying api has been implemented to reflect the irreducible functional interactions a user and asset adminstrator can conduct with the system. The docs auto generated directly from the code can, while the service is operational, be found [here](http://neuro-institute.research.sfu.ca:5000/docs). Here is a more general overview of these functional components.
+The underlying api has been implemented to reflect the irreducible functional interactions a user and asset adminstrator can conduct with the system. The docs auto generated directly from the code can, while the service is operational, be found [here](http://neuro-institute.research.sfu.ca:5000/docs). The simple interactive gui is found [here](http://neuro-institute.research.sfu.ca:5000/). Here is a more general overview of these functional components.
 
 ### Design of Serviceable Endpoints
 
