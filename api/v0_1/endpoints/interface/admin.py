@@ -31,10 +31,10 @@ async def admin_home(request: Request, uid: str = Depends(is_admin)):
     return templates.TemplateResponse("/admin/home.html", {"request": request})
 
 
-@admin_ui_router.get("/home/asset-management", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
-async def asset_management(request: Request, uid: str = Depends(is_admin)):
+@admin_ui_router.get("/home/policy-management", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
+async def policy_management(request: Request, uid: str = Depends(is_admin)):
     """
-    Admin home page that displays the storage endpoints and file trees.
+    Admin home page that displays the storage endpoints, their file trees, and policy creation form.
 
     Parameters:
     - **request** (Request): The HTTP request object containing information about the incoming request.
@@ -46,7 +46,7 @@ async def asset_management(request: Request, uid: str = Depends(is_admin)):
     assets = {}
     for agent in agents:
         assets[agent.access_point_slug] = convert_file_tree_to_dict(agent.get_user_file_tree(uid, 'write', dam))
-    return templates.TemplateResponse("/admin/assets.html", {"request": request, "assets": assets})
+    return templates.TemplateResponse("/admin/policy_management.html", {"request": request, "assets": assets})
 
 
 @admin_ui_router.get("/home/user-management", response_class=HTMLResponse, dependencies=[Depends(is_admin)])

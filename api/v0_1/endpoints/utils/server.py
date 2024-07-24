@@ -42,7 +42,7 @@ def validate_credentials(credentials: HTTPBasicCredentials = Depends(security)) 
     uid = credentials.username
     password = credentials.password
 
-    if uid not in dam.get_users():
+    if uid not in dam.get_all_users():
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if auth_validate_credentials(uid, password):

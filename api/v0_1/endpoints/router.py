@@ -14,5 +14,5 @@ application_router.include_router(auth_router, prefix='/service')
 application_router.include_router(user_router, prefix='/service')
 application_router.include_router(admin_router, prefix='/service')
 
-application_router.include_router(user_ui_router, prefix='/interface')
-application_router.include_router(admin_ui_router, prefix='/interface')
+application_router.include_router(user_ui_router)
+application_router.include_router(admin_ui_router)
