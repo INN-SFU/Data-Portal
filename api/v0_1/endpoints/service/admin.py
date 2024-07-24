@@ -78,8 +78,8 @@ async def add_user_(uid: str = Query(...), role: str = Query(...)):
     return {"success": "User added successfully", "uid": uid, "secret_key": user_secret_key}
 
 
-@admin_router.delete("/user/{uid}", dependencies=[Depends(is_admin)])
-async def remove_user(uid: str):
+@admin_router.delete("/user/", dependencies=[Depends(is_admin)])
+async def remove_user(uid: str = Query(...)):
     """
     Delete a user and all their associated data.
 

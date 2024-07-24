@@ -16,7 +16,22 @@ user_ui_router = APIRouter(prefix='/user')
 templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
 
-@user_ui_router.get("/upload", response_class=HTMLResponse)
+@user_ui_router.get("/home", response_class=HTMLResponse)
+def user_home(request: Request, creds: str = Depends(validate_credentials)):
+    """
+    Render the user home page.
+
+    Parameters:
+    - **request** (Request): The HTTP request information.
+    - **creds** (str): The validated user credentials.
+
+    Returns:
+    - **TemplateResponse**: The rendered upload form page.
+    """
+    return templates.TemplateResponse("/user/home.html", {"request": request})
+
+
+@user_ui_router.get("/home/upload", response_class=HTMLResponse)
 def upload_form(request: Request, creds: str = Depends(validate_credentials)):
     """
     Render the upload form page.
@@ -35,7 +50,7 @@ def upload_form(request: Request, creds: str = Depends(validate_credentials)):
     return templates.TemplateResponse("/assets/upload.html", {"request": request, "assets": assets})
 
 
-@user_ui_router.get("/download", response_class=HTMLResponse)
+@user_ui_router.get("/home/download", response_class=HTMLResponse)
 def download_form(request: Request, creds: str = Depends(validate_credentials)):
     """
     Render the download form page.
