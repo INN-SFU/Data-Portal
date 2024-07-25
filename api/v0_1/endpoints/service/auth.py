@@ -2,7 +2,7 @@ from typing import Annotated
 
 import jwt
 
-from fastapi import Request, Depends, HTTPException, APIRouter, status, FastAPI
+from fastapi import Depends, HTTPException, APIRouter, status
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 from fastapi.responses import JSONResponse
 
@@ -20,8 +20,8 @@ def auth(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
 
     Parameters:
     - **credentials** (HTTPBasicCredentials): The HTTP basic authentication credentials, including:
-        - **username**: The user's username.
-        - **password**: The user's password.
+        - **username**: The user's User ID
+        - **password**: The user's Key.
 
     Returns:
     - **JSONResponse**: A JSON response indicating whether the credentials are valid or not.
@@ -44,13 +44,13 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
 
     Parameters:
     - **credentials** (HTTPBasicCredentials): An instance of the `HTTPBasicCredentials` class containing:
-        - **username**: The user's username.
-        - **password**: The user's password.
+        - **username**: The user's User ID (UID).
+        - **password**: The user's Key
 
     Returns:
     - **JSONResponse**: If the credentials are valid, returns a JSONResponse object containing:
-        - **uid**: The user's UID (username).
-        - **role**: The user's role.
+        - **uid**: The user's UID.
+        - **role**: The user's role (admin or user).
 
     Raises:
     - **HTTPException**: If the credentials are invalid, raises an HTTPException with a status code of 401 and a detail message indicating the invalid credentials.
@@ -74,8 +74,8 @@ def get_token(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
 
     Parameters:
     - **credentials** (HTTPBasicCredentials): The HTTP basic authentication credentials, including:
-        - **username**: The user's username.
-        - **password**: The user's password.
+        - **username**: The user's UID.
+        - **password**: The user's Key.
 
     Returns:
     - **JSONResponse**: A JSON response containing the generated token.
@@ -87,18 +87,17 @@ def get_token(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
     password = credentials.password
     if validate_credentials(uid, password):
         token = generate_token(uid, password, 300)
-        return JSONResponse(status_code=200, content={"token": token})
+        return JSONResponse(status_code=status.HTTP_200_OK, content={"token": token})
     else:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
 
 @auth_router.post("/token/{token}")
-def validate_token_(request: Request, token: str):
+def validate_token_(token: str):
     """
     Handler for the validate token endpoint.
 
     Parameters:
-    - **token** (str): The token to be validated.
     - **request** (Request): The incoming request object.
 
     Returns:
@@ -108,7 +107,7 @@ def validate_token_(request: Request, token: str):
     - **HTTPException**: If the token is invalid.
     """
     if not token:
-        raise HTTPException(status_code=400, detail="No token provided")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No token provided")
 
     try:
         valid = token_expired(token)
@@ -118,4 +117,4 @@ def validate_token_(request: Request, token: str):
     if valid:
         return {"success": "Valid token"}
     else:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")

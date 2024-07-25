@@ -1,6 +1,6 @@
 import os
 
-from fastapi import Request, Depends, APIRouter, HTTPException, status
+from fastapi import Request, Depends, APIRouter, HTTPException, status, Query
 from fastapi.security import HTTPBasic
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -17,13 +17,12 @@ templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
 
 @user_ui_router.get("/home", response_class=HTMLResponse)
-def user_home(request: Request, creds: str = Depends(validate_credentials)):
+def user_home(request: Request):
     """
     Render the user home page.
 
     Parameters:
     - **request** (Request): The HTTP request information.
-    - **creds** (str): The validated user credentials.
 
     Returns:
     - **TemplateResponse**: The rendered upload form page.
@@ -31,19 +30,18 @@ def user_home(request: Request, creds: str = Depends(validate_credentials)):
     return templates.TemplateResponse("/user/home.html", {"request": request})
 
 
-@user_ui_router.get("/home/upload", response_class=HTMLResponse)
-def upload_form(request: Request, creds: str = Depends(validate_credentials)):
+@user_ui_router.get("/home/upload", response_class=HTMLResponse, dependencies=[Depends(validate_credentials)])
+def upload_form(request: Request, uid: str = Depends(validate_credentials)):
     """
     Render the upload form page.
 
     Parameters:
     - **request** (Request): The HTTP request information.
-    - **creds** (str): The validated user credentials.
+    - **uid** (str): The User ID from the validated credentials.
 
     Returns:
     - **TemplateResponse**: The rendered upload form page.
     """
-    uid = creds[0]
     assets = {}
     for agent in agents:
         assets[agent.access_point_slug] = convert_file_tree_to_dict(agent.get_user_file_tree(uid, 'write', dam))
@@ -51,18 +49,17 @@ def upload_form(request: Request, creds: str = Depends(validate_credentials)):
 
 
 @user_ui_router.get("/home/download", response_class=HTMLResponse)
-def download_form(request: Request, creds: str = Depends(validate_credentials)):
+def download_form(request: Request, uid: str = Depends(validate_credentials)):
     """
     Render the download form page.
 
     Parameters:
     - **request** (Request): The HTTP request information.
-    - **creds** (str): The validated user credentials.
+    - **uid** (str): The User ID of the validated user credentials.
 
     Returns:
     - **TemplateResponse**: The rendered download form page.
     """
-    uid = creds[0]
     assets = {}
     for agent in agents:
         assets[agent.access_point_slug] = convert_file_tree_to_dict(agent.get_user_file_tree(uid, 'read', dam))
@@ -70,13 +67,13 @@ def download_form(request: Request, creds: str = Depends(validate_credentials)):
 
 
 @user_ui_router.get("", response_class=HTMLResponse)
-def retrieve_asset(request: Request, creds: str = Depends(validate_credentials)):
+def retrieve_asset(request: Request, uid: str = Depends(validate_credentials)):
     """
     Generate presigned URLs for assets and serve an HTML template with these URLs.
 
     Parameters:
     - **request** (Request): The request object containing relevant query parameters.
-    - **creds** (str): The user ID and key used to validate user credentials.
+    - **uid** (str): The User ID of the validated credentials.
 
     Returns:
     - **TemplateResponse**: HTML template with presigned URLs for the assets.
@@ -84,8 +81,6 @@ def retrieve_asset(request: Request, creds: str = Depends(validate_credentials))
     Raises:
     - **HTTPException**: If the user does not have read access to the resource.
     """
-    uid = creds[0]
-
     resource = request.query_params.get("resource")
     access_point = request.query_params.get("access_point")
 

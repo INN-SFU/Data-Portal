@@ -1,6 +1,7 @@
+import logging
 from treelib import Tree
 
-from fastapi import Depends
+from fastapi import Depends, status
 from fastapi.security import HTTPBasicCredentials
 from fastapi.exceptions import HTTPException
 
@@ -8,6 +9,8 @@ from core.data_access_manager import dam
 from core.authentication import validate_credentials as auth_validate_credentials
 
 from api.v0_1.endpoints.service.auth import security
+
+logger = logging.getLogger('app')
 
 
 def convert_file_tree_to_dict(tree: Tree) -> list[dict]:
@@ -31,24 +34,28 @@ def convert_file_tree_to_dict(tree: Tree) -> list[dict]:
     return tree_data
 
 
-def validate_credentials(credentials: HTTPBasicCredentials = Depends(security)) -> (str, str):
+def validate_credentials(credentials: HTTPBasicCredentials = Depends(security)) -> str:
     """
     Validate credentials.
 
     :param credentials: The HTTP basic authentication credentials.
-    :return: Returns a tuple containing the username and password if the credentials are valid.
+    :return: Returns the username (uid) if the credentials are valid.
     :raises HTTPException: If the credentials are invalid.
     """
     uid = credentials.username
     password = credentials.password
 
+    logger.info(f"User access request: {uid}")
     if uid not in dam.get_all_users():
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        logger.info(f"User access denied. {uid} is not a registered user.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     if auth_validate_credentials(uid, password):
-        return uid, password
+        logger.info(f"User access granted: {uid}")
+        return uid
     else:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        logger.info(f"User access denied: {uid}. Invalid key.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
 
 def is_admin(credentials: HTTPBasicCredentials = Depends(security)) -> bool:
@@ -64,7 +71,11 @@ def is_admin(credentials: HTTPBasicCredentials = Depends(security)) -> bool:
     """
     uid = credentials.username
 
+    logger.info(f"Admin access request: {uid}")
+
     if not dam.get_user(uid)['role'] == 'admin':
-        raise HTTPException(status_code=401, detail="Invalid credentials.")
+        logger.info(f"Admin access denied. {uid} is not a registered administrator.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
     else:
+        logger.info(f"Admin access granted: {uid}")
         return True
