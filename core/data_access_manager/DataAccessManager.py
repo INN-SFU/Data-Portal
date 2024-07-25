@@ -224,16 +224,27 @@ class DataAccessManager(metaclass=SingletonMeta):
         """
         return self.enforcer.get_filtered_policy(3, action)
 
-    def get_all_user_assets(self, uid_slug: str):
+    def get_all_user_policies(self, uid_slug: str, access_point: str = '', action: str = '') -> dict:
         """
-        Get all assets a user has access to.
+        Get all policies under a user according the given filters.
 
         :param uid_slug: The unique identifier of the user.
         :type uid_slug: str
-        :return: A list of all assets the user has access to.
-        :rtype: list
+        :param access_point: The access point slug.
+        :type access_point: str
+        :param action: The action permissions.
+        :type action: str
+        :return: A dictionary of policies associated with the user, keys are access_point, value is a list of the
+            policies.
+        :rtype: dict
         """
-        policies = self.enforcer.get_filtered_policy(0, uid_slug)
+        if access_point is None:
+            access_point = ''
+        if action is None:
+            action = ''
+
+        policies = self.enforcer.get_filtered_policy(0, uid_slug, access_point, '', action)
+
         access_points = set([policy[1] for policy in policies])
         assets = dict.fromkeys(access_points, [])
         for policy in policies:
