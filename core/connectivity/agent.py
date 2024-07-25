@@ -1,11 +1,10 @@
 import json
 import treelib
+import re
 
 from treelib.exceptions import DuplicatedNodeIdError
 from abc import ABC
-from typing import List
 from treelib import node, tree
-from treelib.exceptions import NodeIDAbsentError
 
 from core.data_access_manager.DataAccessManager import DataAccessManager
 
@@ -101,9 +100,11 @@ class Agent(ABC):
                 # Ensure all parents are added to the user tree
                 parent = self.file_tree.parent(user_node.identifier)
                 while parent and not user_tree.contains(parent.identifier):
-                    user_tree.create_node(parent.tag, parent.identifier, parent=parent.predecessor(self.file_tree.identifier))
+                    user_tree.create_node(parent.tag, parent.identifier,
+                                          parent=parent.predecessor(self.file_tree.identifier))
                     parent = self.file_tree.parent(parent.identifier)
-                user_tree.create_node(user_node.tag, user_node.identifier, parent=user_node.predecessor(self.file_tree.identifier))
+                user_tree.create_node(user_node.tag, user_node.identifier,
+                                      parent=user_node.predecessor(self.file_tree.identifier))
 
         return user_tree
 
@@ -126,3 +127,23 @@ class Agent(ABC):
         :return: The presigned URL.
         """
         raise NotImplementedError
+
+    def get_file_paths(self, resource: str = None):
+        """
+        Return the file paths of all files matching the resource regular expression.
+
+        :param resource: The key/regex of the asset(s).
+        :return: A list of resource file paths.
+        """
+        if resource is None:
+            regex = re.compile('.*')
+        else:
+            regex = re.compile(resource)
+
+        def node_filter(n: node):
+            # Omit the root
+            if n.identifier == 'root':
+                return False
+            return regex.match(n.identifier)
+
+        return [user_node.identifier for user_node in self.file_tree.filter_nodes(node_filter)]
