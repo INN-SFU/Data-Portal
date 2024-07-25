@@ -10,9 +10,8 @@ from api.v0_1.endpoints.interface.admin import admin_ui_router
 
 application_router = APIRouter()
 
-application_router.include_router(auth_router, prefix='/service')
-application_router.include_router(user_router, prefix='/service')
-application_router.include_router(admin_router, prefix='/service')
-
+application_router.include_router(auth_router)
+application_router.include_router(user_router)
+application_router.include_router(admin_router)
 application_router.include_router(user_ui_router)
 application_router.include_router(admin_ui_router)

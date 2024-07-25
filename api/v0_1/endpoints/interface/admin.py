@@ -4,6 +4,7 @@ from fastapi import Request, Depends, APIRouter
 from fastapi.security import HTTPBasic
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
+from treelib import node
 
 from core.connectivity import agents
 from core.data_access_manager import dam
@@ -43,8 +44,15 @@ async def policy_management(request: Request, uid: str = Depends(validate_creden
     - **TemplateResponse**: The HTML response containing the admin management interface.
     """
     assets = {}
-    for agent in agents:
-        assets[agent.access_point_slug] = convert_file_tree_to_dict(agent.get_user_file_tree(uid, 'write', dam))
+    # Loop through storage endpoints
+    for agent in agents.values():
+        # Filter based on write access for the admin. Write access allows admin to update policies.
+        def node_filter(n: node):
+            vals = (uid, agent.access_point_slug, n.identifier, 'write')
+            return dam.enforcer.enforce(*vals)
+
+        # Apply the filter
+        assets[agent.access_point_slug] = convert_file_tree_to_dict(agent.filter_file_tree(node_filter))
     return templates.TemplateResponse("/admin/policy_management.html", {"request": request, "assets": assets})
 
 
@@ -61,11 +69,25 @@ async def user_management(request: Request):
     """
     users = dam.get_all_users()
     user_file_trees = {}
+
+    # Loop through users
     for uid in users:
-        user_file_trees[uid] = {}
-        for agent in agents:
-            user_file_trees[uid][agent.access_point_slug] = convert_file_tree_to_dict(
-                agent.get_user_file_tree(uid, 'read', dam))
+        # Get all storage access points user has read access to
+        access_points = set([policy[1] for policy in dam.get_user_policies(uid)])
+
+        user_file_trees[uid] = dict.fromkeys(access_points)
+
+        # Loop through filtered access points
+        for agent_slug in agents:
+            # Filter based on read and write access
+            def node_filter(n: node):
+                vals = (uid, agent_slug, n.identifier, 'write')
+                return dam.enforcer.enforce(*vals)
+
+            # Apply the filter
+            user_file_trees[uid][agent_slug] = convert_file_tree_to_dict(
+                agents[agent_slug].filter_file_tree(node_filter))
+
     return templates.TemplateResponse("/admin/user_management.html",
                                       {"request": request, "users": users,
                                        "user_file_trees": user_file_trees})
