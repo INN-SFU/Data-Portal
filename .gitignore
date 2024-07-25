@@ -8,3 +8,4 @@ core/settings/.secrets
 core/user_policies/
 core/authentication/uuids.json
 *.log
+*__pycache__*
