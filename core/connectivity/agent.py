@@ -6,8 +6,6 @@ from treelib.exceptions import DuplicatedNodeIdError
 from abc import ABC
 from treelib import node, tree
 
-from core.data_access_manager.DataAccessManager import DataAccessManager
-
 
 class Agent(ABC):
     """
@@ -70,30 +68,27 @@ class Agent(ABC):
     def get_file_identifiers(self, path):
         """
         Get the identifiers of the files in the given path.
+
         :param path: The path of the node whose children are to be fetched.
         :return: List of identifiers of the files under the given path.
         """
         try:
             # Return the identifiers of the leaf nodes under the node
-            return [node.identifier for node in self.file_tree.leaves(path)]
+            return [node_.identifier for node_ in self.file_tree.leaves(path)]
         except KeyError:
             raise ValueError(f"Path '{path}' not found in the tree")
 
-    def get_user_file_tree(self, uid: str, action: str, dam: DataAccessManager) -> tree:
+    def filter_file_tree(self, node_filter) -> tree:
         """
-        Get all user files based on the provided user id, action, and DataAccessManager object.
+        Returns a subtree of the access point's file tree based on the provided boolean node filter function.
 
-        :param uid: Unique identifier of the user.
-        :param action: Action to perform on the files.
-        :param dam: DataAccessManager object for retrieving access permissions.
-        :return: A Tree object representing the user's accessible files.
+        :param node_filter: A function or lambda expression that takes a node object as input and returns a boolean
+            value indicating whether the node should be included in the filtered tree.
+        :return: A filtered tree object containing only the nodes that pass the node_filter criteria.
+        :rtype: treelib.Tree
         """
         user_tree = treelib.Tree()
         user_tree.create_node('root', 'root')  # Create a root node for the user tree
-
-        def node_filter(n: node):
-            vals = (uid, self.access_point_slug, n.identifier, action)
-            return dam.enforcer.enforce(*vals)
 
         for user_node in self.file_tree.filter_nodes(node_filter):
             if not user_tree.contains(user_node.identifier):
@@ -105,17 +100,7 @@ class Agent(ABC):
                     parent = self.file_tree.parent(parent.identifier)
                 user_tree.create_node(user_node.tag, user_node.identifier,
                                       parent=user_node.predecessor(self.file_tree.identifier))
-
         return user_tree
-
-    # Generate HTML from the tree
-    def tree_to_jstree_json(self):
-        def recurse(node):
-            children = [recurse(child) for child in self.file_tree.children(node.identifier)]
-            return {"text": node.tag, "children": children}
-
-        root_node = self.file_tree.get_node(self.file_tree.root)
-        return json.dumps([recurse(root_node)])
 
     def generate_access_links(self, resource: str, method: str, ttl: int):
         """

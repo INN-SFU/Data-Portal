@@ -97,25 +97,6 @@ class ArbutusAgent(Agent):
             pass
         return objects
 
-    def fetch_all_keys(self) -> List[str]:
-        """
-        Fetches all object keys from S3 buckets.
-
-        :return: A list of all object keys (i.e. paths).
-        :rtype: list[str]
-        """
-        all_keys = []
-
-        # fetch all buckets
-        buckets = self.fetch_all_buckets()
-
-        # fetch all objects in each bucket
-        for bucket in buckets:
-            objects = self.fetch_all_bucket_keys(bucket)
-            all_keys.extend(objects)
-
-        return all_keys
-
     def generate_access_links(self, resource: str, method: str, ttl: int):
         """
         Generate a presigned URL for accessing the resource.
