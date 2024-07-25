@@ -1,8 +1,10 @@
 _*/
 .*/
-core/internal/arbutus_connectivity/*
+core/connectivity/arbutus/*.sh
+core/connectivity/agents.json
 *.policies
 core/settings/.env
+core/settings/.secrets
 core/user_policies/
 core/authentication/uuids.json
 *.log
