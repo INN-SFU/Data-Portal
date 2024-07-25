@@ -2,19 +2,21 @@ from typing import Annotated
 
 import jwt
 
-from fastapi import Depends, HTTPException, APIRouter, status
+from fastapi import Depends, HTTPException, APIRouter, status, Query
 from fastapi.security import HTTPBasicCredentials, HTTPBasic
 from fastapi.responses import JSONResponse
 
 from core.data_access_manager import dam
 from core.authentication import validate_credentials, generate_token, token_expired
 
+from api.v0_1.emailer import conf as email_conf
+
 security = HTTPBasic()
 auth_router = APIRouter(prefix='/auth')
 
 
 @auth_router.get("/test", response_class=JSONResponse)
-def auth(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
+def auth(credentials: Annotated[HTTPBasicCredentials, Depends(security)]) -> JSONResponse:
     """
     Authenticate the user using the provided credentials.
 
@@ -24,7 +26,7 @@ def auth(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
         - **password**: The user's Key.
 
     Returns:
-    - **JSONResponse**: A JSON response indicating whether the credentials are valid or not.
+    - **JSONResponse**: A message indicating whether the credentials are valid or not.
 
     Raises:
     - **HTTPException**: If the credentials are invalid.
@@ -38,17 +40,17 @@ def auth(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
 
 
 @auth_router.post("/login", response_class=JSONResponse)
-def login(credentials: HTTPBasicCredentials = Depends(security)):
+def login(credentials: HTTPBasicCredentials = Depends(security)) -> JSONResponse:
     """
     Authenticate a user and retrieve their role based on the provided credentials.
 
     Parameters:
     - **credentials** (HTTPBasicCredentials): An instance of the `HTTPBasicCredentials` class containing:
         - **username**: The user's User ID (UID).
-        - **password**: The user's Key
+        - **password**: The user's Key.
 
     Returns:
-    - **JSONResponse**: If the credentials are valid, returns a JSONResponse object containing:
+    - **JSONResponse**: If the credentials are valid, returns a JSON object containing:
         - **uid**: The user's UID.
         - **role**: The user's role (admin or user).
 
@@ -68,7 +70,7 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
 
 
 @auth_router.get("/token", response_class=JSONResponse)
-def get_token(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
+def get_token(credentials: Annotated[HTTPBasicCredentials, Depends(security)]) -> JSONResponse:
     """
     Handler for the get token endpoint.
 
@@ -78,7 +80,8 @@ def get_token(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
         - **password**: The user's Key.
 
     Returns:
-    - **JSONResponse**: A JSON response containing the generated token.
+    - **JSONResponse**: A JSON response containing:
+        - **token**: the generated token.
 
     Raises:
     - **HTTPException**: If the credentials are invalid.
@@ -92,16 +95,16 @@ def get_token(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
 
-@auth_router.post("/token/{token}")
-def validate_token_(token: str):
+@auth_router.post("/token")
+def validate_token_(token: str = Query(...)) -> JSONResponse:
     """
     Handler for the validate token endpoint.
 
     Parameters:
-    - **request** (Request): The incoming request object.
+    - **token** (str): The token to be validated.
 
     Returns:
-    - **dict**: A dictionary with a success message if the token is valid.
+    - **JSONResponse**: A JSON response containing indicating if the token is valid or not.
 
     Raises:
     - **HTTPException**: If the token is invalid.
@@ -115,6 +118,6 @@ def validate_token_(token: str):
         valid = False
 
     if valid:
-        return {"success": "Valid token"}
+        return JSONResponse(status_code=status.HTTP_200_OK, content={"detail": "Valid token"})
     else:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
