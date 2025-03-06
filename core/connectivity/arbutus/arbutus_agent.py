@@ -2,7 +2,6 @@ import boto3
 import json
 import treelib
 import os
-import time
 import logging
 
 from typing import List
@@ -20,7 +19,7 @@ class ArbutusAgent(Agent):
 
     Attributes:
         endpoint (str): The endpoint URL of the Arbutus Cloud service.
-        s3_client (boto3.client): The S3 client for interacting with the Arbutus Cloud service.
+        s3_client (boto3.interface): The S3 interface for interacting with the Arbutus Cloud service.
         file_tree (treelib.Tree): The file tree representing the structure of objects in the Arbutus Cloud service.
     """
 
@@ -29,7 +28,7 @@ class ArbutusAgent(Agent):
         # ACCESS_AGENT_CONFIG
         ACCESS_POINT_SLUG = 'arbutus-cloud'
 
-        # Initialize the S3 client
+        # Initialize the S3 interface
         with open(os.getenv('ACCESS_AGENT_CONFIG'), 'r') as f:
             config = json.load(f)[ACCESS_POINT_SLUG]
         f.close()
@@ -70,7 +69,7 @@ class ArbutusAgent(Agent):
 
     def fetch_all_buckets(self) -> List[str]:
         """
-        Fetches all buckets from the S3 client.
+        Fetches all buckets from the S3 interface.
 
         :return: List of bucket names.
         :rtype: List[str]
@@ -97,25 +96,6 @@ class ArbutusAgent(Agent):
         except KeyError:
             pass
         return objects
-
-    def fetch_all_keys(self) -> List[str]:
-        """
-        Fetches all object keys from S3 buckets.
-
-        :return: A list of all object keys (i.e. paths).
-        :rtype: list[str]
-        """
-        all_keys = []
-
-        # fetch all buckets
-        buckets = self.fetch_all_buckets()
-
-        # fetch all objects in each bucket
-        for bucket in buckets:
-            objects = self.fetch_all_bucket_keys(bucket)
-            all_keys.extend(objects)
-
-        return all_keys
 
     def generate_access_links(self, resource: str, method: str, ttl: int):
         """

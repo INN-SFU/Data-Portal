@@ -1,6 +1,18 @@
+
 uvicorn:
-  host: 127.0.0.1
-  port: 8000
-  reset: false
+  host: 0.0.0.0
+  port: 5000
   reload: true
   debug: true
+
+logging:
+  level:
+    root: INFO
+    uvicorn: INFO
+    uvicorn_error: ERROR
+    uvicorn_access: INFO
+    casbin: INFO
+    app: INFO
+
+system:
+  reset: false

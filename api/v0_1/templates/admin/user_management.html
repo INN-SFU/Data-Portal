@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Access Management</title>
+    <title>User Management</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
+    <script src="https://unpkg.com/htmx.org@1.6.1"></script>
     <style>
         .selected {
             background-color: #d3d3d3;
@@ -20,12 +21,30 @@
         .file-tree-view {
             margin-top: 10px;
         }
+        .delete-user-container {
+            display: none;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
-    <h1>User Access Management</h1>
+    <a href="/admin/home"><button>Admin Home</button></a>
+    <h1>User Management</h1>
+    <div>
+        <h2>New User</h2>
+        <form hx-put="/service/admin/user/" hx-target="#response" hx-swap="innerHTML">
+            <label for="uid">User ID:</label>
+            <input type="text" id="uid" name="uid" required>
+            <br>
+            <label for="role">Role:</label>
+            <input type="text" id="role" name="role" required>
+            <br>
+            <button type="submit">Create User</button>
+        </form>
+    </div>
+
     <div class="user-list">
-        <h3>Select User</h3>
+        <h2>Existing Users</h2>
         <ul id="user-list">
             {% for user in users %}
                 <li class="user" data-user="{{ user }}">{{ user }}</li>
@@ -48,12 +67,24 @@
         </div>
     </div>
 
+    <div class="delete-user-container" id="delete-user-container">
+        <form id="delete-user-form" hx-delete="/service/admin/user/" hx-target="#response" hx-swap="innerHTML">
+            <input type="hidden" id="delete-uid" name="uid">
+            <button type="submit">Delete User</button>
+        </form>
+    </div>
+
+    <div id="response"></div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             $('#user-list').on('click', '.user', function() {
                 const selectedUser = $(this).data('user');
                 $('#selected-user').text(selectedUser);
+                $('#delete-uid').val(selectedUser);  // Set the value for the delete form
+                $('#delete-user-form').attr('hx-delete', `/service/admin/user/?uid=${selectedUser}`);  // Set the action for the delete form
                 $('.file-tree-container').show();
+                $('.delete-user-container').show();  // Show the delete form
                 $('.file-tree').hide();
                 $(`.file-tree[data-user="${selectedUser}"]`).show();
 
