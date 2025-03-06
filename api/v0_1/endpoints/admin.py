@@ -114,7 +114,7 @@ async def remove_user(uid: str):
         raise HTTPException(status_code=400, detail=e.__str__())
 
 
-# ADMIN POLICY MANAAGEMENT
+# ADMIN POLICY MANAGEMENT
 
 @admin_router.get("/policy", dependencies=[Depends(is_admin)])
 async def get_policies(request: Request):
@@ -202,7 +202,7 @@ async def get_all_assets(request: Request, access_point: str):
     raise HTTPException(status_code=404, detail="Access point not found")
 
 
-# Policy Management GUIs
+# ADMIN GUIS
 @admin_router.get("/file-management", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
 async def admin_file_management(request: Request, uid: str = Depends(is_admin)):
     assets = {}
@@ -222,3 +222,8 @@ async def user_access(request: Request):
             user_file_trees[uid][agent.access_point_slug] = convert_file_tree_to_dict(agent.get_user_file_tree(uid, 'read', dam))
     return templates.TemplateResponse("user_access.html", {"request": request, "users": users,
                                                            "user_file_trees": user_file_trees})
+
+
+@admin_router.get("/user/new", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
+async def create_user(request: Request):
+    return templates.TemplateResponse("add_user_form.html", {"request": request})
