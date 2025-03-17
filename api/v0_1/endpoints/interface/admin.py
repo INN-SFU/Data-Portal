@@ -1,4 +1,5 @@
 import os
+import ast
 
 from fastapi import Request, Depends, APIRouter
 from fastapi.security import HTTPBasic
@@ -11,6 +12,8 @@ from core.data_access_manager import dam
 
 from api.v0_1.endpoints.utils import convert_file_tree_to_dict
 from api.v0_1.endpoints.utils.server import is_admin, validate_credentials
+
+from api.v0_1.endpoints.service.admin import list_endpoints
 
 security = HTTPBasic()
 admin_ui_router = APIRouter(prefix='/admin')
@@ -91,3 +94,20 @@ async def user_management(request: Request):
     return templates.TemplateResponse("/admin/user_management.html",
                                       {"request": request, "users": users,
                                        "user_file_trees": user_file_trees})
+
+
+@admin_ui_router.get("/home/endpoint-management", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
+async def endpoint_management(request: Request):
+    """
+    View function for endpoint management page.
+
+    Parameters:
+    - **request** (Request): The HTTP request object.
+
+    Returns:
+    - **TemplateResponse**: The response object with endpoint management page.
+    """
+    response = await list_endpoints()
+    content = ast.literal_eval(response.body.decode('utf-8'))
+    return templates.TemplateResponse("/admin/endpoint_management.html", {"request": request,
+                                                                          "endpoints": content['endpoints']})

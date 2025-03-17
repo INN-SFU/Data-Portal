@@ -136,7 +136,7 @@ async def add_user_(uid: str = Query(...), role: str = Query(...)) -> JSONRespon
 
 
 @admin_router.delete("/user/", dependencies=[Depends(is_admin)])
-async def remove_user(uid: str = Query(...)) ->JSONResponse:
+async def remove_user(uid: str = Query(...)) -> JSONResponse:
     """
     Delete a user and all their associated data.
 
@@ -162,7 +162,7 @@ async def remove_user(uid: str = Query(...)) ->JSONResponse:
 
 @admin_router.get("/policy", dependencies=[Depends(is_admin)])
 async def get_policies(uid: str = Query(None), access_point: str = Query(None), resource: str = Query(None),
-                       action: str = Query(None)) ->JSONResponse:
+                       action: str = Query(None)) -> JSONResponse:
     """
     Retrieve a policy.
 
@@ -272,3 +272,54 @@ async def list_assets(access_point: str = Query(...), pattern: str = Query(None)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Access point {access_point} not found.")
     assets = agent.get_file_paths(pattern)
     return JSONResponse(content={"assets": assets})
+
+
+@admin_router.get("/endpoints/", dependencies=[Depends(is_admin)])
+async def list_endpoints() -> JSONResponse:
+    """
+    Returns a list of storage endpoints issued by the administrator
+
+    Returns:
+    - **JSONResponse**: A JSON response with a list of storage endpoints.
+    """
+    try:
+        endpoints = [agents[agent].access_point_slug for agent in agents]
+    except KeyError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No endpoints found.")
+
+    return JSONResponse(content={"endpoints": endpoints})
+
+
+@admin_router.put("/endpoints/", dependencies=[Depends(is_admin)])
+async def new_endpoint(access_point: str = Query(...), endpoint: str = Query(...)) -> JSONResponse:
+    """
+    Add a new storage endpoint.
+
+    Parameters:
+    - **access_point** (str): The access point slug.
+    - **endpoint** (str): The endpoint URL.
+
+    Returns:
+    - **JSONResponse**: A JSON response with a success message if the endpoint is added successfully.
+
+    Raises:
+    - **HTTPException**: If there is an error adding the endpoint.
+    """
+    NotImplementedError("This feature is not yet implemented.")
+
+
+@admin_router.delete("/endpoints/", dependencies=[Depends(is_admin)])
+async def remove_endpoint(access_point: str = Query(...)) -> JSONResponse:
+    """
+    Remove a storage endpoint.
+
+    Parameters:
+    - **access_point** (str): The access point slug.
+
+    Returns:
+    - **JSONResponse**: A JSON response with a success message if the endpoint is removed successfully.
+
+    Raises:
+    - **HTTPException**: If there is an error removing the endpoint.
+    """
+    NotImplementedError("This feature is not yet implemented.")

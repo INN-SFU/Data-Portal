@@ -30,13 +30,26 @@ if __name__ == "__main__":
 
     # Accessing path variables and converting to absolute paths
     for path in path_envs:
+        print(path)
         os.environ[path] = os.path.abspath(os.getenv(path))
+
+    # ROOT DIRECTORY
+    print('ROOT_DIRECTORY')
+    ROOT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+    os.environ['ROOT_DIRECTORY'] = ROOT_DIRECTORY
 
     # RESET
     if config['system']['reset']:
         from core.settings.SYS_RESET import SYS_RESET
 
         SYS_RESET()
+
+        # Set reset to False
+        config['system']['reset'] = False
+        # Write the updated configuration to the file
+        with open(config_file, 'w') as f:
+            yaml.dump(config, f)
+        f.close()
 
     # LOG INITIALIZATION
     print("Initializing loggers...")
