@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<body>
+<head>
+    <meta charset="UTF-8">
+    <title>SE Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+</head>
+<body>
+    <a href="/ui/admin/home"><button>Admin Home</button></a>
+    <h1>Storage Endpoint Management</h1>
+    <div>
+        <h3>Registered Endpoints</h3>
+        <div id="endpoint-list">
+            {% for endpoint in endpoints %}
+                <div class="endpoints" data-endpoint="{{ endpoint }}">
+                    <strong>{{ endpoint }}</strong>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

@@ -1,3 +1,3 @@
-from .config import dam
-from .config import agents
+from core.data_access_manager import dam
+from core.connectivity import agents
 from ._generate_secrets import _generate_secrets

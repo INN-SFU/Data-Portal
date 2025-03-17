@@ -11,12 +11,12 @@ from core.connectivity import agents
 from core.data_access_manager import dam
 
 security = HTTPBasic()
-user_router = APIRouter(prefix='/user')
+asset_router = APIRouter(prefix='/asset')
 
 logger = logging.getLogger("uvicorn")
 
 
-@user_router.get("/assets", dependencies=[Depends(validate_credentials)])
+@asset_router.get("/assets", dependencies=[Depends(validate_credentials)])
 def list_assets(uid: str = Depends(validate_credentials), access_point: str = Query(None), action: str = Query(None)) \
         -> JSONResponse:
     """
@@ -47,7 +47,7 @@ def list_assets(uid: str = Depends(validate_credentials), access_point: str = Qu
     return JSONResponse(status_code=status.HTTP_200_OK, content={"assets": assets})
 
 
-@user_router.put("/upload", dependencies=[Depends(validate_credentials)])
+@asset_router.put("/upload", dependencies=[Depends(validate_credentials)])
 def put_asset(uid: str = Depends(validate_credentials), resource: str = Query(...), access_point: str = Query(...)) -> (
         JSONResponse):
     """
@@ -82,7 +82,7 @@ def put_asset(uid: str = Depends(validate_credentials), resource: str = Query(..
                             detail="User does not have write access to this resource")
 
 
-@user_router.put("/download", dependencies=[Depends(validate_credentials)])
+@asset_router.put("/download", dependencies=[Depends(validate_credentials)])
 def get_asset(uid: str = Depends(validate_credentials), resource: str = Query(...), access_point: str = Query(...)) \
         -> JSONResponse:
     """

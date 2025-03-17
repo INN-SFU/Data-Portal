@@ -63,6 +63,7 @@ class App:
         async def test_endpoint():
             return "Test endpoint is working!"
 
+
     def get_app(self):
         return self.app
 
