@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from treelib import node
 
-from core.connectivity import agents
+from core.settings.endpoints import storage_endpoints
 from core.data_access_manager import dam
 
 from api.v0_1.endpoints.utils import convert_file_tree_to_dict
@@ -48,14 +48,14 @@ async def policy_management(request: Request, uid: str = Depends(validate_creden
     """
     assets = {}
     # Loop through storage endpoints
-    for agent in agents.values():
+    for endpoint in storage_endpoints.values():
         # Filter based on write access for the admin. Write access allows admin to update policies.
         def node_filter(n: node):
-            vals = (uid, agent.access_point_slug, n.identifier, 'write')
+            vals = (uid, endpoint.access_point_slug, n.identifier, 'write')
             return dam.enforcer.enforce(*vals)
 
         # Apply the filter
-        assets[agent.access_point_slug] = convert_file_tree_to_dict(agent.filter_file_tree(node_filter))
+        assets[endpoint.access_point_slug] = convert_file_tree_to_dict(endpoint.filter_file_tree(node_filter))
     return templates.TemplateResponse("/admin/policy_management.html", {"request": request, "assets": assets})
 
 
@@ -81,15 +81,15 @@ async def user_management(request: Request):
         user_file_trees[uid] = dict.fromkeys(access_points)
 
         # Loop through filtered access points
-        for agent_slug in agents:
+        for endpoint in storage_endpoints.keys():
             # Filter based on read and write access
             def node_filter(n: node):
-                vals = (uid, agent_slug, n.identifier, 'write')
+                vals = (uid, endpoint, n.identifier, 'write')
                 return dam.enforcer.enforce(*vals)
 
             # Apply the filter
-            user_file_trees[uid][agent_slug] = convert_file_tree_to_dict(
-                agents[agent_slug].filter_file_tree(node_filter))
+            user_file_trees[uid][endpoint] = convert_file_tree_to_dict(
+                storage_endpoints[endpoint].filter_file_tree(node_filter))
 
     return templates.TemplateResponse("/admin/user_management.html",
                                       {"request": request, "users": users,
@@ -111,3 +111,19 @@ async def endpoint_management(request: Request):
     content = ast.literal_eval(response.body.decode('utf-8'))
     return templates.TemplateResponse("/admin/endpoint_management.html", {"request": request,
                                                                           "endpoints": content['endpoints']})
+
+
+@admin_ui_router.get("/home/endpoint-management/create", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
+async def endpoint_management(request: Request):
+    """
+    View function for endpoint management page.
+
+    Parameters:
+    - **request** (Request): The HTTP request object.
+
+    Returns:
+    - **TemplateResponse**: The response object with endpoint management page.
+    """
+    response = await list_endpoints()
+    content = ast.literal_eval(response.body.decode('utf-8'))
+    return templates.TemplateResponse("/admin/endpoint_creator.html", {"request": request})

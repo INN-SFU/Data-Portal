@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Endpoint Creator</title>
+</head>
+<body>
+    <a href="/ui/admin/home/endpoint-management"><button>Endpoint Management</button></a>
+    <h1>New Endpoint</h1>
+    <div>
+        <h3>Endpoint Flavours</h3>
+        <div id="endpoint-flavours">
+            {% for endpoint in endpoints %}
+                <div class="endpoint-flavours" data-endpoint="{{ endpoint_flavour }}">
+                    <a href=""><button>Endpoint Management</button></a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

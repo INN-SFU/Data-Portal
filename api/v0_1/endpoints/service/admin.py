@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse
 from fastapi_mail import MessageSchema, FastMail
 
-from core.connectivity import agents
+from core.settings.endpoints import storage_endpoints
 from core.data_access_manager import dam
 from api.v0_1.endpoints.utils.server import is_admin
 from api.v0_1.emailer import conf as email_config
@@ -208,7 +208,7 @@ async def add_policy(uid: str = Query(...), access_point: str = Query(...), reso
     if uid not in dam.get_users():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     # Check if the access point exists
-    if access_point not in [agent.access_point_slug for agent in agents]:
+    if access_point not in storage_endpoints.keys():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Access point not found")
 
     try:
@@ -267,10 +267,10 @@ async def list_assets(access_point: str = Query(...), pattern: str = Query(None)
     - **HTTPException**: If the credentials are invalid.
     """
     try:
-        agent = agents[access_point]
+        endpoint = storage_endpoints[access_point]
     except KeyError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Access point {access_point} not found.")
-    assets = agent.get_file_paths(pattern)
+    assets = endpoint.get_file_paths(pattern)
     return JSONResponse(content={"assets": assets})
 
 
@@ -282,12 +282,8 @@ async def list_endpoints() -> JSONResponse:
     Returns:
     - **JSONResponse**: A JSON response with a list of storage endpoints.
     """
-    try:
-        endpoints = [agents[agent].access_point_slug for agent in agents]
-    except KeyError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No endpoints found.")
 
-    return JSONResponse(content={"endpoints": endpoints})
+    return JSONResponse(content={"endpoints": list(storage_endpoints.keys())})
 
 
 @admin_router.put("/endpoints/", dependencies=[Depends(is_admin)])

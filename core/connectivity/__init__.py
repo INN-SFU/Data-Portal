@@ -1,1 +1,1 @@
-from .initialize import agents
+from .agent_factory import new_endpoint
