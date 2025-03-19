@@ -3,8 +3,8 @@ import os
 import shutil
 from uuid import uuid5, NAMESPACE_DNS
 
-from ..data_access_manager import DataAccessManager
-from ._generate_secrets import _generate_secrets
+from core.data_access_manager import DataAccessManager
+from core.settings.security._generate_secrets import _generate_secrets
 from core.authentication.auth import generate_credentials
 
 
@@ -18,9 +18,9 @@ def SYS_RESET():
 
     dam = DataAccessManager()
 
-    if dam.get_users() is not None:
+    if dam.get_all_users() is not None:
         print('Removing existing users and associated data...')
-        for user in dam.get_users():
+        for user in dam.get_all_users():
             dam.remove_user(user)
 
     with open(os.getenv('UUID_STORE'), 'w') as file:
@@ -49,3 +49,5 @@ def SYS_RESET():
 
     dam.add_user(admin_uid, uuid5(NAMESPACE_DNS, admin_key), 'admin')
     print(f'Admin User ID:\t{admin_uid}\nAdmin Key:\t{admin_key}')
+    print('Admin user initialized successfully.')
+    print("System reset complete.")

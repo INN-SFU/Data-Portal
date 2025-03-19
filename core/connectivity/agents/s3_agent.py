@@ -11,34 +11,43 @@ from core.connectivity.agent import Agent
 logger = logging.getLogger("casbin")
 
 
-class ArbutusAgent(Agent):
+class S3Agent(Agent):
     """
-    ArbutusAgent is a class that represents an agent for interacting with the Arbutus Cloud Object Store service.
+    S3Agent is a class that represents an agent for interacting with an S3 object store service.
 
     Inherits from Agent.
 
     Attributes:
-        endpoint (str): The endpoint URL of the Arbutus Cloud service.
-        s3_client (boto3.interface): The S3 interface for interacting with the Arbutus Cloud service.
-        file_tree (treelib.Tree): The file tree representing the structure of objects in the Arbutus Cloud service.
+        endpoint (str): The endpoint URL of the S3 service.
+        s3_client (boto3.interface): The S3 interface for interacting with the service.
+        file_tree (treelib.Tree): The file tree representing the structure of objects in the S3 service.
     """
 
-    def __init__(self):
-        # Access point slug for Arbutus Cloud, needs a matching entry in agents.json file referenced by
-        # ACCESS_AGENT_CONFIG
-        ACCESS_POINT_SLUG = 'arbutus-cloud'
+    def __init__(self,
+                 access_point_slug: str,
+                 endpoint_url: str,
+                 aws_access_key_id: str,
+                 aws_secret_access_key: str):
+        """
+        Initialize a new instance of the class.
 
-        # Initialize the S3 interface
-        with open(os.getenv('ACCESS_AGENT_CONFIG'), 'r') as f:
-            config = json.load(f)[ACCESS_POINT_SLUG]
-        f.close()
+        :param access_point_slug: The slug for the access point.
+        :type access_point_slug: str
+        :param endpoint_url: The endpoint URL for the access point.
+        :type endpoint_url: str
+        :param aws_access_key_id: The AWS access key ID.
+        :type aws_access_key_id: str
+        :param aws_secret_access_key: The AWS secret access key.
+        :type aws_secret_access_key: str
+        """
+        self.endpoint_url = endpoint_url
 
-        super().__init__(ACCESS_POINT_SLUG, config['endpoint'])
+        super().__init__(access_point_slug, self.endpoint_url)
 
         self.s3_client = boto3.client('s3',
                                       endpoint_url=self.endpoint,
-                                      aws_access_key_id=config['credentials']['aws_access_key_id'],
-                                      aws_secret_access_key=config['credentials']['aws_secret_access_key'])
+                                      aws_access_key_id=aws_access_key_id,
+                                      aws_secret_access_key=aws_secret_access_key)
 
         # Initialize the file tree
         self.file_tree = treelib.Tree()

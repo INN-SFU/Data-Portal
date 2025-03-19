@@ -1,6 +1,6 @@
 import os
 
-from fastapi import Request, Depends, APIRouter, HTTPException, status, Query
+from fastapi import Request, Depends, APIRouter, HTTPException, status
 from fastapi.security import HTTPBasic
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -26,7 +26,7 @@ def user_home(request: Request):
     - **request** (Request): The HTTP request information.
 
     Returns:
-    - **TemplateResponse**: The rendered upload form page.
+    - **TemplateResponse**: The rendered user home page.
     """
     return templates.TemplateResponse("/user/home.html", {"request": request})
 
@@ -59,7 +59,7 @@ def upload_form(request: Request, uid: str = Depends(validate_credentials)):
         assets[agents[agent_slug].access_point_slug] = (
             convert_file_tree_to_dict(agents[agent_slug].filter_file_tree(node_filter)))
 
-    return templates.TemplateResponse("/assets/download.html", {"request": request, "assets": assets})
+    return templates.TemplateResponse("/assets/upload.html", {"request": request, "assets": assets})
 
 
 @user_ui_router.get("/home/download", response_class=HTMLResponse)
