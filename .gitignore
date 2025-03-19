@@ -1,11 +1,11 @@
 _*/
 .*/
 core/connectivity/arbutus/*.sh
-core/connectivity/agents.json
+core/settings/endpoints/agents.json
 *.policies
 core/settings/.env
-core/settings/.secrets
-core/user_policies/
+core/settings/security/.secrets
+core/authentication/user_data/
 core/authentication/uuids.json
 *.log
 *__pycache__*
