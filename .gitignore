@@ -2,6 +2,7 @@ _*/
 .*/
 core/connectivity/arbutus/*.sh
 core/settings/endpoints/agents.json
+config.yaml
 *.policies
 core/settings/.env
 core/settings/security/.secrets
