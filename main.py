@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     # RESET
     if config['system']['reset']:
-        from core.settings.SYS_RESET import SYS_RESET
+        from core.settings.security.SYS_RESET import SYS_RESET
 
         SYS_RESET()
 
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     # APP SECRETS
     app_logger.info("Loading secrets...")
-    load_dotenv("core/settings/.secrets")
+    load_dotenv("core/settings/security/.secrets")
 
     app_logger.info("Starting application...")
     uvicorn.run(app='api.v0_1.app:app',
