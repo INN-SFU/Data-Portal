@@ -8,9 +8,12 @@ from treelib import node
 
 from core.connectivity import agents
 from core.data_access_manager import dam
+from core.settings.endpoints import storage_endpoints
 
 from api.v0_1.endpoints.utils.server import validate_credentials
 from api.v0_1.endpoints.utils.server import convert_file_tree_to_dict
+
+from api.v0_1.endpoints.service.asset import list_assets
 
 security = HTTPBasic()
 user_ui_router = APIRouter(prefix='/user')
@@ -18,7 +21,7 @@ templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
 
 @user_ui_router.get("/home", response_class=HTMLResponse, dependencies=[Depends(validate_credentials)])
-def user_home(request: Request):
+async def user_home(request: Request, uid: str = Depends(validate_credentials)):
     """
     Render the user home page.
 
@@ -28,7 +31,24 @@ def user_home(request: Request):
     Returns:
     - **TemplateResponse**: The rendered user home page.
     """
-    return templates.TemplateResponse("/user/home.html", {"request": request})
+
+    # Get all storage access points user has read access to
+    access_points = set([policy[1] for policy in dam.get_user_policies(uid)])
+
+    user_file_tree = dict.fromkeys(access_points)
+
+    # Loop through filtered access points
+    for endpoint in storage_endpoints.keys():
+        # Filter based on read and write access
+        def node_filter(n: node):
+            vals = (uid, endpoint, n.identifier, 'write')
+            return dam.enforcer.enforce(*vals)
+
+        # Apply the filter
+        user_file_tree[endpoint] = convert_file_tree_to_dict(
+            storage_endpoints[endpoint].filter_file_tree(node_filter))
+
+    return templates.TemplateResponse("/user/home.html", {"request": request, "assets": user_file_tree, 'endpoints': storage_endpoints})
 
 
 @user_ui_router.get("/home/upload", response_class=HTMLResponse, dependencies=[Depends(validate_credentials)])
@@ -38,7 +58,7 @@ def upload_form(request: Request, uid: str = Depends(validate_credentials)):
 
     Parameters:
     - **request** (Request): The HTTP request information.
-    - **uid** (str): The User ID from the validated credentials.
+    - **uid** (str): The User ID from the validated _credentials.
 
     Returns:
     - **TemplateResponse**: The rendered upload form page.
@@ -69,7 +89,7 @@ def download_form(request: Request, uid: str = Depends(validate_credentials)):
 
     Parameters:
     - **request** (Request): The HTTP request information.
-    - **uid** (str): The User ID of the validated user credentials.
+    - **uid** (str): The User ID of the validated user _credentials.
 
     Returns:
     - **TemplateResponse**: The rendered download form page.
@@ -100,7 +120,7 @@ def retrieve_asset(request: Request, uid: str = Depends(validate_credentials)):
 
     Parameters:
     - **request** (Request): The request object containing relevant query parameters.
-    - **uid** (str): The User ID of the validated credentials.
+    - **uid** (str): The User ID of the validated _credentials.
 
     Returns:
     - **TemplateResponse**: HTML template with presigned URLs for the assets.

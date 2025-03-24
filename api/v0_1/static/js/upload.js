@@ -26,7 +26,7 @@ document.getElementById('upload-button').addEventListener('click', async () => {
         return;
     }
 
-    const selectedEndpointElement = selectedNode.closest('.endpoint');
+    const selectedEndpointElement = selectedNode.closest('.endpoint_url');
     if (!selectedEndpointElement) {
         alert("Endpoint not found.");
         return;

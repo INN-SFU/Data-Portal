@@ -2,15 +2,17 @@ import json
 import os
 from uuid import uuid5, NAMESPACE_DNS
 
-from fastapi import Depends, HTTPException, APIRouter, status, Query
+from fastapi import Depends, HTTPException, APIRouter, status, Query, Body
 from fastapi.security import HTTPBasic
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import JSONResponse
 from fastapi_mail import MessageSchema, FastMail
 
+from core.connectivity import new_endpoint
+from core.connectivity.agents.models import EndpointConfig
 from core.settings.endpoints import storage_endpoints
 from core.data_access_manager import dam
-from api.v0_1.endpoints.utils.server import is_admin
+from api.v0_1.endpoints.utils.server import is_admin, validate_credentials
 from api.v0_1.emailer import conf as email_config
 
 security = HTTPBasic()
@@ -84,7 +86,7 @@ async def register_user(uid: str = Query(...), role: str = Query(...)) -> JSONRe
 @admin_router.get("/user", dependencies=[Depends(is_admin)])
 async def get_user_(uid: str = Query(...)) -> JSONResponse:
     """
-    Handler for the get user endpoint.
+    Handler for the get user endpoint_url.
 
     Parameters:
     - **uid** (str): The user ID or "list" to retrieve all users.
@@ -264,7 +266,7 @@ async def list_assets(access_point: str = Query(...), pattern: str = Query(None)
     - **JSONResponse**: A JSON response with a list of matching assets.
 
     Raises:
-    - **HTTPException**: If the credentials are invalid.
+    - **HTTPException**: If the _credentials are invalid.
     """
     try:
         endpoint = storage_endpoints[access_point]
@@ -283,39 +285,96 @@ async def list_endpoints() -> JSONResponse:
     - **JSONResponse**: A JSON response with a list of storage endpoints.
     """
 
-    return JSONResponse(content={"endpoints": list(storage_endpoints.keys())})
+    details = dict(zip(storage_endpoints.keys(), [endpoint.get_config() for endpoint in storage_endpoints.values()]))
+
+    return JSONResponse(content={"endpoints": details})
 
 
-@admin_router.put("/endpoints/", dependencies=[Depends(is_admin)])
-async def new_endpoint(access_point: str = Query(...), endpoint: str = Query(...)) -> JSONResponse:
+@admin_router.post("/endpoints/", dependencies=[Depends(is_admin)])
+async def create_new_endpoint(config: EndpointConfig = Body(...),
+                              username: str = Depends(validate_credentials)) -> JSONResponse:
     """
     Add a new storage endpoint.
 
-    Parameters:
-    - **access_point** (str): The access point slug.
-    - **endpoint** (str): The endpoint URL.
+    Accepts a JSON payload that includes a "flavour" field and additional fields
+    depending on the selected flavour.
 
-    Returns:
-    - **JSONResponse**: A JSON response with a success message if the endpoint is added successfully.
+    Example JSON for S3:
+    {
+        "flavour": "s3",
+        "access_point_slug": "my-s3-endpoint",
+        "endpoint_url": "https://s3.amazonaws.com/mybucket",
+        "aws_access_key_id": "YOUR_AWS_ACCESS_KEY",
+        "aws_secret_access_key": "YOUR_AWS_SECRET"
+    }
 
-    Raises:
-    - **HTTPException**: If there is an error adding the endpoint.
+    Example JSON for POSIX:
+    {
+        "flavour": "posix",
+        "access_point_slug": "local-files",
+        "endpoint_url": "/mnt/storage",
+        "ssh_ca_key": "/path/to/ssh_ca_key"
+    }
     """
-    NotImplementedError("This feature is not yet implemented.")
+    try:
+        # Convert the Pydantic model to a dict.
+        flavour = config.flavour
+
+        config = config.dict(exclude={"flavour"})
+
+        # Generate a new uid for the endpoint using the access_point_slug.
+        endpoint_uid = str(uuid5(NAMESPACE_DNS, config['access_point_slug']))
+
+        # Create the endpoint using your factory function.
+        endpoint = new_endpoint(flavour, config)
+
+        # Build the path to save the configuration.
+        endpoint_config_json = os.path.join(os.getenv('ENDPOINT_CONFIGS'), f"{endpoint_uid}.json")
+        endpoint_config = {
+            "flavour": flavour,
+            "config": endpoint._get_config()
+        }
+
+        # Add admin policy to the endpoint
+        try:
+            dam.add_user_policy(username, endpoint_uid, ".*", "read")
+        except ValueError:
+            pass
+
+        with open(endpoint_config_json, 'w') as f:
+            json.dump(endpoint_config, f, indent=4)
+        f.close()
+
+        # Add the endpoint to your storage_endpoints registry (assuming it's a global dict)
+        storage_endpoints[endpoint_uid] = endpoint
+
+        return JSONResponse(
+            status_code=200,
+            content={"detail": f"Endpoint '{endpoint.access_point_slug}' created successfully."}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @admin_router.delete("/endpoints/", dependencies=[Depends(is_admin)])
-async def remove_endpoint(access_point: str = Query(...)) -> JSONResponse:
+async def remove_endpoint(endpoint_uid: str = Query(...)) -> JSONResponse:
     """
     Remove a storage endpoint.
 
-    Parameters:
-    - **access_point** (str): The access point slug.
-
-    Returns:
-    - **JSONResponse**: A JSON response with a success message if the endpoint is removed successfully.
-
-    Raises:
-    - **HTTPException**: If there is an error removing the endpoint.
+    :param endpoint_uid: The unique identifier of the endpoint.
+    :return: A JSON response with the success message if the endpoint is removed successfully.
     """
-    NotImplementedError("This feature is not yet implemented.")
+
+    try:
+        endpoint = storage_endpoints[endpoint_uid]
+    except KeyError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Access point {endpoint_uid} not found.")
+
+    # Remove the endpoint configuration file
+    endpoint_config_json = os.path.join(os.getenv('ENDPOINT_CONFIGS'), f"{endpoint_uid}.json")
+    os.remove(endpoint_config_json)
+
+    # Remove the endpoint from the registry
+    del storage_endpoints[endpoint_uid]
+
+    return JSONResponse(content={"detail": f"Endpoint '{endpoint_uid}' removed."})

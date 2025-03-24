@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi_mail import ConnectionConfig
+from starlette.responses import JSONResponse
 
 from api.v0_1.endpoints import application_router
 
@@ -24,6 +25,7 @@ class App:
     Attributes:
         app: The FastAPI application.
     """
+
     def __init__(self):
         self.app = FastAPI()
 
@@ -59,10 +61,9 @@ class App:
             """
             return templates.TemplateResponse("/landing/index.html", {"request": request})
 
-        @self.app.get("/test", response_class=HTMLResponse)
+        @self.app.get("/test", response_class=JSONResponse)
         async def test_endpoint():
-            return "Test endpoint is working!"
-
+            return JSONResponse(content={"message": "The test endpoint_url is working."})
 
     def get_app(self):
         return self.app

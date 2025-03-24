@@ -21,11 +21,11 @@ def _generate_uid_secret_key(uid_slug: str) -> str:
 
 def generate_credentials(uid_slug: str) -> (str, str):
     """
-    Generate credentials for a given uid_slug.
+    Generate _credentials for a given uid_slug.
 
     :param uid_slug: The unique identifier.
     :type uid_slug: str
-    :return: The generated credentials consisting of uuid and key.
+    :return: The generated _credentials consisting of uuid and key.
     :rtype: tuple[str, str]
     """
     return uid_slug, _generate_uid_secret_key(uid_slug)
@@ -33,11 +33,11 @@ def generate_credentials(uid_slug: str) -> (str, str):
 
 def validate_credentials(uid_slug: str, key: str) -> bool:
     """
-    Validate if the provided credentials are valid.
+    Validate if the provided _credentials are valid.
 
     :param uid_slug: The user ID. A string.
     :param key: The key associated with the user ID. A string.
-    :return: True if the provided credentials are valid, False otherwise.
+    :return: True if the provided _credentials are valid, False otherwise.
     """
 
     derived_key = _generate_uid_secret_key(uid_slug)
@@ -52,14 +52,14 @@ def generate_token(uid_slug: str, key: str, time_to_live: int, access_point: str
     :param uid_slug: The unique identifier or slug for the user.
     :param key: The key or password for the user.
     :param time_to_live: The time (in seconds) that the token will remain valid.
-    :param access_point: (optional) The access point or endpoint for the user.
+    :param access_point: (optional) The access point or endpoint_url for the user.
     :param resource: (optional) The resource or object that the user intends to access.
     :param action: (optional) The action or operation that the user intends to perform.
     :return: The generated access token as a string.
-    :raises: ValueError if the provided credentials are invalid.
+    :raises: ValueError if the provided _credentials are invalid.
     """
     if validate_credentials(uid_slug, key):
-        # generate access token if credentials are valid
+        # generate access token if _credentials are valid
         payload = {
             "uid": uid_slug,
             "key": key,
@@ -71,7 +71,7 @@ def generate_token(uid_slug: str, key: str, time_to_live: int, access_point: str
 
         return jwt.encode(payload, os.getenv("JWT_TOKEN_SECRET"), algorithm="HS256")
     else:
-        raise ValueError("Invalid credentials")
+        raise ValueError("Invalid _credentials")
 
 
 def token_expired(token: str) -> bool:
@@ -105,7 +105,8 @@ def decode_token(token: str):
 if __name__ == '__main__':
     from dotenv import load_dotenv
 
-    load_dotenv("/core/settings/security/.secrets")
+    load_dotenv("/Users/pmahon/Research/INN/data_portal/AMS/core/settings/.env")
+    load_dotenv("/Users/pmahon/Research/INN/data_portal/AMS/core/settings/security/.secrets")
     uid_slug_ = "pmahon@sfu.ca"
     _, key_ = generate_credentials(uid_slug_)
     print(f"uid_slug: {uid_slug_}")

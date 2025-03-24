@@ -1,15 +1,104 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>INN Data Portal</title>
+  <meta charset="UTF-8">
+  <title>Asset Management</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- You can reference your local styles.css if needed -->
+  <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+  <style>
+    /* Basic card styling for consistency */
+    .card {
+      border: 1px solid #ccc;
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      background-color: #fafafa;
+    }
+    .card-header {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .form-group {
+      margin-bottom: 10px;
+    }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-upload {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .btn-download {
+      background-color: #2196F3;
+      color: white;
+    }
+  </style>
+  <!-- Include htmx -->
+  <script src="https://unpkg.com/htmx.org@1.6.1"></script>
 </head>
 <body>
-    <a href="/"><button>Data Portal Home</button></a>
-    <a href="/ui/logout"><button>Logout</button></a>
-    <h1>Administrator Home</h1>
-    <a href="/ui/user/home/upload"><button>Upload</button></a>
-    <a href="/ui/user/home/download"><button>Download</button></a>
+  <a href="/ui/admin/home"><button>Admin Home</button></a>
+  <h1>Asset Management</h1>
+
+  <!-- Available Assets Section -->
+  <div class="card">
+    <div class="card-header">Available Assets</div>
+    <div id="asset-list">
+      {% if assets %}
+        <ul>
+          {% for key, value in assets.items() %}
+            <li><strong>{{ key }}</strong>: {{ value }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No assets available.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Upload Asset Form -->
+  <div class="card">
+    <div class="card-header">Upload Asset</div>
+    <form hx-put="/asset/upload" hx-target="#upload-response" hx-swap="innerHTML">
+      <div class="form-group">
+        <label for="upload-resource">Resource:</label>
+        <input type="text" id="upload-resource" name="resource" required placeholder="Enter resource path">
+      </div>
+      <div class="form-group">
+        <label for="upload-access_point">Access Point:</label>
+        <input type="text" id="upload-access_point" name="access_point" required placeholder="Enter access point">
+      </div>
+      <button type="submit" class="btn btn-upload">Get Upload URL</button>
+    </form>
+    <div id="upload-response"></div>
+  </div>
+
+  <!-- Download Asset Form -->
+  <div class="card">
+    <div class="card-header">Download Asset</div>
+    <form hx-put="/asset/download" hx-target="#download-response" hx-swap="innerHTML">
+      <div class="form-group">
+        <label for="download-resource">Resource:</label>
+        <input type="text" id="download-resource" name="resource" required placeholder="Enter resource path">
+      </div>
+      <div class="form-group">
+        <label for="download-access_point">Access Point:</label>
+        <input type="text" id="download-access_point" name="access_point" required placeholder="Enter access point">
+      </div>
+      <button type="submit" class="btn btn-download">Get Download URL</button>
+    </form>
+    <div id="download-response"></div>
+  </div>
+
+  <script>
+    // Optional: Listen for htmx events to log responses
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+      console.log("htmx response:", evt.detail);
+    });
+  </script>
 </body>
 </html>

@@ -32,7 +32,7 @@ def list_assets(uid: str = Depends(validate_credentials), access_point: str = Qu
         - **assets**: A list of the asset keys the user has access to according to the provided filters.
 
     Raises:
-    - **HTTPException**: If the provided credentials are invalid.
+    - **HTTPException**: If the provided _credentials are invalid.
     """
     # Retrieve policies according to the filters
     policies = dam.get_all_user_policies(uid, access_point, action)

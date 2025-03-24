@@ -37,11 +37,11 @@ def is_admin(credentials: HTTPBasicCredentials = Depends(security)):
     password = credentials.password
 
     if uid not in dam.get_users():
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Invalid _credentials")
     if validate_credentials(uid, password) and dam.get_user(uid)['role'] == "admin":
         return uid  # Return uid if user is admin
     else:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        raise HTTPException(status_code=401, detail="Invalid _credentials")
 
 
 # ADMIN ENDPOINTS
@@ -54,7 +54,7 @@ async def admin_route():
 @admin_router.get("/user/{uid}", dependencies=[Depends(is_admin)])
 async def get_user_(uid: str):
     """
-    Handler for the get user endpoint.
+    Handler for the get user endpoint_url.
 
     :param uid: The user ID.
     :type uid: str
@@ -75,7 +75,7 @@ async def get_user_(uid: str):
 @admin_router.put("/user/{uid}", dependencies=[Depends(is_admin)])
 async def add_user_(request: Request, uid: str):
     """
-    Handler for the add user endpoint.
+    Handler for the add user endpoint_url.
 
     :param uid: The unique ID of the user to be added.
     :param request: The incoming request object.
@@ -119,7 +119,7 @@ async def remove_user(uid: str):
 @admin_router.get("/policy", dependencies=[Depends(is_admin)])
 async def get_policies(request: Request):
     """
-    Handler for the get policies endpoint.
+    Handler for the get policies endpoint_url.
 
     :return: The rendered get_policies.html template.
     :rtype: templates.TemplateResponse
@@ -134,7 +134,7 @@ async def get_policies(request: Request):
 @admin_router.put("/policy", dependencies=[Depends(is_admin)])
 async def add_policy(request: Request):
     """
-    Handler for the add policy endpoint.
+    Handler for the add policy endpoint_url.
 
     :param request: The incoming request object.
     :type request: Request
@@ -164,7 +164,7 @@ async def add_policy(request: Request):
 @admin_router.delete("/policy", dependencies=[Depends(is_admin)])
 async def remove_policy(request: Request):
     """
-    Handler for the remove policy endpoint.
+    Handler for the remove policy endpoint_url.
 
     :param request: The incoming request object.
     :type request: Request
@@ -190,7 +190,7 @@ async def remove_policy(request: Request):
 @admin_router.get("/assets/{access_point}", dependencies=[Depends(is_admin)])
 async def get_all_assets(request: Request, access_point: str):
     """
-    Handler for the get all assets endpoint.
+    Handler for the get all assets endpoint_url.
 
     :return: The rendered all_assets.html template.
     :rtype: templates.TemplateResponse

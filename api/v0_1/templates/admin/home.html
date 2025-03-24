@@ -1,17 +1,62 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>INN Data Portal</title>
+  <meta charset="UTF-8">
+  <title>INN Data Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Simple, minimal styling */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .nav-container {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 10px;
+    }
+    .nav-container a {
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+      padding: 8px 16px;
+    }
+    .sub-nav {
+      margin-bottom: 20px;
+    }
+    .sub-nav a {
+      text-decoration: none;
+      color: #333;
+      margin-right: 10px;
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .sub-nav a:hover {
+      background-color: #eee;
+    }
+  </style>
 </head>
 <body>
-    <a href="/"><button>Data Portal Home</button></a>
-    <a href="/ui/logout"><button>Logout</button></a>
-    <h1>Administrator Home</h1>
-    <a href="/ui/admin/home/policy-management"><button>Policy Management</button></a>
-    <a href="/ui/admin/home/user-management"><button>User Management</button></a>
-    <a href="/ui/admin/home/endpoint-management"><button>Endpoint Management</button></a>
-    <a href="/ui/user/home"><button>Asset Management</button></a>
+  <!-- Top Navigation -->
+  <div class="nav-container">
+    <a href="/">Data Portal Home</a>
+    <a href="/ui/logout">Logout</a>
+  </div>
+
+  <!-- Sub Navigation: Each button links to a different page -->
+  <div class="sub-nav">
+    <a href="/ui/admin/home/policy-management">Policy Management</a>
+    <a href="/ui/admin/home/user-management">User Management</a>
+    <a href="/ui/admin/home/endpoint-management">Endpoint Management</a>
+    <a href="/ui/user/home">Asset Management</a>
+  </div>
+
+  <!-- The page content below will change with full page loads -->
+  <div id="content">
+    <!-- Default content can be placed here, or simply redirect to one of the pages -->
+  </div>
 </body>
 </html>
