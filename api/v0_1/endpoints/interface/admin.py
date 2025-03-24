@@ -9,6 +9,7 @@ from treelib import node
 
 from core.settings.endpoints import storage_endpoints
 from core.data_access_manager import dam
+from core.connectivity.agents import available_flavours
 
 from api.v0_1.endpoints.utils import convert_file_tree_to_dict
 from api.v0_1.endpoints.utils.server import is_admin, validate_credentials
@@ -48,15 +49,16 @@ async def policy_management(request: Request, uid: str = Depends(validate_creden
     """
     assets = {}
     # Loop through storage endpoints
-    for endpoint in storage_endpoints.values():
+    for endpoint_uid, endpoint in zip(storage_endpoints.keys(), storage_endpoints.values()):
         # Filter based on write access for the admin. Write access allows admin to update policies.
         def node_filter(n: node):
-            vals = (uid, endpoint.access_point_slug, n.identifier, 'write')
+            vals = (uid, endpoint_uid, n.identifier, 'write')
             return dam.enforcer.enforce(*vals)
 
         # Apply the filter
-        assets[endpoint.access_point_slug] = convert_file_tree_to_dict(endpoint.filter_file_tree(node_filter))
-    return templates.TemplateResponse("/admin/policy_management.html", {"request": request, "assets": assets})
+        assets[endpoint_uid] = convert_file_tree_to_dict(endpoint.filter_file_tree(node_filter))
+    return templates.TemplateResponse("/admin/policy_management.html", {"request": request, "assets": assets,
+                                                                        "endpoints": storage_endpoints})
 
 
 @admin_ui_router.get("/home/user-management", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
@@ -93,37 +95,23 @@ async def user_management(request: Request):
 
     return templates.TemplateResponse("/admin/user_management.html",
                                       {"request": request, "users": users,
-                                       "user_file_trees": user_file_trees})
+                                       "user_file_trees": user_file_trees,
+                                       "endpoints": storage_endpoints})
 
 
 @admin_ui_router.get("/home/endpoint-management", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
 async def endpoint_management(request: Request):
     """
-    View function for endpoint management page.
+    View function for endpoint_url management page.
 
     Parameters:
     - **request** (Request): The HTTP request object.
 
     Returns:
-    - **TemplateResponse**: The response object with endpoint management page.
+    - **TemplateResponse**: The response object with endpoint_url management page.
     """
     response = await list_endpoints()
     content = ast.literal_eval(response.body.decode('utf-8'))
     return templates.TemplateResponse("/admin/endpoint_management.html", {"request": request,
-                                                                          "endpoints": content['endpoints']})
-
-
-@admin_ui_router.get("/home/endpoint-management/create", response_class=HTMLResponse, dependencies=[Depends(is_admin)])
-async def endpoint_management(request: Request):
-    """
-    View function for endpoint management page.
-
-    Parameters:
-    - **request** (Request): The HTTP request object.
-
-    Returns:
-    - **TemplateResponse**: The response object with endpoint management page.
-    """
-    response = await list_endpoints()
-    content = ast.literal_eval(response.body.decode('utf-8'))
-    return templates.TemplateResponse("/admin/endpoint_creator.html", {"request": request})
+                                                                          "endpoints": content['endpoints'],
+                                                                          "flavours": available_flavours})

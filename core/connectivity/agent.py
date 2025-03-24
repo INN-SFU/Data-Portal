@@ -1,4 +1,6 @@
 import json
+import os
+
 import treelib
 import re
 
@@ -21,18 +23,17 @@ class Agent(ABC):
     - generate_html()
     """
 
-    def __init__(self, access_point_slug: str, endpoint: str, separator: str = '/'):
+    def __init__(self, access_point_slug: str, endpoint_url: str,  separator: str = '/'):
         """
         Initialize a new instance of the class.
 
         :param access_point_slug: The slug for the access point.
         :type access_point_slug: str
-        :param separator: The string separator used in the file namespace structure.
-        :param endpoint: The endpoint for the access point.
-        :type endpoint: str
+        :param endpoint_url: The endpoint_url for the access point.
+        :type endpoint_url: str
         """
         self.access_point_slug = access_point_slug
-        self.endpoint = endpoint
+        self.endpoint_url = endpoint_url
         self.separator = separator
         # File tree to store the structure of objects im the access point
         self.file_tree: treelib.Tree = None
@@ -132,3 +133,26 @@ class Agent(ABC):
             return regex.match(n.identifier)
 
         return [user_node.identifier for user_node in self.file_tree.filter_nodes(node_filter)]
+
+    def get_config(self):
+        """
+        Return the configuration of the agent.
+
+        :return: The configuration of the agent.
+        """
+        config = {
+            'access_point_slug': self.access_point_slug,
+            'endpoint_url': self.endpoint_url,
+            'separator': self.separator
+        }
+
+        return config
+
+    def _get_config(self):
+        """
+        Return the configuration of the agent including sensitive information.
+
+        :return: The configuration of the agent.
+        :rtype: dict
+        """
+        raise NotImplementedError

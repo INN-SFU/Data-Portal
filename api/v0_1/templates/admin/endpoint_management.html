@@ -1,24 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
-<body>
 <head>
-    <meta charset="UTF-8">
-    <title>SE Management</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+  <meta charset="UTF-8">
+  <title>SE Management</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+  <style>
+    /* Simple styling for the endpoint cards */
+    .endpoint-card {
+      border: 1px solid #ccc;
+      padding: 8px;
+      margin-bottom: 5px;
+      cursor: pointer;
+      background-color: #f9f9f9;
+    }
+    .endpoint-card:hover {
+      background-color: #eef;
+    }
+    .endpoint-details {
+      margin-left: 20px;
+      padding: 5px;
+      border-left: 2px solid #ccc;
+      display: none;
+    }
+    .delete-btn {
+      background-color: #f44336;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    .delete-btn:hover {
+      background-color: #d32f2f;
+    }
+  </style>
 </head>
 <body>
-    <a href="/ui/admin/home"><button>Admin Home</button></a>
-    <h1>Storage Endpoint Management</h1>
-    <div>
-        <h3>Registered Endpoints</h3>
-        <div id="endpoint-list">
-            {% for endpoint in endpoints %}
-                <div class="endpoints" data-endpoint="{{ endpoint }}">
-                    <strong>{{ endpoint }}</strong>
-                </div>
-            {% endfor %}
+  <a href="/ui/home"><button>Home</button></a>
+  <h1>Storage Endpoint Management</h1>
+
+  <!-- Registered Endpoints Section -->
+  <div>
+    <h3>Registered Endpoints</h3>
+    <div id="endpoint-list">
+      {% for endpoint_id, endpoint_config in endpoints.items() %}
+        <div class="endpoint-card" id="card-{{ endpoint_id }}">
+          <div onclick="toggleEndpointDetails('{{ endpoint_id }}')">
+            <strong>{{ endpoint_config.access_point_slug }}</strong>
+            <span style="font-size: 0.8em;">(ID: {{ endpoint_id }})</span>
+          </div>
+          <div class="endpoint-details" id="details-{{ endpoint_id }}">
+            <p><strong>Endpoint URL:</strong> {{ endpoint_config.endpoint_url }}</p>
+            <p><strong>Separator:</strong> {{ endpoint_config.separator }}</p>
+            <!-- Add any additional details here -->
+          </div>
+          <!-- Delete button -->
+          <button class="delete-btn" onclick="deleteEndpoint('{{ endpoint_id }}'); event.stopPropagation();">Delete</button>
         </div>
+      {% endfor %}
     </div>
-    <a href="/ui/admin/home/endpoint-management/create"><button>Create Endpoint</button></a>
+  </div>
+
+  <hr>
+
+  <!-- Storage Endpoint Creator Section -->
+  <div>
+    <h3>Storage Endpoint Creator</h3>
+    <div id="endpoint-creator">
+      {% for flavour_key, flavour_class in flavours.items() %}
+        <div class="flavour-card">
+          <h3 onclick="toggleForm('{{ flavour_key }}')">{{ flavour_key | upper }}</h3>
+          <div class="flavour-form" id="form-{{ flavour_key }}" style="display: none;">
+            <!-- The form uses an inline onsubmit handler to submit via JS -->
+            <form class="endpoint-form" data-flavour="{{ flavour_key }}" method="POST" onsubmit="return handleSubmit(event);">
+              <input type="hidden" name="flavour" value="{{ flavour_key }}">
+              <!-- Common fields -->
+              <div>
+                <label for="{{ flavour_key }}-access_point_slug">Access Point Slug:</label>
+                <input type="text" name="access_point_slug" id="{{ flavour_key }}-access_point_slug" placeholder="Unique identifier for the access point" required>
+              </div>
+              <div>
+                <label for="{{ flavour_key }}-endpoint_url">Endpoint URL:</label>
+                <input type="text" name="endpoint_url" id="{{ flavour_key }}-endpoint_url" placeholder="The endpoint URL" required>
+              </div>
+              <!-- Flavour-specific fields -->
+              {% if flavour_key == 's3' %}
+                <div>
+                  <label for="{{ flavour_key }}-aws_access_key_id">AWS Access Key ID:</label>
+                  <input type="text" name="aws_access_key_id" id="{{ flavour_key }}-aws_access_key_id" placeholder="The AWS access key ID" required>
+                </div>
+                <div>
+                  <label for="{{ flavour_key }}-aws_secret_access_key">AWS Secret Access Key:</label>
+                  <input type="text" name="aws_secret_access_key" id="{{ flavour_key }}-aws_secret_access_key" placeholder="The AWS secret access key" required>
+                </div>
+              {% elif flavour_key == 'posix' %}
+                <div>
+                  <label for="{{ flavour_key }}-ssh_ca_key">SSH CA Key:</label>
+                  <input type="text" name="ssh_ca_key" id="{{ flavour_key }}-ssh_ca_key" placeholder="Path to the SSH CA key" required>
+                </div>
+              {% endif %}
+              <button type="submit">Create {{ flavour_key | upper }} Endpoint</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- External JavaScript -->
+  <script src="{{ url_for('static', path='js/scripts.js') }}"></script>
+
+  <!-- Inline script to toggle endpoint details -->
+  <script>
+    function toggleEndpointDetails(endpointId) {
+      var detailsDiv = document.getElementById("details-" + endpointId);
+      if (detailsDiv.style.display === "none" || detailsDiv.style.display === "") {
+        detailsDiv.style.display = "block";
+      } else {
+        detailsDiv.style.display = "none";
+      }
+    }
+  </script>
 </body>
 </html>

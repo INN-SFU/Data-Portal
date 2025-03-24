@@ -10,7 +10,7 @@ from core.authentication.auth import generate_credentials
 
 def SYS_RESET():
     print("WARNING: This will reset the database and initialize the service secrets.\n All existing user and admin data "
-          "and credentials will be lost.\n Do you want to continue? (y/n)")
+          "and _credentials will be lost.\n Do you want to continue? (y/n)")
     response = input().lower()
     if response != 'y':
         print('Exiting...')

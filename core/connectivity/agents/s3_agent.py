@@ -18,10 +18,11 @@ class S3Agent(Agent):
     Inherits from Agent.
 
     Attributes:
-        endpoint (str): The endpoint URL of the S3 service.
+        endpoint_url (str): The endpoint URL of the S3 service.
         s3_client (boto3.interface): The S3 interface for interacting with the service.
         file_tree (treelib.Tree): The file tree representing the structure of objects in the S3 service.
     """
+    FLAVOUR = 's3'
 
     def __init__(self,
                  access_point_slug: str,
@@ -33,19 +34,14 @@ class S3Agent(Agent):
 
         :param access_point_slug: The slug for the access point.
         :type access_point_slug: str
-        :param endpoint_url: The endpoint URL for the access point.
+        :param endpoint_url: The endpoint_url URL for the access point.
         :type endpoint_url: str
-        :param aws_access_key_id: The AWS access key ID.
-        :type aws_access_key_id: str
-        :param aws_secret_access_key: The AWS secret access key.
-        :type aws_secret_access_key: str
         """
-        self.endpoint_url = endpoint_url
 
-        super().__init__(access_point_slug, self.endpoint_url)
+        super().__init__(access_point_slug, endpoint_url)
 
         self.s3_client = boto3.client('s3',
-                                      endpoint_url=self.endpoint,
+                                      endpoint_url=self.endpoint_url,
                                       aws_access_key_id=aws_access_key_id,
                                       aws_secret_access_key=aws_secret_access_key)
 
@@ -147,3 +143,20 @@ class S3Agent(Agent):
         return self.s3_client.generate_presigned_url('get_object',
                                                      Params={'Bucket': bucket, 'Key': key},
                                                      ExpiresIn=ttl)
+
+    def _get_config(self) -> dict:
+        """
+        Get the configuration of the agent.
+
+        :return: The configuration of the agent.
+        :rtype: dict
+        """
+
+        config = {
+                "access_point_slug": self.access_point_slug,
+                "endpoint_url": self.endpoint_url,
+                "aws_access_key_id": self.s3_client._request_signer._credentials.access_key,
+                "aws_secret_access_key": self.s3_client._request_signer._credentials.secret_key
+            }
+
+        return config

@@ -1,155 +1,242 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Policy Management</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
-    <style>
-        .selected {
-            background-color: #d3d3d3;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Policy Management</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Include jsTree CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
+  <style>
+    .endpoint-card {
+      border: 1px solid #ccc;
+      padding: 8px;
+      margin-bottom: 5px;
+      cursor: pointer;
+      background-color: #f9f9f9;
+      position: relative;
+    }
+    .endpoint-card:hover {
+      background-color: #eef;
+    }
+    .endpoint-details {
+      margin-left: 20px;
+      padding: 5px;
+      border-left: 2px solid #ccc;
+      display: none;
+    }
+    .delete-btn {
+      background-color: #f44336;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      cursor: pointer;
+      position: absolute;
+      right: 10px;
+      top: 10px;
+    }
+    .delete-btn:hover {
+      background-color: #d32f2f;
+    }
+  </style>
 </head>
 <body>
-    <a href="/ui/admin/home"><button>Admin Home</button></a>
-    <h1>Policy Management</h1>
-    <div>
-        <h3>Files or Folders</h3>
-        <div id="asset-list">
-            {% for endpoint, items in assets.items() %}
-                <div class="endpoint" data-endpoint="{{ endpoint }}">
-                    <strong>{{ endpoint }}</strong>
-                    <div id="tree-{{ loop.index }}" class="file-tree"></div>
-                </div>
-            {% endfor %}
+  <a href="/ui/home"><button>Home</button></a>
+  <h1>Policy Management</h1>
+
+  <!-- Registered Endpoints Section -->
+  <div>
+    <h3>Registered Endpoints</h3>
+    <div id="endpoint-list">
+      {% for endpoint_id, endpoint_config in endpoints.items() %}
+        <div class="endpoint-card" id="card-{{ endpoint_id }}">
+          <div onclick="toggleEndpointDetails('{{ endpoint_id }}')">
+            <strong>{{ endpoint_config.access_point_slug }}</strong>
+            <span style="font-size: 0.8em;">(ID: {{ endpoint_id }})</span>
+          </div>
+          <button class="delete-btn" onclick="deleteEndpoint('{{ endpoint_id }}'); event.stopPropagation();">Delete</button>
+          <div class="endpoint-details" id="details-{{ endpoint_id }}">
+            <p><strong>Endpoint URL:</strong> {{ endpoint_config.endpoint_url }}</p>
+            <p><strong>Separator:</strong> {{ endpoint_config.separator }}</p>
+            <!-- File tree container for this endpoint -->
+            <div id="tree-{{ loop.index }}" class="file-tree"></div>
+          </div>
         </div>
+      {% endfor %}
     </div>
-    <div>
-        <h3>User and Action</h3>
-        <form id="admin-form">
-            <label for="username">User ID:</label>
-            <input type="text" id="username" name="username" required>
-            <br>
-            <label for="read">Read:</label>
-            <input type="checkbox" id="read" name="permissions" value="read">
-            <label for="write">Write:</label>
-            <input type="checkbox" id="write" name="permissions" value="write">
-            <br>
-            <button type="submit">Update Policy</button>
-        </form>
-    </div>
+  </div>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            {% for endpoint, items in assets.items() %}
-                $('#tree-{{ loop.index }}').jstree({
-                    'core': {
-                        'data': {{ items|tojson }},
-                    },
-                    'plugins': ["checkbox"]
-                }).on('changed.jstree', function (e, data) {
-                    console.log(`Tree ${this.id} changed:`, data.selected);
-                });
-            {% endfor %}
+  <hr>
+
+
+  <!-- User and Action Form -->
+  <div>
+    <h3>User Policy Editor</h3>
+    <form id="admin-form">
+      <label for="username">User ID:</label>
+      <input type="text" id="username" name="username" required>
+      <br>
+      <label for="read">Read:</label>
+      <input type="checkbox" id="read" name="permissions" value="read">
+      <label for="write">Write:</label>
+      <input type="checkbox" id="write" name="permissions" value="write">
+      <br>
+      <button type="submit">Update Policy</button>
+    </form>
+  </div>
+
+
+
+  <script>
+    // When the DOM is fully loaded, initialize jsTree for each endpoint's file tree.
+    document.addEventListener('DOMContentLoaded', () => {
+      {% for endpoint_id, items in assets.items() %}
+        $('#tree-{{ loop.index }}').jstree({
+          'core': {
+            'data': {{ items|tojson }}
+          },
+          'plugins': ["checkbox"]
+        }).on('changed.jstree', function (e, data) {
+          console.log(`Tree ${this.id} changed:`, data.selected);
         });
+      {% endfor %}
+    });
 
-        document.getElementById('admin-form').addEventListener('submit', async (event) => {
-            event.preventDefault();
+    // Toggle the display of endpoint details (including the file tree)
+    function toggleEndpointDetails(endpointId) {
+      var detailsDiv = document.getElementById("details-" + endpointId);
+      if (detailsDiv.style.display === "none" || detailsDiv.style.display === "") {
+        detailsDiv.style.display = "block";
+      } else {
+        detailsDiv.style.display = "none";
+      }
+    }
 
-            const selectedNodes = [];
-            $('.file-tree').each(function() {
-                const selected = $(this).jstree('get_selected', true);
-                console.log(`Selected nodes for tree: ${$(this).attr('id')}`, selected);  // Debugging: Log selected nodes
-                selected.forEach(node => {
-                    const isFolder = $(this).jstree('is_parent', node);
-                    selectedNodes.push({
-                        endpoint: $(this).closest('.endpoint').data('endpoint'),
-                        id: node.id + (isFolder ? '/*' : '')
-                    });
-                });
-            });
+    // Delete an endpoint by sending a DELETE request to the backend.
+    function deleteEndpoint(endpointId) {
+      if (confirm("Are you sure you want to delete this endpoint?")) {
+        // Make sure the URL here matches your backend DELETE endpoint.
+        fetch("/admin/endpoints/?endpoint_uid=" + encodeURIComponent(endpointId), {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json"
+          }
+        })
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(err => { throw err; });
+          }
+          return response.json();
+        })
+        .then(result => {
+          alert("Endpoint deleted successfully: " + result.detail);
+          // Remove the endpoint card from the UI
+          var card = document.getElementById("card-" + endpointId);
+          if (card) {
+            card.parentNode.removeChild(card);
+          }
+        })
+        .catch(err => {
+          alert("Error deleting endpoint: " + (err.detail || JSON.stringify(err)));
+        });
+      }
+    }
 
-            console.log("Selected Nodes:", selectedNodes);  // Debugging: Log all selected nodes
+    // Policy form submission logic
+    document.getElementById('admin-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
 
-            if (selectedNodes.length === 0) {
-                alert("Please select at least one file or folder.");
-                return;
-            }
+      const selectedNodes = [];
+      $('.file-tree').each(function() {
+        const selected = $(this).jstree('get_selected', true);
+        console.log(`Selected nodes for tree: ${$(this).attr('id')}`, selected);
+        selected.forEach(node => {
+          const isFolder = $(this).jstree('is_parent', node);
+          selectedNodes.push({
+            endpoint: $(this).closest('.endpoint-card').data('endpoint'),
+            id: node.id + (isFolder ? '/*' : '')
+          });
+        });
+      });
 
-            const username = document.getElementById('username').value;
-            if (!username) {
-                alert("Please enter a username.");
-                return;
-            }
+      console.log("Selected Nodes:", selectedNodes);
+      if (selectedNodes.length === 0) {
+        alert("Please select at least one file or folder.");
+        return;
+      }
 
-            const permissions = [];
-            if (document.getElementById('read').checked) permissions.push('read');
-            if (document.getElementById('write').checked) permissions.push('write');
-            if (permissions.length === 0) {
-                alert("Please select at least one permission.");
-                return;
-            }
+      const username = document.getElementById('username').value;
+      if (!username) {
+        alert("Please enter a username.");
+        return;
+      }
 
-            try {
+      const permissions = [];
+      if (document.getElementById('read').checked) permissions.push('read');
+      if (document.getElementById('write').checked) permissions.push('write');
+      if (permissions.length === 0) {
+        alert("Please select at least one permission.");
+        return;
+      }
+
+      try {
+        await updatePolicies(username, selectedNodes, permissions);
+        alert('Policies updated successfully.');
+      } catch (error) {
+        if (error.message.includes('User not found')) {
+          const create = confirm("User does not exist. Do you want to create this user?");
+          if (create) {
+            const role = prompt("Enter the role for the new user:");
+            if (role) {
+              try {
+                const userSecretKey = await createUser(username, role);
                 await updatePolicies(username, selectedNodes, permissions);
-                alert('Policies updated successfully.');
-            } catch (error) {
-                if (error.message.includes('User not found')) {
-                    const create = confirm("User does not exist. Do you want to create this user?");
-                    if (create) {
-                        const role = prompt("Enter the role for the new user:");
-                        if (role) {
-                            try {
-                                const userSecretKey = await createUser(username, role);
-                                await updatePolicies(username, selectedNodes, permissions);
-                                alert(`User created and policies updated successfully.\nUser Secret Key: ${userSecretKey}`);
-                            } catch (createError) {
-                                alert(`Error creating user: ${createError.message}`);
-                            }
-                        } else {
-                            alert("Role is required to create a new user.");
-                        }
-                    }
-                } else {
-                    alert(`Error updating policies: ${error.message}`);
-                }
+                alert(`User created and policies updated successfully.\nUser Secret Key: ${userSecretKey}`);
+              } catch (createError) {
+                alert(`Error creating user: ${createError.message}`);
+              }
+            } else {
+              alert("Role is required to create a new user.");
             }
-        });
-
-        async function updatePolicies(username, selectedNodes, permissions) {
-            const updates = [];
-            selectedNodes.forEach(node => {
-                permissions.forEach(permission => {
-                    updates.push(fetch(`/admin/policy?uid=${encodeURIComponent(username)}&access_point=${encodeURIComponent(node.endpoint)}&resource=${encodeURIComponent(node.id)}&action=${encodeURIComponent(permission)}`, {
-                        method: 'PUT',
-                        credentials: 'include'
-                    }).then(response => {
-                        if (!response.ok) {
-                            return response.json().then(error => {
-                                throw new Error(error.detail);
-                            });
-                        }
-                    }));
-                });
-            });
-            await Promise.all(updates);
+          }
+        } else {
+          alert(`Error updating policies: ${error.message}`);
         }
+      }
+    });
 
-        async function createUser(username, role) {
-            const response = await fetch(`/admin/user/${encodeURIComponent(username)}?role=${encodeURIComponent(role)}`, {
-                method: 'PUT',
-                credentials: 'include'
-            });
+    async function updatePolicies(username, selectedNodes, permissions) {
+      const updates = [];
+      selectedNodes.forEach(node => {
+        permissions.forEach(permission => {
+          updates.push(fetch(`/admin/policy?uid=${encodeURIComponent(username)}&access_point=${encodeURIComponent(node.endpoint)}&resource=${encodeURIComponent(node.id)}&action=${encodeURIComponent(permission)}`, {
+            method: 'PUT',
+            credentials: 'include'
+          }).then(response => {
             if (!response.ok) {
-                const error = await response.json();
+              return response.json().then(error => {
                 throw new Error(error.detail);
+              });
             }
-            const data = await response.json();
-            return data.secret_key;
-        }
-    </script>
+          }));
+        });
+      });
+      await Promise.all(updates);
+    }
+
+    async function createUser(username, role) {
+      const response = await fetch(`/admin/user/${encodeURIComponent(username)}?role=${encodeURIComponent(role)}`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail);
+      }
+      const data = await response.json();
+      return data.secret_key;
+    }
+  </script>
 </body>
 </html>

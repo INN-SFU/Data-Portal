@@ -36,11 +36,11 @@ def convert_file_tree_to_dict(tree: Tree) -> list[dict]:
 
 def validate_credentials(credentials: HTTPBasicCredentials = Depends(security)) -> str:
     """
-    Validate credentials.
+    Validate _credentials.
 
-    :param credentials: The HTTP basic authentication credentials.
-    :return: Returns the username (uid) if the credentials are valid.
-    :raises HTTPException: If the credentials are invalid.
+    :param credentials: The HTTP basic authentication _credentials.
+    :return: Returns the username (uid) if the _credentials are valid.
+    :raises HTTPException: If the _credentials are invalid.
     """
     uid = credentials.username
     password = credentials.password
@@ -48,19 +48,19 @@ def validate_credentials(credentials: HTTPBasicCredentials = Depends(security)) 
     logger.info(f"User access request: {uid}")
     if uid not in dam.get_all_users():
         logger.info(f"User access denied. {uid} is not a registered user.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid _credentials")
 
     if auth_validate_credentials(uid, password):
         logger.info(f"User access granted: {uid}")
         return uid
     else:
         logger.info(f"User access denied: {uid}. Invalid key.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid _credentials")
 
 
 def is_admin(credentials: HTTPBasicCredentials = Depends(security)) -> bool:
     """
-    Function to check if the user with the given credentials is an admin.
+    Function to check if the user with the given _credentials is an admin.
 
     :param credentials: The HTTPBasicCredentials object containing the username and password.
     :type credentials: HTTPBasicCredentials, optional
@@ -75,7 +75,7 @@ def is_admin(credentials: HTTPBasicCredentials = Depends(security)) -> bool:
 
     if not dam.get_user(uid)['role'] == 'admin':
         logger.info(f"Admin access denied. {uid} is not a registered administrator.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid _credentials.")
     else:
         logger.info(f"Admin access granted: {uid}")
         return True

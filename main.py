@@ -1,10 +1,11 @@
+import logging
+import logging.config
 import os
 import yaml
 import sys
 import uvicorn
-from dotenv import load_dotenv
 
-from loggers.setup import setup_logging
+from dotenv import load_dotenv
 
 
 # APP SPIN UP
@@ -26,7 +27,7 @@ if __name__ == "__main__":
     load_dotenv(env_path)
 
     path_envs = ['UUID_STORE', 'ENFORCER_MODEL', 'ENFORCER_POLICY', 'USER_POLICIES', 'JINJA_TEMPLATES',
-                 'ACCESS_AGENT_CONFIG', 'STATIC_FILES']
+                 'ENDPOINT_CONFIGS', 'STATIC_FILES']
 
     # Accessing path variables and converting to absolute paths
     for path in path_envs:
@@ -53,8 +54,10 @@ if __name__ == "__main__":
 
     # LOG INITIALIZATION
     print("Initializing loggers...")
-    loggers = setup_logging(config)
-    app_logger = loggers['app']
+    with open(os.getenv('LOG_CONFIG'), 'r') as f:
+        log_config = yaml.safe_load(f)
+    logging.config.dictConfig(log_config)
+    app_logger = logging.getLogger('app')
 
     # APP SECRETS
     app_logger.info("Loading secrets...")
