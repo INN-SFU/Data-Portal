@@ -11,8 +11,6 @@ from casbin import Enforcer
 import treelib
 from treelib.exceptions import DuplicatedNodeIdError
 
-from core.authentication.auth import generate_credentials
-
 
 class SingletonMeta(type):
     """
@@ -310,23 +308,20 @@ class DataAccessManager(metaclass=SingletonMeta):
             raise ValueError("User already exists.")
 
         # Create a new user policy file
-        user_policy_file = os.path.join(self.user_policies_folder, uuid.__str__() + '.policies')
+        user_policy_file = os.path.join(self.user_policies_folder, uuid + '.policies')
         with open(user_policy_file, 'w') as f:
             f.write("")
         f.close()
 
         # Add the user to the uuid store
-        self.uuids[uid_slug] = {"uuid": uuid.__str__(), "role": role}
+        self.uuids[uid_slug] = {"uuid": uuid, "role": role}
 
         # Write the updated uuid store to disk
         with open(os.getenv('UUID_STORE'), 'w') as f:
             json.dump(self.uuids, f, indent=4)
         f.close()
 
-        # Generate the users secret key
-        user_key = generate_credentials(uid_slug)[1]
-
-        return user_key
+        return
 
     def remove_user(self, uid_slug: str):
         """

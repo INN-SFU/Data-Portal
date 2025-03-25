@@ -39,6 +39,20 @@ if __name__ == "__main__":
     ROOT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
     os.environ['ROOT_DIRECTORY'] = ROOT_DIRECTORY
 
+
+    # Keycloak Configuration (example)
+    # Ensure you have these variables in your .env or config file:
+    # KEYCLOAK_DOMAIN, REALM, CLIENT_ID, and optionally CLIENT_SECRET.
+    print("Initializing Keycloak configuration...")
+    os.environ['KEYCLOAK_DOMAIN'] = config['keycloak']['domain']
+    os.environ['KEYCLOAK_REALM'] = config['keycloak']['realm']
+    os.environ['KEYCLOAK_CLIENT_ID'] = config['keycloak']['client_id']
+    os.environ['KEYCLOAK_CLIENT_SECRET'] = config['keycloak']['client_secret']
+    os.environ['KEYCLOAK_REDIRECT_URI'] = config['keycloak']['redirect_uri']
+    os.environ['KEYCLOAK_WELL_KNOWN_URL'] = f"{os.getenv('KEYCLOAK_DOMAIN')}/realms/{os.getenv('KEYCLOAK_REALM')}/.well-known/openid-configuration"
+    os.environ['KEYCLOAK_ADMIN_USERNAME'] = config['keycloak']['admin_username']
+    os.environ['KEYCLOAK_ADMIN_PASSWORD'] = config['keycloak']['admin_password']
+
     # RESET
     if config['system']['reset']:
         from core.settings.security.SYS_RESET import SYS_RESET

@@ -3,13 +3,24 @@ import os
 import shutil
 from uuid import uuid5, NAMESPACE_DNS
 
+from core.authentication.keycloak_utils import keycloak_administrator
 from core.data_access_manager import DataAccessManager
 from core.settings.security._generate_secrets import _generate_secrets
-from core.authentication.auth import generate_credentials
+
+
+def create_admin_in_keycloak(admin_uid: str, password: str):
+    user_representation = {
+        "username": admin_uid,
+        "email": admin_uid,
+        "enabled": True,
+        "credentials": [{"value": password, "temporary": False}]
+    }
+    user_id = keycloak_administrator.create_user(user_representation)
+    return user_id
 
 
 def SYS_RESET():
-    print("WARNING: This will reset the database and initialize the service secrets.\n All existing user and admin data "
+    print("WARNING: This will reset the database and initialize the service secrets.\n All existing user and admin data"
           "and _credentials will be lost.\n Do you want to continue? (y/n)")
     response = input().lower()
     if response != 'y':
@@ -45,7 +56,9 @@ def SYS_RESET():
 
     print('Enter admin user ID:')
     admin_uid = input()
-    _, admin_key = generate_credentials(admin_uid)
+    print('Enter admin user password:')
+    admin_key = input()
+    create_admin_in_keycloak(admin_uid, admin_key)
 
     dam.add_user(admin_uid, uuid5(NAMESPACE_DNS, admin_key), 'admin')
     print(f'Admin User ID:\t{admin_uid}\nAdmin Key:\t{admin_key}')

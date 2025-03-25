@@ -5,8 +5,8 @@ from api.v0_1.endpoints.service.asset import asset_router
 from api.v0_1.endpoints.service.admin import admin_router
 
 from api.v0_1.endpoints.interface.login import ui_router
-from api.v0_1.endpoints.interface.user import user_ui_router
-from api.v0_1.endpoints.interface.admin import admin_ui_router
+from api.v0_1.endpoints.interface.user_ui import user_ui_router
+from api.v0_1.endpoints.interface.admin_ui import admin_ui_router
 
 
 application_router = APIRouter()

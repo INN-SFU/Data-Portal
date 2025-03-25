@@ -1,4 +1,3 @@
-
 uvicorn:
   host: 127.0.0.1
   port: 5000
@@ -14,5 +13,14 @@ logging:
     casbin: INFO
     app: INFO
 
+keycloak:
+  domain: "http://localhost:8080"         # Base URL of your Keycloak server
+  realm: "INN-AMS"                      # The realm you're using (e.g., "INN-Portal")
+  client_id: "inn-data-portal"                   # The client ID registered in Keycloak
+  client_secret: "your_client_secret"           # (Optional) Only if your client is confidential
+  redirect_uri: "http://127.0.0.1:5000/auth/callback"  # Where Keycloak should redirect after login
+  admin_username: "admin"
+  admin_password: "admin"
+
 system:
-  reset: false
+  reset: true
