@@ -1,0 +1,55 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  simple:
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  detailed:
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)d - %(message)s'
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    stream: ext://sys.stdout
+    formatter: simple
+  app_file:
+    class: logging.FileHandler
+    filename: loggers/logs/app.log
+    mode: a
+    formatter: detailed
+  casbin_file:
+    class: logging.FileHandler
+    filename: loggers/logs/casbin.log
+    mode: a
+    formatter: detailed
+  uvicorn_file:
+    class: logging.FileHandler
+    filename: loggers/logs/uvicorn.log
+    mode: a
+    formatter: detailed
+
+loggers:
+  uvicorn:
+    level: INFO
+    handlers: [console, uvicorn_file]
+    propagate: false
+  uvicorn.error:
+    level: INFO
+    handlers: [console, uvicorn_file]
+    propagate: false
+  uvicorn.access:
+    level: INFO
+    handlers: [console, uvicorn_file]
+    propagate: false
+  casbin:
+    level: INFO
+    handlers: [console, casbin_file]
+    propagate: false
+  app:
+    level: INFO
+    handlers: [console, app_file]
+    propagate: false
+
+root:
+  level: INFO
+  handlers: [console]

@@ -1,60 +1,36 @@
-import json
+from fastapi import Request, APIRouter
+from fastapi.responses import RedirectResponse
+from fastapi.responses import HTMLResponse
 import os
 
-from fastapi import Request, Depends, APIRouter
-from fastapi.security import HTTPBasic
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
-
-from api.v0_1.endpoints.service.auth import login as service_login
-from api.v0_1.endpoints.interface.admin import admin_home
-from api.v0_1.endpoints.interface.user import user_home
-from api.v0_1.endpoints.utils.server import is_admin, validate_credentials
-
-security = HTTPBasic()
 ui_router = APIRouter(prefix='/ui')
-templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
 
 @ui_router.get("/login", response_class=HTMLResponse)
-async def ui_login(
-        request: Request,
-        service_data: dict = Depends(service_login)
-):
+async def ui_login(request: Request):
     """
-    Process the login by relying on the service login endpoint_url (HTTP Basic).
-    If valid, redirect to the appropriate home page based on the user's role.
+    Redirect the user to KeyCloak's login page.
     """
-    service_data = json.loads(service_data.body)
-    role = service_data.get("role")
-    if role == "admin":
-        return await admin_home(request)
-    elif role == "user":
-        return await user_home(request)
-    else:
-        # In case the role is unrecognized.
-        return HTMLResponse(content="Unknown user role", status_code=400)
+    keycloak_login_url = f"{os.getenv('KEYCLOAK_DOMAIN')}/realms/{os.getenv('KEYCLOAK_REALM')}/protocol/openid-connect/auth" \
+                         f"?client_id={os.getenv('KEYCLOAK_CLIENT_ID')}" \
+                         f"&redirect_uri={os.getenv('KEYCLOAK_REDIRECT_URI')}" \
+                         f"&response_type=code"
+    return RedirectResponse(url=keycloak_login_url)
 
 
 @ui_router.get("/logout", response_class=HTMLResponse)
 async def ui_logout(request: Request):
-    return HTMLResponse(content="Not implemented", status_code=501)
-
-
-class HTTPBasicCredentials:
-    pass
-
+    """
+    Redirect the user to KeyCloak's logout page.
+    """
+    keycloak_logout_url = f"{os.getenv('KEYCLOAK_DOMAIN')}/realms/{os.getenv('KEYCLOAK_REALM')}/protocol/openid-connect/logout" \
+                          f"?redirect_uri={os.getenv('KEYCLOAK_REDIRECT_URI')}"
+    return RedirectResponse(url=keycloak_logout_url)
 
 
 @ui_router.get("/home", response_class=HTMLResponse)
-async def home(request: Request, uid: str = Depends(validate_credentials), admin_status: bool = Depends(is_admin)):
+async def ui_home(request: Request):
     """
-    Serves the appropriate home page based on the user's role.
-
-    - If the user is an admin, returns the admin home.
-    - Otherwise, returns the user home.
+    Render the home page.
     """
-    if admin_status:
-        return await admin_home(request)
-    else:
-        return await user_home(request, uid)
+    return HTMLResponse(content="Welcome to the home page!")

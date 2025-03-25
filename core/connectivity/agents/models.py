@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from typing import Literal
 
+
 class S3EndpointConfig(BaseModel):
     flavour: Literal["s3"]
     access_point_slug: str
