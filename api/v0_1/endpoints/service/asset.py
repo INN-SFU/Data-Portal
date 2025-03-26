@@ -1,7 +1,8 @@
 import logging
 from fastapi import HTTPException, APIRouter, Depends, status, Query
 from fastapi.responses import JSONResponse
-from core.authentication.keycloak_auth import get_current_user
+
+from api.v0_1.endpoints.service.auth import get_current_user
 from core.connectivity import agents
 from core.data_access_manager import dam
 

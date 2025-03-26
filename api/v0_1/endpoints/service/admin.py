@@ -5,19 +5,32 @@ from uuid import uuid5, NAMESPACE_DNS
 from fastapi import Depends, HTTPException, APIRouter, status, Query, Body, Request
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
+from fastapi_mail import MessageSchema, FastMail
 
-from core.authentication.keycloak_admin import keycloak_admin
+from core.authentication.keycloak_utils import keycloak_administrator
 from core.data_access_manager import dam
 from core.connectivity import new_endpoint
 from core.connectivity.agents.models import EndpointConfig
 from core.settings.endpoints import storage_endpoints
-from fastapi_mail import MessageSchema, FastMail
-from api.v0_1.emailer import conf as email_config
 
-from core.authentication.keycloak_auth import get_current_user, is_user_admin
+from api.v0_1.emailer import conf as email_config
+from api.v0_1.endpoints.service.auth import get_current_user, is_user_admin
 
 admin_router = APIRouter(prefix='/admin')
 templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
+
+
+def gather_endpoints():
+    """
+    Returns a dictionary of all storage endpoints:
+    {endpoint_uid: endpoint_config, ...}
+    """
+    return dict(
+        zip(
+            storage_endpoints.keys(),
+            [endpoint.get_config() for endpoint in storage_endpoints.values()]
+        )
+    )
 
 
 @admin_router.get("/test", dependencies=[Depends(get_current_user)])
@@ -91,9 +104,9 @@ async def add_user_(uid: str = Query(...), role: str = Query(...),
     if not is_user_admin(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
 
-    # Create user in Keycloak using your keycloak_admin client (see keycloak_admin.py)
+    # Create user in Keycloak
     try:
-        keycloak_user_id = keycloak_admin.create_user({
+        keycloak_user_id = keycloak_administrator.create_user({
             "username": uid,
             "email": uid,
             "enabled": True,
@@ -102,8 +115,7 @@ async def add_user_(uid: str = Query(...), role: str = Query(...),
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    # Now update DAM: create a policy file or assign default policies for the new user
-    # For example:
+    # Update DAM
     user_uuid = uuid5(NAMESPACE_DNS, uid)
     try:
         user_access_key = dam.add_user(uid, user_uuid, role)
@@ -119,17 +131,17 @@ async def remove_user(uid: str = Query(...), user: dict = Depends(get_current_us
     if not is_user_admin(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
 
-    # Remove user from Keycloak using your keycloak_admin client.
+    # Remove user from Keycloak
     try:
-        users = keycloak_admin.get_users(query={"username": uid})
+        users = keycloak_administrator.get_users(query={"username": uid})
         if not users:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         keycloak_user_id = users[0]["id"]
-        keycloak_admin.delete_user(keycloak_user_id)
+        keycloak_administrator.delete_user(keycloak_user_id)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-    # Now remove the policy file from DAM.
+    # Remove from DAM
     try:
         result = dam.remove_user(uid)
         if result:
@@ -227,8 +239,8 @@ async def list_endpoints(user: dict = Depends(get_current_user)) -> JSONResponse
     if not is_user_admin(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
 
-    details = dict(zip(storage_endpoints.keys(),
-                       [endpoint.get_config() for endpoint in storage_endpoints.values()]))
+    # Use the gather_endpoints() helper to retrieve endpoint data
+    details = gather_endpoints()
     return JSONResponse(content={"endpoints": details})
 
 
@@ -246,26 +258,32 @@ async def create_new_endpoint(config: EndpointConfig = Body(...),
         # Extract flavour and convert the Pydantic model to a dict (excluding the flavour field)
         flavour = config.flavour
         config_dict = config.dict(exclude={"flavour"})
+
         # Generate a new uid for the endpoint using the access_point_slug.
         endpoint_uid = str(uuid5(NAMESPACE_DNS, config_dict['access_point_slug']))
+
         # Create the endpoint using your factory function.
         endpoint = new_endpoint(flavour, config_dict)
+
         # Build the configuration file path and get the endpoint configuration.
         endpoint_config_json = os.path.join(os.getenv('ENDPOINT_CONFIGS'), f"{endpoint_uid}.json")
         endpoint_config = {
             "flavour": flavour,
             "config": endpoint._get_config()
         }
-        # Add an admin policy to allow reading (this might be part of your setup)
+
+        # Optionally: add an admin policy for read
         try:
             dam.add_user_policy(token_payload.get("preferred_username"), endpoint_uid, ".*", "read")
         except ValueError:
             pass
+
         with open(endpoint_config_json, 'w') as f:
             json.dump(endpoint_config, f, indent=4)
-        f.close()
+
         # Add the endpoint to the global registry.
         storage_endpoints[endpoint_uid] = endpoint
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={"detail": f"Endpoint '{endpoint.access_point_slug}' created successfully."}
@@ -282,12 +300,15 @@ async def remove_endpoint(endpoint_uid: str = Query(...),
     """
     if not is_user_admin(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+
     try:
         endpoint = storage_endpoints[endpoint_uid]
     except KeyError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Access point {endpoint_uid} not found.")
+
     endpoint_config_json = os.path.join(os.getenv('ENDPOINT_CONFIGS'), f"{endpoint_uid}.json")
     os.remove(endpoint_config_json)
     del storage_endpoints[endpoint_uid]
+
     return JSONResponse(content={"detail": f"Endpoint '{endpoint_uid}' removed."})

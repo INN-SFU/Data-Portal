@@ -13,16 +13,19 @@
     .nav-container {
       display: flex;
       justify-content: space-between;
+      align-items: center; /* Keep things vertically centered if desired */
       margin-bottom: 20px;
       border-bottom: 1px solid #ccc;
       padding-bottom: 10px;
     }
-    .nav-container a {
+    .left-nav a,
+    .right-nav a {
       text-decoration: none;
       color: #333;
       font-weight: bold;
       padding: 8px 16px;
     }
+    /* Sub-nav styling */
     .sub-nav {
       margin-bottom: 20px;
     }
@@ -42,17 +45,25 @@
 <body>
   <!-- Top Navigation -->
   <div class="nav-container">
-    <a href="/">Data Portal Home</a>
-    <a href="/ui/logout">Logout</a>
+    <!-- Left side: Home + Data Portal -->
+    <div class="left-nav">
+      <a href="/">Data Portal</a>
+      <a href="/interface/home">Home</a>
+    </div>
+    <!-- Right side: Logout -->
+    <div class="right-nav">
+      <a href="/interface/logout">Logout</a>
+    </div>
   </div>
 
-  <!-- Sub Navigation: Each button links to a different page -->
+  <!-- Sub Navigation -->
   <div class="sub-nav">
-    <a href="/ui/admin/home/policy-management">Policy Management</a>
-    <a href="/ui/admin/home/user-management">User Management</a>
-    <a href="/ui/admin/home/endpoint-management">Endpoint Management</a>
-    <a href="/ui/user/home">Asset Management</a>
+    <a href="/interface/admin/policy-management">Policy Management</a>
+    <a href="/interface/admin/user-management">User Management</a>
+    <a href="/interface/admin/endpoint-management">Endpoint Management</a>
+    <a href="/interface/home/assets">Asset Management</a>
   </div>
+
 
   <!-- The page content below will change with full page loads -->
   <div id="content">

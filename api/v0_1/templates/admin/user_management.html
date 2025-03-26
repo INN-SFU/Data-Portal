@@ -11,6 +11,39 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
   <script src="https://unpkg.com/htmx.org@1.6.1"></script>
   <style>
+    /* Simple, minimal styling */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    /* Top Navigation Styling */
+    .nav-container {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 10px;
+    }
+    .nav-container a {
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+      padding: 8px 16px;
+    }
+    .sub-nav {
+      margin-bottom: 20px;
+    }
+    .sub-nav a {
+      text-decoration: none;
+      color: #333;
+      margin-right: 10px;
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .sub-nav a:hover {
+      background-color: #eee;
+    }
     /* New User Form Styling */
     .new-user-form {
       border: 1px solid #ccc;
@@ -67,11 +100,21 @@
   </style>
 </head>
 <body>
-  <a href="/ui/home"><button>Home</button></a>
-  <h1>User Management</h1>
+  <!-- Top Navigation -->
+  <div class="nav-container">
+    <!-- Left side: Home + Data Portal -->
+    <div class="left-nav">
+      <a href="/">Data Portal</a>
+      <a href="/interface/home">Home</a>
+    </div>
+    <!-- Right side: Logout -->
+    <div class="right-nav">
+      <a href="/logout">Logout</a>
+    </div>
+  </div>
 
   <!-- New User Creation Form -->
-  <h2>Create New User</h2>
+  <h4>Create New User</h4>
   <div class="new-user-form">
     <form hx-put="/admin/user/" hx-target="#response" hx-swap="innerHTML">
       <label for="uid">User ID:</label>
@@ -86,7 +129,7 @@
 
   <!-- Registered Users Section -->
   <div>
-    <h2>Registered Users</h2>
+    <h4>Registered Users</h4>
     <div id="user-cards">
       {% for user in users %}
         <div class="user-card" id="user-{{ user }}" data-user="{{ user }}">

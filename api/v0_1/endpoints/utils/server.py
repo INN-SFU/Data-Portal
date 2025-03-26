@@ -23,3 +23,4 @@ def convert_file_tree_to_dict(tree: Tree) -> list[dict]:
                 {"id": node.identifier, "parent": parent_id, "text": node.tag, "li_attr": {"data-id": node.identifier}}
             )
     return tree_data
+
