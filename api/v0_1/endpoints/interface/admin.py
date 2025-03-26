@@ -5,29 +5,18 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from treelib import node
 
+from api.v0_1.endpoints.service.auth import get_current_user, is_user_admin
 from core.settings.endpoints import storage_endpoints
 from core.data_access_manager import dam
 from core.connectivity.agents import available_flavours
-from core.authentication.keycloak_auth import get_current_user, is_user_admin
 from api.v0_1.endpoints.utils import convert_file_tree_to_dict
-from api.v0_1.endpoints.service.admin import list_endpoints
+from api.v0_1.endpoints.service.admin import gather_endpoints
 
 admin_ui_router = APIRouter(prefix='/admin')
 templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
 
-@admin_ui_router.get("/home", response_class=HTMLResponse)
-async def admin_home(request: Request, token_payload: dict = Depends(get_current_user)):
-    """
-    Admin home page.
-    Requires the user to be an admin.
-    """
-    if not is_user_admin(token_payload):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
-    return templates.TemplateResponse("/admin/home.html", {"request": request})
-
-
-@admin_ui_router.get("/home/policy-management", response_class=HTMLResponse)
+@admin_ui_router.get("/policy-management", response_class=HTMLResponse)
 async def policy_management(request: Request, token_payload: dict = Depends(get_current_user)):
     """
     Admin page displaying storage endpoints, their file trees, and a policy creation form.
@@ -52,7 +41,7 @@ async def policy_management(request: Request, token_payload: dict = Depends(get_
     )
 
 
-@admin_ui_router.get("/home/user-management", response_class=HTMLResponse)
+@admin_ui_router.get("/user-management", response_class=HTMLResponse)
 async def user_management(request: Request, token_payload: dict = Depends(get_current_user)):
     """
     View function for user management page.
@@ -83,19 +72,15 @@ async def user_management(request: Request, token_payload: dict = Depends(get_cu
     )
 
 
-@admin_ui_router.get("/home/endpoint-management", response_class=HTMLResponse)
+@admin_ui_router.get("/endpoint-management", response_class=HTMLResponse)
 async def endpoint_management(request: Request, token_payload: dict = Depends(get_current_user)):
-    """
-    View function for endpoint management page.
-    Displays the current storage endpoints and allows creating new endpoints.
-    Requires admin privileges.
-    """
+    # 1) Auth check
     if not is_user_admin(token_payload):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
-
-    response = await list_endpoints()
-    content = ast.literal_eval(response.body.decode('utf-8'))
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    # 2) Get data
+    details = gather_endpoints()
+    # 3) Render template
     return templates.TemplateResponse(
-        "/admin/endpoint_management.html",
-        {"request": request, "endpoints": content['endpoints'], "flavours": available_flavours}
+        "admin/endpoint_management.html",
+        {"request": request, "endpoints": details, "flavours": available_flavours}
     )

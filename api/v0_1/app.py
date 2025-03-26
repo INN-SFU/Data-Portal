@@ -3,10 +3,8 @@ import os
 from fastapi import Request, FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from fastapi_mail import ConnectionConfig
-from starlette.responses import JSONResponse
 
 from api.v0_1.endpoints import application_router
 

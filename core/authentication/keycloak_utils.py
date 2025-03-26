@@ -1,80 +1,49 @@
 import os
+
 import requests
-import jwt
-from jwt import PyJWKClient
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from keycloak.connection import ConnectionManager
 from keycloak.keycloak_admin import KeycloakAdmin
 
-# Initialize the Keycloak Admin client using admin credentials (store these securely)
-keycloak_administrator = KeycloakAdmin(
+# Initialize the Keycloak Admin clients:
+# For administrative operations:
+data = {
+    "grant_type": "client_credentials",
+    "client_id": "ams-admin-cli",
+    "client_secret": os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET")
+}
+resp = requests.post(
+    "http://localhost:8080/realms/INN-AMS/protocol/openid-connect/token",
+    data=data
+)
+token_json = resp.json()
+access_token = token_json["access_token"]
+
+# 1) Set the base_url to just http://localhost:8080
+connection = ConnectionManager(
+    base_url="http://localhost:8080",  # no /admin or realm in the URL
+    headers={"Authorization": f"Bearer {access_token}"}
+)
+
+# 2) Manually set the realm_name so the library can build correct paths
+connection.realm_name = "INN-AMS"
+
+# 3) Initialize KeycloakAdmin with that connection
+keycloak_administrator = KeycloakAdmin(connection=connection)
+
+# For the UI client (if needed elsewhere):
+keycloak_ui_cli = KeycloakAdmin(
     server_url=os.getenv("KEYCLOAK_DOMAIN") + "/",
-    username=os.getenv("KEYCLOAK_ADMIN_USERNAME"),  # e.g. "admin"
-    password=os.getenv("KEYCLOAK_ADMIN_PASSWORD"),  # e.g. "admin"
+    client_id=os.getenv("KEYCLOAK_UI_CLIENT_ID"),
+    client_secret_key=os.getenv("KEYCLOAK_UI_CLIENT_SECRET"),
     realm_name=os.getenv("KEYCLOAK_REALM"),
     verify=True
 )
 
-# Use HTTPBearer to extract the token from the Authorization header.
-bearer_scheme = HTTPBearer()
 
-
-def get_jwks_client():
+def create_user(username: str, email: str, password: str,  first_name: str = None, last_name: str = None ,roles: list[str] = None):
     """
-    Creates a PyJWKClient using the JWKS URI from Keycloak's well-known configuration.
+    Creates a user using the administrative service account.
     """
-    well_known_url = os.getenv("KEYCLOAK_WELL_KNOWN_URL")
-    if not well_known_url:
-        raise Exception("KEYCLOAK_WELL_KNOWN_URL is not set")
-    oidc_config = requests.get(well_known_url).json()
-    jwks_uri = oidc_config.get("jwks_uri")
-    if not jwks_uri:
-        raise Exception("jwks_uri not found in OIDC configuration")
-    return PyJWKClient(jwks_uri)
-
-
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
-    """
-    Validates the JWT token issued by Keycloak and returns its payload.
-    """
-    token = credentials.credentials
-    client_id = os.getenv("KEYCLOAK_CLIENT_ID")
-    keycloak_domain = os.getenv("KEYCLOAK_DOMAIN")
-    realm = os.getenv("KEYCLOAK_REALM")
-
-    if not (client_id and keycloak_domain and realm):
-        raise Exception("Keycloak configuration environment variables are not set properly")
-
-    issuer = f"{keycloak_domain}/realms/{realm}"
-    jwks_client = get_jwks_client()
-
-    try:
-        # Retrieve the signing key that matches the token's "kid"
-        signing_key = jwks_client.get_signing_key_from_jwt(token).key
-        payload = jwt.decode(
-            token,
-            signing_key,
-            algorithms=["RS256"],
-            audience=client_id,
-            issuer=issuer
-        )
-    except jwt.PyJWTError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
-        ) from e
-    return payload
-
-
-def is_user_admin(token_payload: dict) -> bool:
-    """
-    Checks if the token payload indicates that the user has admin privileges.
-    """
-    roles = token_payload.get("realm_access", {}).get("roles", [])
-    return "admin" in roles
-
-
-def create_user(username: str, email: str, first_name: str, last_name: str, password: str):
     user_representation = {
         "username": username,
         "email": email,
@@ -83,14 +52,24 @@ def create_user(username: str, email: str, first_name: str, last_name: str, pass
         "lastName": last_name,
         "credentials": [{"value": password, "temporary": False}]
     }
-    user_id = keycloak_admin.create_user(user_representation)
+    user_id = keycloak_administrator.create_user(user_representation)
+
+    # Step 2: assign roles
+    for role in roles:
+        keycloak_administrator.assign_realm_roles(
+            user_id=user_id,
+            roles=[{"name": role}]
+        )
     return user_id
 
 
 def delete_user(username: str):
+    """
+    Deletes a user using the administrative service account.
+    """
     # Find the user by username
-    users = keycloak_admin.get_users(query={"username": username})
+    users = keycloak_administrator.get_users(query={"username": username})
     if not users:
         raise ValueError("User not found")
     user_id = users[0]["id"]
-    keycloak_admin.delete_user(user_id)
+    keycloak_administrator.delete_user(user_id)

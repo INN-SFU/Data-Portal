@@ -7,10 +7,9 @@ import uvicorn
 
 from dotenv import load_dotenv
 
-
 # APP SPIN UP
 if __name__ == "__main__":
-    
+
     # Path to configuration file
     config_file = sys.argv[1]
 
@@ -39,19 +38,24 @@ if __name__ == "__main__":
     ROOT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
     os.environ['ROOT_DIRECTORY'] = ROOT_DIRECTORY
 
-
     # Keycloak Configuration (example)
     # Ensure you have these variables in your .env or config file:
     # KEYCLOAK_DOMAIN, REALM, CLIENT_ID, and optionally CLIENT_SECRET.
     print("Initializing Keycloak configuration...")
     os.environ['KEYCLOAK_DOMAIN'] = config['keycloak']['domain']
     os.environ['KEYCLOAK_REALM'] = config['keycloak']['realm']
-    os.environ['KEYCLOAK_CLIENT_ID'] = config['keycloak']['client_id']
-    os.environ['KEYCLOAK_CLIENT_SECRET'] = config['keycloak']['client_secret']
+    os.environ['KEYCLOAK_UI_CLIENT_ID'] = config['keycloak']['ui_client_id']
+    os.environ['KEYCLOAK_UI_CLIENT_SECRET'] = config['keycloak']['ui_client_secret']
+    os.environ['KEYCLOAK_ADMIN_CLIENT_ID'] = config['keycloak']['admin_client_id']
+    os.environ['KEYCLOAK_ADMIN_CLIENT_SECRET'] = config['keycloak']['admin_client_secret']
     os.environ['KEYCLOAK_REDIRECT_URI'] = config['keycloak']['redirect_uri']
-    os.environ['KEYCLOAK_WELL_KNOWN_URL'] = f"{os.getenv('KEYCLOAK_DOMAIN')}/realms/{os.getenv('KEYCLOAK_REALM')}/.well-known/openid-configuration"
-    os.environ['KEYCLOAK_ADMIN_USERNAME'] = config['keycloak']['admin_username']
-    os.environ['KEYCLOAK_ADMIN_PASSWORD'] = config['keycloak']['admin_password']
+    os.environ[
+        'KEYCLOAK_WELL_KNOWN_URL'] = f"{os.getenv('KEYCLOAK_DOMAIN')}/realms/{os.getenv('KEYCLOAK_REALM')}/.well-known/openid-configuration"
+    os.environ[
+        'KEYCLOAK_LOGIN_URL'] = f"{os.getenv('KEYCLOAK_DOMAIN')}/realms/{os.getenv('KEYCLOAK_REALM')}/protocol/openid-connect/auth" \
+                                f"?client_id={os.getenv('KEYCLOAK_UI_CLIENT_ID')}" \
+                                f"&redirect_uri={os.getenv('KEYCLOAK_REDIRECT_URI')}" \
+                                f"&response_type=code"
 
     # RESET
     if config['system']['reset']:
@@ -78,6 +82,8 @@ if __name__ == "__main__":
     load_dotenv("core/settings/security/.secrets")
 
     app_logger.info("Starting application...")
+    os.environ['APP_HOST'] = config['uvicorn']['host']
+    os.environ['APP_PORT'] = str(config['uvicorn']['port'])
     uvicorn.run(app='api.v0_1.app:app',
                 host=config['uvicorn']['host'],
                 port=config['uvicorn']['port'],

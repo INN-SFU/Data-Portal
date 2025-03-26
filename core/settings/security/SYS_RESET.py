@@ -1,22 +1,10 @@
 import json
 import os
 import shutil
-from uuid import uuid5, NAMESPACE_DNS
 
 from core.authentication.keycloak_utils import keycloak_administrator
 from core.data_access_manager import DataAccessManager
 from core.settings.security._generate_secrets import _generate_secrets
-
-
-def create_admin_in_keycloak(admin_uid: str, password: str):
-    user_representation = {
-        "username": admin_uid,
-        "email": admin_uid,
-        "enabled": True,
-        "credentials": [{"value": password, "temporary": False}]
-    }
-    user_id = keycloak_administrator.create_user(user_representation)
-    return user_id
 
 
 def SYS_RESET():
@@ -29,10 +17,16 @@ def SYS_RESET():
 
     dam = DataAccessManager()
 
-    if dam.get_all_users() is not None:
-        print('Removing existing users and associated data...')
-        for user in dam.get_all_users():
-            dam.remove_user(user)
+    print('Removing all users...')
+    users = keycloak_administrator.get_users()
+
+    for user in users:
+        keycloak_administrator.delete_user(user['id'])
+
+        try:
+            dam.remove_user(user['username'])
+        except ValueError:
+            pass
 
     with open(os.getenv('UUID_STORE'), 'w') as file:
         json.dump({}, file)
@@ -54,13 +48,25 @@ def SYS_RESET():
 
     print('Initialize admin user...')
 
-    print('Enter admin user ID:')
-    admin_uid = input()
+    print('Enter admin email:')
+    admin_email = input()
+    admin_username = admin_email.split('@')[0]
     print('Enter admin user password:')
     admin_key = input()
-    create_admin_in_keycloak(admin_uid, admin_key)
+    user_representation = {
+        "username": admin_username,
+        "email": admin_email,
+        "enabled": True,
+        "credentials": [{"value": admin_key, "temporary": False}]
+    }
+    keycloak_administrator.create_user(user_representation)
+    admin_id = keycloak_administrator.get_users(query={"username": admin_username})[0]['id']
+    admin_role_obj = keycloak_administrator.get_realm_role("admin")
+    keycloak_administrator.assign_realm_roles(
+        user_id=admin_id,
+        roles=[admin_role_obj]
+    )
 
-    dam.add_user(admin_uid, uuid5(NAMESPACE_DNS, admin_key), 'admin')
-    print(f'Admin User ID:\t{admin_uid}\nAdmin Key:\t{admin_key}')
+    dam.add_user(admin_username, admin_id, 'admin')
     print('Admin user initialized successfully.')
     print("System reset complete.")

@@ -1,26 +1,23 @@
+keycloak:
+  admin_client_id: ams-admin-cli
+  admin_client_secret: 9LOPP7kjr4qftH0YEFzJmGpTKTQisdyG
+  domain: http://127.0.0.1:8080
+  realm: INN-AMS
+  redirect_uri: http://127.0.0.1:5000/auth/callback
+  ui_client_id: inn-data-portal
+  ui_client_secret: cCQnEiBgf1z75RKrPyyRxb3e0k7sFcpe
+logging:
+  level:
+    app: INFO
+    casbin: INFO
+    root: INFO
+    uvicorn: INFO
+    uvicorn_access: INFO
+    uvicorn_error: ERROR
+system:
+  reset: false
 uvicorn:
+  debug: true
   host: 127.0.0.1
   port: 5000
   reload: true
-  debug: true
-
-logging:
-  level:
-    root: INFO
-    uvicorn: INFO
-    uvicorn_error: ERROR
-    uvicorn_access: INFO
-    casbin: INFO
-    app: INFO
-
-keycloak:
-  domain: "http://localhost:8080"         # Base URL of your Keycloak server
-  realm: "INN-AMS"                      # The realm you're using (e.g., "INN-Portal")
-  client_id: "inn-data-portal"                   # The client ID registered in Keycloak
-  client_secret: "your_client_secret"           # (Optional) Only if your client is confidential
-  redirect_uri: "http://127.0.0.1:5000/auth/callback"  # Where Keycloak should redirect after login
-  admin_username: "admin"
-  admin_password: "admin"
-
-system:
-  reset: true
