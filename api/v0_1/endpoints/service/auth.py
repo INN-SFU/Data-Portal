@@ -28,7 +28,7 @@ def get_jwks_client():
     return PyJWKClient(jwks_uri)
 
 
-def get_current_user(request: Request, credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
+def decode_token(request: Request, credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     # Try to get the token from the Authorization header.
     token = credentials.credentials if credentials else None
     # Fall back to the cookie if not found.
@@ -69,7 +69,7 @@ def is_user_admin(token_payload: dict) -> bool:
 
 
 @auth_router.get("/test", response_class=JSONResponse)
-def auth(user: dict = Depends(get_current_user)) -> JSONResponse:
+def auth(user: dict = Depends(decode_token)) -> JSONResponse:
     """
     Authenticate the user using the Keycloak token.
     Returns the token claims if valid.

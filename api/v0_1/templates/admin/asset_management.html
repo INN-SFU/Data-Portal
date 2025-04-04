@@ -61,6 +61,10 @@
       border-left: 2px solid #ccc;
       display: none;
     }
+    .file-tree {
+      display: none;
+    }
+
   </style>
 </head>
 <body>
@@ -77,6 +81,14 @@
     </div>
   </div>
 
+    <!-- Sub Navigation -->
+  <div class="sub-nav">
+    <a href="/interface/admin/policy-management">Policy Management</a>
+    <a href="/interface/admin/user-management">User Management</a>
+    <a href="/interface/admin/endpoint-management">Endpoint Management</a>
+    <a href="/interface/admin/asset-management">Asset Management</a>
+  </div>
+
   <!-- Registered Storage Endpoints Section -->
   <div>
     <h4>Storage Endpoints</h4>
@@ -88,17 +100,29 @@
             <span style="font-size: 0.8em;">(UID: {{ endpoint_uid }})</span>
           </div>
           <div class="endpoint-details" id="details-{{ endpoint_name }}">
-            <!-- File tree container for this endpoint -->
-            <div id="tree-{{ loop.index }}" class="file-tree"></div>
+            {% if endpoint_uid in assets %}
+              {% for access_type, tree in assets[endpoint_uid].items() %}
+                <div class="access-tree">
+                  <h5 onclick="toggleAccessTree('{{ endpoint_uid }}', '{{ access_type }}')">
+                    {{ access_type | capitalize }} Access
+                  </h5>
+                  <div id="tree-{{ endpoint_uid }}-{{ access_type }}" class="file-tree" data-tree='{{ tree | tojson }}'></div>
+                </div>
+              {% endfor %}
+            {% else %}
+              <p>No file tree available for this endpoint.</p>
+            {% endif %}
             <div style="margin-top:10px;">
-              <button class="action-btn upload" onclick="handleUpload('{{ endpoint_id }}');">Upload Selected</button>
-              <button class="action-btn download" onclick="handleDownload('{{ endpoint_id }}');">Download Selected</button>
+              <button class="action-btn upload" onclick="handleUpload('{{ endpoint_uid }}');">Upload Selected</button>
+              <button class="action-btn download" onclick="handleDownload('{{ endpoint_uid }}');">Download Selected</button>
             </div>
           </div>
         </div>
       {% endfor %}
     </div>
   </div>
+
+  <hr>
 
   <div id="response"></div>
 
@@ -196,6 +220,28 @@
     document.addEventListener("DOMContentLoaded", function() {
       console.log("Asset Management script loaded");
     });
+
+    function toggleAccessTree(endpointUid, accessType) {
+      var treeDiv = document.getElementById("tree-" + endpointUid + "-" + accessType);
+      if (!treeDiv) return;
+      if (treeDiv.style.display === "none" || treeDiv.style.display === "") {
+        treeDiv.style.display = "block";
+        // Optionally initialize jsTree if needed
+        if (!$(treeDiv).data('initialized')) {
+          var treeData = treeDiv.getAttribute("data-tree");
+          $(treeDiv).jstree({
+            'core': {
+              'data': JSON.parse(treeData)
+            },
+            'plugins': ["checkbox"]
+          });
+          $(treeDiv).data('initialized', true);
+        }
+      } else {
+        treeDiv.style.display = "none";
+      }
+    }
+
   </script>
 </body>
 </html>

@@ -6,14 +6,14 @@ import tempfile
 
 import treelib
 
-from core.connectivity.agent import Agent
+from core.connectivity import AbstractStorageAgent
 
 
-class PosixAgent(Agent):
+class PosixStorageAgent(AbstractStorageAgent):
     """
-    PosixAgent is a class that represents an agent for interacting with a POSIX filesystem.
+    PosixStorageAgent is a class that represents an agent for interacting with a POSIX filesystem.
 
-    Inherits from Agent.
+    Inherits from AbstractStorageAgent.
 
     Attributes:
         endpoint_url (str): The base URL for serving files.

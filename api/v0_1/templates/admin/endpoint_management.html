@@ -74,7 +74,7 @@
   <div class="nav-container">
     <!-- Left side: Home + Data Portal -->
     <div class="left-nav">
-      <a href="/">Data Portal</a>
+      <a href="/">INN Data Portal</a>
       <a href="/interface/home">Home</a>
     </div>
     <!-- Right side: Logout -->
@@ -83,23 +83,34 @@
     </div>
   </div>
 
+    <!-- Sub Navigation -->
+  <div class="sub-nav">
+    <a href="/interface/admin/policy-management">Policy Management</a>
+    <a href="/interface/admin/user-management">User Management</a>
+    <a href="/interface/admin/endpoint-management">Endpoint Management</a>
+    <a href="/interface/admin/asset-management">Asset Management</a>
+  </div>
+
   <!-- Registered Endpoints Section -->
   <div>
     <h4>Registered Endpoints</h4>
     <div id="endpoint-list">
-      {% for endpoint_id, endpoint_config in endpoints.items() %}
-        <div class="endpoint-card" id="card-{{ endpoint_id }}">
-          <div onclick="toggleEndpointDetails('{{ endpoint_id }}')">
-            <strong>{{ endpoint_config.access_point_slug }}</strong>
-            <span style="font-size: 0.8em;">(ID: {{ endpoint_id }})</span>
+      {% for endpoint_name, (endpoint_uid, endpoint_config) in endpoints.items() %}
+        <div class="endpoint-card" id="card-{{ endpoint_name }}">
+          <div onclick="toggleEndpointDetails('{{ endpoint_uid }}')">
+            <strong>{{ endpoint_name }}</strong>
+            <span style="font-size: 0.8em;">(UID: {{ endpoint_uid }})</span>
           </div>
-          <div class="endpoint-details" id="details-{{ endpoint_id }}">
-            <p><strong>Endpoint URL:</strong> {{ endpoint_config.endpoint_url }}</p>
-            <p><strong>Separator:</strong> {{ endpoint_config.separator }}</p>
-            <!-- Add any additional details here -->
+          <div class="endpoint-details" id="details-{{ endpoint_uid }}">
+            <p><strong>Configuration:</strong>
+            <ul>
+              {% for key, value in endpoint_config.items() %}
+              <li>{{ key }}: {{ value }}</li>
+              {% endfor %}
+            </ul>
+            <!-- Delete button -->
+            <button class="delete-btn" onclick="deleteEndpoint('{{ endpoint_id }}'); event.stopPropagation();">Delete</button>
           </div>
-          <!-- Delete button -->
-          <button class="delete-btn" onclick="deleteEndpoint('{{ endpoint_id }}'); event.stopPropagation();">Delete</button>
         </div>
       {% endfor %}
     </div>
@@ -109,7 +120,7 @@
 
   <!-- Storage Endpoint Creator Section -->
   <div>
-    <h4>Storage Endpoint Creator</h4>
+    <h4>Endpoint Creator</h4>
     <div id="endpoint-creator">
       {% for flavour_key, flavour_class in flavours.items() %}
         <div class="flavour-card">
