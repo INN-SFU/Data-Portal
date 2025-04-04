@@ -1,12 +1,60 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>INN Data Portal</title>
+  <meta charset="UTF-8">
+  <title>INN Data Portal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Simple, minimal styling */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .nav-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center; /* Keep things vertically centered if desired */
+      margin-bottom: 20px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 10px;
+    }
+    .left-nav a,
+    .right-nav a {
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+      padding: 8px 16px;
+    }
+    /* Sub-nav styling */
+    .sub-nav {
+      margin-bottom: 20px;
+    }
+    .sub-nav a {
+      text-decoration: none;
+      color: #333;
+      margin-right: 10px;
+      padding: 8px 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .sub-nav a:hover {
+      background-color: #eee;
+    }
+  </style>
 </head>
 <body>
-    <h1>INN Data Portal</h1>
-    <a href="/auth/login"><button>Login</button></a>
+  <!-- Top Navigation -->
+  <div class="nav-container">
+    <!-- Left side: Home + Data Portal -->
+    <div class="left-nav">
+      <a href="/">INN Data Portal</a>
+      <a href="/interface/home">Home</a>
+    </div>
+    <!-- Right side: Login -->
+    <div class="right-nav">
+      <a href="/auth/login">Login</a>
+    </div>
+  </div>
+
 </body>
 </html>

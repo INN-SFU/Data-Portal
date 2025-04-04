@@ -4,17 +4,18 @@ import os
 import logging
 
 from typing import List
+from uuid import UUID
 
-from core.connectivity.agent import Agent
+from core.connectivity import AbstractStorageAgent
 
 logger = logging.getLogger("casbin")
 
 
-class S3Agent(Agent):
+class S3StorageAgent(AbstractStorageAgent):
     """
-    S3Agent is a class that represents an agent for interacting with an S3 object store service.
+    S3StorageAgent is a class that represents an agent for interacting with an S3 object store service.
 
-    Inherits from Agent.
+    Inherits from AbstractStorageAgent.
 
     Attributes:
         endpoint_url (str): The endpoint URL of the S3 service.
@@ -25,6 +26,7 @@ class S3Agent(Agent):
 
     def __init__(self,
                  access_point_slug: str,
+                 access_point_uid: UUID,
                  endpoint_url: str,
                  aws_access_key_id: str,
                  aws_secret_access_key: str):
@@ -37,7 +39,7 @@ class S3Agent(Agent):
         :type endpoint_url: str
         """
 
-        super().__init__(access_point_slug, endpoint_url)
+        super().__init__(access_point_slug, endpoint_url, access_point_uid)
 
         self.s3_client = boto3.client('s3',
                                       endpoint_url=self.endpoint_url,
@@ -151,9 +153,7 @@ class S3Agent(Agent):
         :rtype: dict
         """
 
-        config = {
-                "access_point_slug": self.access_point_slug,
-                "endpoint_url": self.endpoint_url,
+        config = super().get_config() + {
                 "aws_access_key_id": self.s3_client._request_signer._credentials.access_key,
                 "aws_secret_access_key": self.s3_client._request_signer._credentials.secret_key
             }

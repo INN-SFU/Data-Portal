@@ -1,1 +1,1 @@
-from .agent_factory import new_endpoint
+from .abstract_storage_agent import AbstractStorageAgent

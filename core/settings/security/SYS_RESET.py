@@ -2,8 +2,8 @@ import json
 import os
 import shutil
 
-from core.authentication.keycloak_utils import keycloak_administrator
-from core.data_access_manager import DataAccessManager
+from core.management.users import keycloak_administrator
+from core.management.policies import DataAccessManager
 from core.settings.security._generate_secrets import _generate_secrets
 
 
@@ -15,9 +15,13 @@ def SYS_RESET():
         print('Exiting...')
         exit()
 
+    print('Removing all users...')
+    with open(os.getenv('UUID_STORE'), 'w') as file:
+        json.dump({}, file)
+    file.close()
+
     dam = DataAccessManager()
 
-    print('Removing all users...')
     users = keycloak_administrator.get_users()
 
     for user in users:
@@ -27,10 +31,6 @@ def SYS_RESET():
             dam.remove_user(user['username'])
         except ValueError:
             pass
-
-    with open(os.getenv('UUID_STORE'), 'w') as file:
-        json.dump({}, file)
-    file.close()
 
     print('Removing logs...')
     for filename in os.listdir(os.getenv('LOG_FOLDER')):
@@ -43,6 +43,11 @@ def SYS_RESET():
         except Exception as e:
             print('Failed to clear logs.')
             print('Failed to delete %s. Reason: %s' % (file_path, e))
+
+    print('Removing all storage endpoints...')
+    for endpoint_file in os.listdir(os.getenv('ENDPOINT_CONFIGS')):
+        os.remove(os.path.join(os.getenv('ENDPOINT_CONFIGS'), endpoint_file))
+
 
     _generate_secrets()
 
@@ -68,5 +73,9 @@ def SYS_RESET():
     )
 
     dam.add_user(admin_username, admin_id, 'admin')
+
+    # Provide the admin user with read and write access to all endpoints
+
+
     print('Admin user initialized successfully.')
     print("System reset complete.")

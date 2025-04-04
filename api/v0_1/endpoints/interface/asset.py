@@ -5,8 +5,8 @@ from fastapi.templating import Jinja2Templates
 from treelib import node
 
 from core.connectivity import agents
-from core.data_access_manager import dam
-from api.v0_1.endpoints.service.auth import get_current_user
+
+from api.v0_1.endpoints.service.auth import decode_token
 from api.v0_1.endpoints.utils.server import convert_file_tree_to_dict
 
 
@@ -15,20 +15,20 @@ templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
 
 @asset_ui_router.get("/upload", response_class=HTMLResponse)
-def upload_form(request: Request, token_payload: dict = Depends(get_current_user)):
+def upload_form(request: Request, token_payload: dict = Depends(decode_token)):
     """
     Render the upload form page.
     """
     uid = token_payload.get("preferred_username")
 
     # Get all storage access points the user has read access to.
-    access_points = set([policy[1] for policy in dam.get_user_policies(uid)])
+    access_points = set([policy[1] for policy in pm.get_user_policies(uid)])
     assets = dict.fromkeys(access_points)
 
     for agent_slug in access_points:
         def node_filter(n: node):
             vals = (uid, agent_slug, n.identifier, 'write')
-            return dam.enforcer.enforce(*vals)
+            return pm.enforcer.enforce(*vals)
 
         assets[agents[agent_slug].access_point_slug] = convert_file_tree_to_dict(
             agents[agent_slug].filter_file_tree(node_filter)
@@ -38,20 +38,20 @@ def upload_form(request: Request, token_payload: dict = Depends(get_current_user
 
 
 @asset_ui_router.get("/download", response_class=HTMLResponse)
-def download_form(request: Request, token_payload: dict = Depends(get_current_user)):
+def download_form(request: Request, token_payload: dict = Depends(decode_token)):
     """
     Render the download form page.
     """
     uid = token_payload.get("preferred_username")
 
     # Get all storage access points the user has read access to.
-    access_points = set([policy[1] for policy in dam.get_user_policies(uid)])
+    access_points = set([policy[1] for policy in pm.get_user_policies(uid)])
     assets = dict.fromkeys(access_points)
 
     for agent_slug in access_points:
         def node_filter(n: node):
             vals = (uid, agent_slug, n.identifier, 'read')
-            return dam.enforcer.enforce(*vals)
+            return pm.enforcer.enforce(*vals)
 
         assets[agents[agent_slug].access_point_slug] = convert_file_tree_to_dict(
             agents[agent_slug].filter_file_tree(node_filter)
@@ -61,7 +61,7 @@ def download_form(request: Request, token_payload: dict = Depends(get_current_us
 
 
 @asset_ui_router.get("", response_class=HTMLResponse)
-def retrieve_asset(request: Request, token_payload: dict = Depends(get_current_user)):
+def retrieve_asset(request: Request, token_payload: dict = Depends(decode_token)):
     """
     Generate presigned URLs for assets and serve an HTML template with these URLs.
     """
@@ -69,7 +69,7 @@ def retrieve_asset(request: Request, token_payload: dict = Depends(get_current_u
     resource = request.query_params.get("resource")
     access_point = request.query_params.get("access_point")
 
-    if dam.validate_user_access(uid, access_point, resource, "read"):
+    if pm.validate_policy(uid, access_point, resource, "read"):
         try:
             agent = agents[access_point]
         except KeyError:

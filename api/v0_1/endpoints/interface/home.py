@@ -1,34 +1,40 @@
-import os
+from uuid import UUID
 
 from fastapi import APIRouter, Request, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from treelib import node
 
+from api.v0_1.endpoints.dependencies import get_policy_manager, get_endpoint_manager, get_user_manager
+
 from api.v0_1.endpoints.utils.server import convert_file_tree_to_dict
+
 from api.v0_1.templates import templates
-from api.v0_1.endpoints.service.auth import get_current_user, is_user_admin
-from core.data_access_manager import dam
-from core.settings.endpoints import storage_endpoints
+from api.v0_1.endpoints.service.auth import decode_token, is_user_admin
+from core.management.policies import AbstractPolicyManager
+from core.management.endpoints import AbstractEndpointManager
 
 home_router = APIRouter(prefix="/home")
 
 
 @home_router.get("", response_class=HTMLResponse)
-async def home(request: Request, token_payload: dict = Depends(get_current_user)):
+async def home(request: Request,
+               token_payload: dict = Depends(decode_token),
+               policy_manager=Depends(get_policy_manager)):
     if is_user_admin(token_payload):
         return templates.TemplateResponse("admin/home.html", {"request": request})
     else:
         uid = token_payload.get("preferred_username")
 
         # Get all storage access points the user has read access to.
-        access_points = set([policy[1] for policy in dam.get_user_policies(uid)])
+
+        access_points = set([policy[1] for policy in policy_manager.get_user_policies(uid)])
         user_file_tree = dict.fromkeys(access_points)
 
         # Loop through each storage endpoint and filter its file tree.
         for endpoint in storage_endpoints.keys():
             def node_filter(n: node):
                 vals = (uid, endpoint, n.identifier, 'write')
-                return dam.enforcer.enforce(*vals)
+                return pm.enforcer.enforce(*vals)
 
             user_file_tree[endpoint] = convert_file_tree_to_dict(
                 storage_endpoints[endpoint].filter_file_tree(node_filter)
@@ -41,25 +47,32 @@ async def home(request: Request, token_payload: dict = Depends(get_current_user)
 
 
 @home_router.get("/assets", response_class=HTMLResponse)
-async def assets_home(request: Request, token_payload: dict = Depends(get_current_user)):
-    uid = token_payload.get("preferred_username")
+async def assets_home(request: Request,
+                      token_payload: dict = Depends(decode_token),
+                      policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+                      endpoint_manager: AbstractEndpointManager = Depends(get_endpoint_manager)):
+
+    # Retrieve the user's uuid from the token payload.
+    uuid = token_payload.get("sub")
 
     # Get all storage access points the user has read access to.
-    access_points = set([policy[1] for policy in dam.get_user_policies(uid)])
-    user_file_tree = dict.fromkeys(access_points)
+    endpoint_point_uids = set([UUID(policy[1]) for policy in policy_manager.get_user_policies(uuid)])
+    endpoints = endpoint_manager.get_endpoint(endpoint_point_uids)
+
+    file_trees = {}
 
     # Loop through each storage endpoint and filter its file tree.
-    for endpoint in storage_endpoints.keys():
+    for uid, agent in endpoints.items():
         def node_filter(n: node):
-            vals = (uid, endpoint, n.identifier, 'write')
-            return dam.enforcer.enforce(*vals)
+            vals = (uuid, uid.__str__(), n.identifier, '*')
+            return policy_manager.validate_policy(*vals)
 
-        user_file_tree[endpoint] = convert_file_tree_to_dict(
-            storage_endpoints[endpoint].filter_file_tree(node_filter)
-        )
+        file_trees[uid.__str__()] = convert_file_tree_to_dict(agent.filter_file_tree(node_filter) )
+
+    access_point_names = {endpoint.access_point_slug: uid.__str__() for uid, endpoint in endpoints.items()}
 
     return templates.TemplateResponse(
         "user/home.html",
-        {"request": request, "assets": user_file_tree, "endpoints": storage_endpoints}
+        {"request": request, "assets": file_trees, 'endpoints': access_point_names}
     )
 

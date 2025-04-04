@@ -1,7 +1,7 @@
-from .s3_agent import S3Agent
-from .posix_agent import PosixAgent
+from .s3_agent import S3StorageAgent
+from .posix_agent import PosixStorageAgent
 
 available_flavours = {
-    S3Agent.FLAVOUR: S3Agent,
-    PosixAgent.FLAVOUR: PosixAgent
+    S3StorageAgent.FLAVOUR: S3StorageAgent,
+    PosixStorageAgent.FLAVOUR: PosixStorageAgent
 }

@@ -25,7 +25,7 @@ if __name__ == "__main__":
     env_path = prefix + '/core/settings/.env'
     load_dotenv(env_path)
 
-    path_envs = ['UUID_STORE', 'ENFORCER_MODEL', 'ENFORCER_POLICY', 'USER_POLICIES', 'JINJA_TEMPLATES',
+    path_envs = ['ENFORCER_MODEL', 'ENFORCER_POLICY', 'USER_POLICIES', 'JINJA_TEMPLATES',
                  'ENDPOINT_CONFIGS', 'STATIC_FILES']
 
     # Accessing path variables and converting to absolute paths

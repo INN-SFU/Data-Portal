@@ -72,36 +72,47 @@
     .delete-btn:hover {
       background-color: #d32f2f;
     }
+    .new-policy-form {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 10px;
+      background-color: #fafafa;
+      position: relative;
+    }
   </style>
 </head>
 <body>
   <!-- Top Navigation -->
   <div class="nav-container">
-    <!-- Left side: Home + Data Portal -->
     <div class="left-nav">
-      <a href="/">Data Portal</a>
+      <a href="/">INN Data Portal</a>
       <a href="/interface/home">Home</a>
     </div>
-    <!-- Right side: Logout -->
     <div class="right-nav">
       <a href="/logout">Logout</a>
     </div>
   </div>
 
-  <!-- Registered Endpoints Section -->
+  <!-- Sub Navigation -->
+  <div class="sub-nav">
+    <a href="/interface/admin/policy-management">Policy Management</a>
+    <a href="/interface/admin/user-management">User Management</a>
+    <a href="/interface/admin/endpoint-management">Endpoint Management</a>
+    <a href="/interface/admin/asset-management">Asset Management</a>
+  </div>
+
+  <!-- Storage Endpoints -->
   <div>
     <h4>Registered Endpoints</h4>
     <div id="endpoint-list">
-      {% for endpoint_id, endpoint_config in endpoints.items() %}
-        <div class="endpoint-card" id="card-{{ endpoint_id }}">
-          <div onclick="toggleEndpointDetails('{{ endpoint_id }}')">
-            <strong>{{ endpoint_config.access_point_slug }}</strong>
-            <span style="font-size: 0.8em;">(ID: {{ endpoint_id }})</span>
+      {% for endpoint_name, endpoint_uid in endpoints.items() %}
+        <div class="endpoint-card" id="card-{{ endpoint_name }}" data-endpoint="{{ endpoint_name }}">
+          <div onclick="toggleEndpointDetails('{{ endpoint_name }}')">
+            <strong>{{ endpoint_name }}</strong>
+            <span style="font-size: 0.8em;">(UID: {{ endpoint_uid }})</span>
           </div>
-          <button class="delete-btn" onclick="deleteEndpoint('{{ endpoint_id }}'); event.stopPropagation();">Delete</button>
-          <div class="endpoint-details" id="details-{{ endpoint_id }}">
-            <p><strong>Endpoint URL:</strong> {{ endpoint_config.endpoint_url }}</p>
-            <p><strong>Separator:</strong> {{ endpoint_config.separator }}</p>
+          <button class="delete-btn" onclick="deleteEndpoint('{{ endpoint_uid }}'); event.stopPropagation();">Delete</button>
+          <div class="endpoint-details" id="details-{{ endpoint_name }}">
             <!-- File tree container for this endpoint -->
             <div id="tree-{{ loop.index }}" class="file-tree"></div>
           </div>
@@ -111,25 +122,21 @@
   </div>
 
   <hr>
-
-
-  <!-- User and Action Form -->
+  <!-- User Policy Editor -->
   <div>
     <h4>User Policy Editor</h4>
-    <form id="admin-form">
+    <form id="admin-form" class="new-policy-form">
       <label for="username">User ID:</label>
       <input type="text" id="username" name="username" required>
       <br>
-      <label for="read">Read:</label>
-      <input type="checkbox" id="read" name="permissions" value="read">
-      <label for="write">Write:</label>
-      <input type="checkbox" id="write" name="permissions" value="write">
+      <label for="accessType">Access Type:</label>
+      <input type="text" id="accessType" name="accessType" required placeholder="e.g., admin">
       <br>
+      <!-- Two buttons: one for updating and one for removing policies -->
       <button type="submit">Update Policy</button>
+      <button type="button" id="remove-policy-btn">Remove Policy</button>
     </form>
   </div>
-
-
 
   <script>
     // When the DOM is fully loaded, initialize jsTree for each endpoint's file tree.
@@ -146,7 +153,7 @@
       {% endfor %}
     });
 
-    // Toggle the display of endpoint details (including the file tree)
+    // Toggle endpoint details visibility.
     function toggleEndpointDetails(endpointId) {
       var detailsDiv = document.getElementById("details-" + endpointId);
       if (detailsDiv.style.display === "none" || detailsDiv.style.display === "") {
@@ -156,75 +163,109 @@
       }
     }
 
-    // Delete an endpoint by sending a DELETE request to the backend.
-    function deleteEndpoint(endpointId) {
-      if (confirm("Are you sure you want to delete this endpoint?")) {
-        // Make sure the URL here matches your backend DELETE endpoint.
-        fetch("/admin/endpoints/?endpoint_uid=" + encodeURIComponent(endpointId), {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json"
-          }
-        })
-        .then(response => {
-          if (!response.ok) {
-            return response.json().then(err => { throw err; });
-          }
-          return response.json();
-        })
-        .then(result => {
-          alert("Endpoint deleted successfully: " + result.detail);
-          // Remove the endpoint card from the UI
-          var card = document.getElementById("card-" + endpointId);
-          if (card) {
-            card.parentNode.removeChild(card);
-          }
-        })
-        .catch(err => {
-          alert("Error deleting endpoint: " + (err.detail || JSON.stringify(err)));
-        });
-      }
-    }
-
-    // Policy form submission logic
-    document.getElementById('admin-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-
-      const selectedNodes = [];
+    // --- Selection and Filtering Functions ---
+    // Gather selected nodes from all jsTree file trees.
+    function gatherSelectedNodes() {
+      let selectedNodes = [];
       $('.file-tree').each(function() {
-        const selected = $(this).jstree('get_selected', true);
+        const treeInstance = $(this).jstree(true);
+        const selected = treeInstance.get_selected(true);
         console.log(`Selected nodes for tree: ${$(this).attr('id')}`, selected);
         selected.forEach(node => {
-          const isFolder = $(this).jstree('is_parent', node);
+          const isFolder = treeInstance.is_parent(node);
           selectedNodes.push({
             endpoint: $(this).closest('.endpoint-card').data('endpoint'),
-            id: node.id + (isFolder ? '/*' : '')
+            id: node.id,
+            node: node,       // full jsTree node object for filtering
+            isFolder: isFolder
           });
         });
       });
+      return selectedNodes;
+    }
 
-      console.log("Selected Nodes:", selectedNodes);
-      if (selectedNodes.length === 0) {
+    // Filter out descendant nodes if their ancestor is also selected.
+    function filterTopLevelNodes(nodes) {
+      return nodes.filter(function(nodeObj) {
+        return !nodes.some(function(other) {
+          return other.node.id !== nodeObj.node.id &&
+                 nodeObj.node.parents.includes(other.node.id);
+        });
+      });
+    }
+
+    // --- Policy Update (Add) Function ---
+    async function updatePolicies(username, accessTypeInput) {
+      const accessType = String(accessTypeInput).trim();
+      const allSelected = gatherSelectedNodes();
+      console.log("All selected nodes (raw):", allSelected);
+      const topLevelNodes = filterTopLevelNodes(allSelected);
+      console.log("Top-level nodes:", topLevelNodes);
+      const finalSelectedNodes = topLevelNodes.map(nodeObj => ({
+        endpoint: nodeObj.endpoint,
+        id: nodeObj.id + (nodeObj.isFolder ? '/*' : '')
+      }));
+      console.log("Final selected nodes for updating policies:", finalSelectedNodes);
+      if (finalSelectedNodes.length === 0) {
         alert("Please select at least one file or folder.");
         return;
       }
+      const updates = finalSelectedNodes.map(node =>
+        fetch(
+          `/admin/policy?username=${encodeURIComponent(username)}&access_point=${encodeURIComponent(node.endpoint)}&resource=${encodeURIComponent(node.id)}&action=${encodeURIComponent(accessType)}`,
+          { method: 'PUT', credentials: 'include' }
+        ).then(response => {
+          if (!response.ok) {
+            return response.json().then(error => { throw new Error(error.detail); });
+          }
+        })
+      );
+      await Promise.all(updates);
+    }
 
-      const username = document.getElementById('username').value;
+    // --- Policy Removal Function ---
+    async function removePolicies(username, accessType) {
+      const allSelected = gatherSelectedNodes();
+      console.log("All selected nodes (raw):", allSelected);
+      const topLevelNodes = filterTopLevelNodes(allSelected);
+      console.log("Top-level nodes:", topLevelNodes);
+      const finalSelectedNodes = topLevelNodes.map(nodeObj => ({
+        endpoint: nodeObj.endpoint,
+        id: nodeObj.id + (nodeObj.isFolder ? '/*' : '')
+      }));
+      console.log("Final selected nodes for removal:", finalSelectedNodes);
+      if (finalSelectedNodes.length === 0) {
+        alert("Please select at least one file or folder to remove a policy.");
+        return;
+      }
+      const removals = finalSelectedNodes.map(node =>
+        fetch(
+          `/admin/policy?username=${encodeURIComponent(username)}&access_point=${encodeURIComponent(node.endpoint)}&resource=${encodeURIComponent(node.id)}&action=${encodeURIComponent(accessType)}`,
+          { method: 'DELETE', credentials: 'include' }
+        ).then(response => {
+          if (!response.ok) {
+            return response.json().then(error => { throw new Error(error.detail); });
+          }
+        })
+      );
+      await Promise.all(removals);
+    }
+
+    // --- Form Submission Listeners ---
+    document.getElementById('admin-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const username = document.getElementById('username').value.trim();
       if (!username) {
         alert("Please enter a username.");
         return;
       }
-
-      const permissions = [];
-      if (document.getElementById('read').checked) permissions.push('read');
-      if (document.getElementById('write').checked) permissions.push('write');
-      if (permissions.length === 0) {
-        alert("Please select at least one permission.");
+      const accessType = document.getElementById('accessType').value.trim();
+      if (!accessType) {
+        alert("Please enter an access type.");
         return;
       }
-
       try {
-        await updatePolicies(username, selectedNodes, permissions);
+        await updatePolicies(username, accessType);
         alert('Policies updated successfully.');
       } catch (error) {
         if (error.message.includes('User not found')) {
@@ -234,7 +275,7 @@
             if (role) {
               try {
                 const userSecretKey = await createUser(username, role);
-                await updatePolicies(username, selectedNodes, permissions);
+                await updatePolicies(username, accessType);
                 alert(`User created and policies updated successfully.\nUser Secret Key: ${userSecretKey}`);
               } catch (createError) {
                 alert(`Error creating user: ${createError.message}`);
@@ -249,24 +290,25 @@
       }
     });
 
-    async function updatePolicies(username, selectedNodes, permissions) {
-      const updates = [];
-      selectedNodes.forEach(node => {
-        permissions.forEach(permission => {
-          updates.push(fetch(`/admin/policy?uid=${encodeURIComponent(username)}&access_point=${encodeURIComponent(node.endpoint)}&resource=${encodeURIComponent(node.id)}&action=${encodeURIComponent(permission)}`, {
-            method: 'PUT',
-            credentials: 'include'
-          }).then(response => {
-            if (!response.ok) {
-              return response.json().then(error => {
-                throw new Error(error.detail);
-              });
-            }
-          }));
-        });
-      });
-      await Promise.all(updates);
-    }
+    document.getElementById('remove-policy-btn').addEventListener('click', async (event) => {
+      event.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      if (!username) {
+        alert("Please enter a username.");
+        return;
+      }
+      const accessType = document.getElementById('accessType').value.trim();
+      if (!accessType) {
+        alert("Please enter an access type.");
+        return;
+      }
+      try {
+        await removePolicies(username, accessType);
+        alert('Policies removed successfully.');
+      } catch (error) {
+        alert(`Error removing policies: ${error.message}`);
+      }
+    });
 
     async function createUser(username, role) {
       const response = await fetch(`/admin/user/${encodeURIComponent(username)}?role=${encodeURIComponent(role)}`, {
