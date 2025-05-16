@@ -10,3 +10,5 @@ core/authentication/user_data/
 core/authentication/uuids.json
 *.log
 *__pycache__*
+venv/
+config.yaml
