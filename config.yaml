@@ -6,6 +6,7 @@ keycloak:
   redirect_uri: http://127.0.0.1:5000/auth/callback
   ui_client_id: inn-data-portal
   ui_client_secret: cCQnEiBgf1z75RKrPyyRxb3e0k7sFcpe
+  refresh_token_expiry: 300
 logging:
   level:
     app: INFO

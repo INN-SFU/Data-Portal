@@ -1,12 +1,14 @@
 import os
+from typing import List
 
-from fastapi import Request, FastAPI
+from fastapi import Request, FastAPI, Query, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from api.v0_1.endpoints import application_router
+from api.v0_1.endpoints.service.models import model_registry
 
 
 class App:
@@ -46,7 +48,8 @@ class App:
         templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
         # Landing
-        @self.app.get("/", response_class=HTMLResponse)
+        @self.app.get("/",
+                      response_class=HTMLResponse)
         def landing_page(request: Request):
             """
             Root for serving basic landing page.

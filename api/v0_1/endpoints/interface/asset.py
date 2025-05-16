@@ -10,7 +10,7 @@ from api.v0_1.endpoints.service.auth import decode_token
 from api.v0_1.endpoints.utils.server import convert_file_tree_to_dict
 
 
-asset_ui_router = APIRouter(prefix='/assets')
+asset_ui_router = APIRouter(prefix='/assets', tags=["Assets UI"])
 templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
 
@@ -30,7 +30,7 @@ def upload_form(request: Request, token_payload: dict = Depends(decode_token)):
             vals = (uid, agent_slug, n.identifier, 'write')
             return pm.enforcer.enforce(*vals)
 
-        assets[agents[agent_slug].access_point_slug] = convert_file_tree_to_dict(
+        assets[agents[agent_slug].access_point_name] = convert_file_tree_to_dict(
             agents[agent_slug].filter_file_tree(node_filter)
         )
 
@@ -53,7 +53,7 @@ def download_form(request: Request, token_payload: dict = Depends(decode_token))
             vals = (uid, agent_slug, n.identifier, 'read')
             return pm.enforcer.enforce(*vals)
 
-        assets[agents[agent_slug].access_point_slug] = convert_file_tree_to_dict(
+        assets[agents[agent_slug].access_point_name] = convert_file_tree_to_dict(
             agents[agent_slug].filter_file_tree(node_filter)
         )
 
@@ -74,7 +74,7 @@ def retrieve_asset(request: Request, token_payload: dict = Depends(decode_token)
             agent = agents[access_point]
         except KeyError:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Access point {access_point} not found.")
-        presigned_urls, object_keys = agent.generate_access_links(resource, 'GET', 3600)
+        presigned_urls, object_keys = agent.generate_access_link(resource, 'GET', 3600)
         return templates.TemplateResponse(
             "download.html",
             {"request": request, "presigned_urls": presigned_urls, "object_keys": object_keys}

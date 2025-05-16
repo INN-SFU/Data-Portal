@@ -1,17 +1,15 @@
-"""
-Author: Patrick Mahon
-Date: 2021-09-30
-Email: pmahon@sfu.ca
-"""
+import logging
 import os
 from abc import ABC
 
 from uuid import UUID
 from casbin import Enforcer
+from core.management.policies.abstract_policy_manager import Policy, Agreement
 from core.management.policies.abstract_policy_manager import AbstractPolicyManager
+from core.management.users import AbstractUserManager
 
 
-class CasbinPolicyManager(AbstractPolicyManager):
+class CasbinPolicyManager(AbstractPolicyManager, ABC):
     """
     PolicyManager:
 
@@ -20,45 +18,7 @@ class CasbinPolicyManager(AbstractPolicyManager):
     Attributes:
         enforcer (Enforcer): An instance of the Enforcer class for enforcing access control policies.
         user_policies_folder (str): The path to the folder where user policies are stored.
-        uuids (dict): A dictionary containing user UUIDs mapped to their unique identifiers.
-
-    Methods:
-        __init__():
-            Constructor method that initializes the PolicyManager object.
-
-        _load_user_policies():
-            Loads all user policies from the user policies folder into the enforcer object.
-
-        _write_user_policies(uid_slug: str, uuid: UUID):
-            Writes the user policies for a given UID slug and UUID to a file.
-
-        _write_user_policy(uid_slug: str, resource: str, action: str):
-            Writes a single user policy for a given UID slug, resource, and action to a file.
-
-        _write_enforcer_policies(enforcer: Enforcer):
-            Writes all the policies of an enforcer object to a CSV file.
-
-        get_user_assets(uid_slug: str):
-            Returns the permissions for a specified user.
-
-        add_user_policy(uid_slug: str, resource: str, action: str):
-            Adds a new policy for a specified user, resource, and action.
-
-        remove_policy(uid_slug: str, resource: str, action: str):
-            Removes a policy for a specified user, resource, and action.
-
-        add_user(uid_slug: str, uuid: UUID, role: str):
-            Adds a new user with a unique identifier, UUID, and role.
-
-        remove_user(uid_slug: str):
-            Removes a user based on a unique identifier.
-
-        get_user(uid: str):
-            Returns information about a user based on a unique identifier.
-
-        get_users():
-            Returns a list of all user unique identifiers.
-
+        _actions (list): A list of actions that can be performed on resources.
     """
 
     def __init__(self, uuids):
@@ -66,7 +26,8 @@ class CasbinPolicyManager(AbstractPolicyManager):
         """
         Load user policies from files.
 
-        :return: None
+        :param uuids: A list of UUIDs representing the users.
+        :type uuids: list[UUID]
         """
 
         self.enforcer = Enforcer(os.getenv('ENFORCER_MODEL'), os.getenv('ENFORCER_POLICY'), enable_log=True)
@@ -76,39 +37,40 @@ class CasbinPolicyManager(AbstractPolicyManager):
         # Load all user policies to enforcer
         for uuid in uuids:
             policy_file = os.path.join(self.user_policies_folder, uuid.__str__() + '.policies')
-            with open(policy_file, 'r') as f:
-                for line in f.readlines():
-                    self.enforcer.add_policy(*line.strip().split(", ")[1:])
-            f.close()
+
+            try:
+                with open(policy_file, 'r') as f:
+                    for line in f.readlines():
+                        self.enforcer.add_policy(*line.strip().split(", ")[1:])
+                f.close()
+            except FileNotFoundError:
+                logging.log(logging.INFO, f"Policy file for user {uuid} not found. Skipping.")
 
     @property
     def actions(self):
         return self.actions
 
-    def _write_user_policies(self, uuid: UUID):
+    def _write_user_policies(self, user_uuid: str):
         """
         Write user policies to a file.
         """
-        user_policy_file = os.path.join(self.user_policies_folder, uuid.__str__() + '.policies')
+
+        user_uuid = user_uuid.__str__()
+        user_policy_file = os.path.join(self.user_policies_folder, user_uuid + '.policies')
         with open(user_policy_file, 'w') as f:
-            for policy in self.enforcer.get_filtered_policy(0, uuid):
+            for policy in self.enforcer.get_filtered_policy(0, user_uuid):
                 f.write(f"p, {', '.join(policy)}\n")
         f.close()
 
-    def _write_user_policy(self, uuid: UUID, access_point_uid: UUID, resource: str, action: str):
+    def _write_user_policy(self, user_uuid: str, endpoint_uuid: str, resource: str, action: str):
         """
         Write a user policy to a file.
-
-        :param uuid: The unique identifier slug of the user.
-        :param resource: The resource the user wants to access.
-        :param action: The action the user wants to perform on the resource.
-        :return: None
         """
         # Retrieve the users policy file
-        user_policy_file = os.path.join(self.user_policies_folder, uuid.__str__() + '.policies')
+        user_policy_file = os.path.join(self.user_policies_folder, user_uuid + '.policies')
         # Write the policy
         with open(user_policy_file, 'a') as f:
-            f.write(f"p, {uuid.__str__()}, {access_point_uid.__str__()}, {resource}, {action}\n")
+            f.write(f"p, {user_uuid}, {endpoint_uuid}, {resource}, {action}\n")
         f.close()
 
     def _write_enforcer_policies(self, enforcer: Enforcer):
@@ -123,23 +85,46 @@ class CasbinPolicyManager(AbstractPolicyManager):
         for uuid in enforcer.get_all_named_subjects("p"):
             self._write_user_policies(uuid)
 
-    def get_user_policies(self, uuid: UUID):
+    def get_user_policies(self, user_uuid: UUID):
         """
         Get the user policies.
 
         :return: The filtered user policies.
         :rtype: list[str]
         """
-        return self.enforcer.get_filtered_policy(0, uuid.__str__())
+        user_uuid = user_uuid.__str__()
+        policies = self.enforcer.get_filtered_policy(0, user_uuid)
+        result = []
+        for policy in policies:
+            result.append(Policy(
+                user_uuid=UUID(policy[0]),
+                endpoint_uuid=UUID(policy[1]),
+                resource=policy[2],
+                action=policy[3]
+            ))
+        return result
 
-    def get_access_point_policies(self, access_point_uid: UUID):
+    def get_endpoint_policies(self, endpoint_uuid: UUID) -> list[Policy]:
         """
         Get the access point policies.
 
         :return: The filtered access point policies.
         :rtype: list[str]
         """
-        return self.enforcer.get_filtered_policy(1, access_point_uid.__str__())
+        endpoint_uuid = endpoint_uuid.__str__()
+
+        policies = self.enforcer.get_filtered_policy(1, endpoint_uuid)
+        result = []
+
+        for policy in policies:
+            result.append(Policy(
+                user_uuid=UUID(policy[0]),
+                endpoint_uuid=UUID(policy[1]),
+                resource=policy[2],
+                action=policy[3]
+            ))
+
+        return result
 
     def get_resource_policies(self, resource: str):
         """
@@ -163,81 +148,86 @@ class CasbinPolicyManager(AbstractPolicyManager):
         """
         return self.enforcer.get_filtered_policy(3, action)
 
-    def filter_policies(self, uuid: UUID, access_point_uid: UUID = None, action: str = None) -> dict:
+    def filter_policies(self, filter_: Policy) -> list[Policy]:
         """
         Get all policies under a user according the given filters.
 
-
         """
-        # If access point or action are None set to any access point of action
-        if access_point_uid is None:
-            access_point_uid = ""
-        if action is None:
-            action = ""
 
-        filter_ = (uuid.__str__(), access_point_uid, '', action)
+        def convert_to_str(value):
+            return value.__str__() if value is not None else ""
+
+        filter_ = tuple(map(convert_to_str, filter_.dict().values()))
 
         # Retrieve the policies matching the filter
         policies = self.enforcer.get_filtered_policy(0, *filter_)
 
         # Sort by access points
-        access_points = set([policy[1] for policy in policies])
-        assets = dict.fromkeys(access_points, [])
+        result = []
         for policy in policies:
-            assets[policy[1]].append(policy[2])
-        return assets
+            user_uuid = UUID(policy[0])
+            endpoint_uuid = UUID(policy[1])
+            resource = policy[2]
+            action = policy[3]
 
-    def add_policy(self, uuid: UUID, access_point_uid: UUID, resource: str, action: str):
+            result.append(Policy(
+                user_uuid=user_uuid,
+                endpoint_uuid=endpoint_uuid,
+                resource=resource,
+                action=action
+            ))
+        return result
+
+    def add_policy(self, policy: Policy) -> bool:
         """
         Adds a user policy to the system.
 
-        :param access_point_uid:
-        :param uuid:
-        :param resource: The resource to grant access to.
-        :type resource: str
-        :param action: The action to be performed on the resource.
-        :type action: str
-        :return: Returns True if the policy was successfully added.
-        :rtype: bool
-        :raises ValueError: If the policy already exists or failed to add the policy.
+        :param policy: The policy to be added.
+        :type policy: Policy
         """
+        user_uuid = policy.user_uuid.__str__()
+        endpoint_uuid = policy.endpoint_uuid.__str__()
+        resource = policy.resource
+        action = policy.action
+
         # Check if the policy already exists
-        if self.enforcer.has_policy(uuid.__str__(), resource, action):
+        if self.enforcer.has_policy(user_uuid, endpoint_uuid, resource, action):
             raise ValueError("Policy already exists.")
 
-        result = self.enforcer.add_policy(uuid.__str__(), access_point_uid.__str__(), resource, action)
+        result = self.enforcer.add_policy(user_uuid, endpoint_uuid, resource, action)
         if result:
-            self._write_user_policy(uuid, access_point_uid, resource, action)
+            self._write_user_policy(user_uuid, endpoint_uuid, resource, action)
             return True
         else:
             raise ValueError("Failed to add policy.")
 
-    def remove_policy(self, uuid: UUID, access_point_uid: UUID, resource: str, action: str):
+    def remove_policy(self, policy: Policy) -> bool:
         """
         Remove a policy from the enforcer.
 
-        :param uuid:
-        :param access_point_uid:
-        :param resource: The resource associated with the policy.
-        :param action: The action associated with the policy.
-        :return: True if the policy was successfully removed.
-        :raises ValueError: If the policy fails to be removed.
+        :param policy: The policy to be removed.
+        :type policy: Policy
         """
-        filter_ = (uuid.__str__(), access_point_uid.__str__(), resource, action)
+        user_uuid = policy.user_uuid.__str__()
+        endpoint_uid = policy.endpoint_uuid.__str__()
+        resource = policy.resource
+        action = policy.action
+
+        filter_ = (user_uuid, endpoint_uid, resource, action)
         result = self.enforcer.remove_filtered_policy(0, *filter_)
         if result:
-            self._write_user_policies(uuid)
+            self._write_user_policies(user_uuid)
             return True
         else:
             raise ValueError("Failed to remove policy.")
 
-    def create_user_policy_store(self, uuid: UUID):
+    def create_user_policy_store(self, user_uuid: UUID) -> bool:
         """
         Creates a policy file for the given unique user identifier.
         """
 
         # Create a new user policy file
-        user_policy_file = os.path.join(self.user_policies_folder, uuid.__str__() + '.policies')
+        user_policy_file = os.path.join(self.user_policies_folder, user_uuid.__str__() + '.policies')
 
         # Check if the file exists
         if os.path.exists(user_policy_file):
@@ -247,33 +237,48 @@ class CasbinPolicyManager(AbstractPolicyManager):
             f.write("")
         f.close()
 
-        return
+        return True
 
-    def remove_user_policy_store(self, uuid: UUID):
+    def remove_user_policy_store(self, user_uuid: UUID) -> bool:
         """
         Removes a policy file for the given unique user identifier.
         """
 
         # Delete the user policies
-        user_policy_file = os.path.join(self.user_policies_folder, uuid.__str__() + '.policies')
-        try:
-            os.remove(user_policy_file)
-        except FileNotFoundError:
-            return
+        user_policy_file = os.path.join(self.user_policies_folder, user_uuid.__str__() + '.policies')
+        os.remove(user_policy_file)
 
         # Remove user policies from enforcer
-        self.enforcer.remove_filtered_policy(0, uuid)
+        self.enforcer.remove_filtered_policy(0, user_uuid)
 
         return True
 
-    def validate_policy(self, uuid: UUID, access_point_uid: UUID, resource: str, action: str):
+    def validate_policy(self, policy: Policy) -> bool:
         """
         Validate user access based on the provided parameters.
-
-        :param uuid:
-        :param access_point_uid:
-        :param resource: The resource to be accessed.
-        :param action: The action to be performed on the resource.
-        :return: True if the user has access, False otherwise.
         """
-        return self.enforcer.enforce(uuid, access_point_uid, resource, action)
+
+        user_uuid = policy.user_uuid.__str__()
+        endpoint_uuid = policy.endpoint_uuid.__str__()
+        resource = policy.resource
+        action = policy.action
+
+        return self.enforcer.enforce(user_uuid, endpoint_uuid, resource, action)
+
+    def create_agreement(self, agreement: Agreement) -> bool:
+        """
+        Create an agreement.
+        :param agreement: The agreement to be created.
+        :type agreement: Agreement
+        :return: True if successful, False otherwise.
+        """
+        NotImplementedError("create_agreement method is not implemented.")
+
+    def remove_agreement(self, agreement: Agreement) -> bool:
+        """
+        Remove an agreement.
+        :param agreement: The agreement to be removed.
+        :type agreement: Agreement
+        :return: True if successful, False otherwise.
+        """
+        NotImplementedError("remove_agreement method is not implemented.")

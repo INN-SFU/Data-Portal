@@ -13,7 +13,7 @@ from api.v0_1.endpoints.service.auth import decode_token, is_user_admin
 from core.management.policies import AbstractPolicyManager
 from core.management.endpoints import AbstractEndpointManager
 
-home_router = APIRouter(prefix="/home")
+home_router = APIRouter(prefix="/home", tags=["Home UI"])
 
 
 @home_router.get("", response_class=HTMLResponse)
@@ -52,7 +52,7 @@ async def assets_home(request: Request,
                       policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
                       endpoint_manager: AbstractEndpointManager = Depends(get_endpoint_manager)):
 
-    # Retrieve the user's uuid from the token payload.
+    # Retrieve the user's user_uuid from the token payload.
     uuid = token_payload.get("sub")
 
     # Get all storage access points the user has read access to.
@@ -69,7 +69,7 @@ async def assets_home(request: Request,
 
         file_trees[uid.__str__()] = convert_file_tree_to_dict(agent.filter_file_tree(node_filter) )
 
-    access_point_names = {endpoint.access_point_slug: uid.__str__() for uid, endpoint in endpoints.items()}
+    access_point_names = {endpoint.access_point_name: uid.__str__() for uid, endpoint in endpoints.items()}
 
     return templates.TemplateResponse(
         "user/home.html",

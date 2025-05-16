@@ -7,88 +7,46 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
   <style>
     /* Simple, minimal styling */
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    /* Top Navigation Styling */
-    .nav-container {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 10px;
-    }
-    .nav-container a {
-      text-decoration: none;
-      color: #333;
-      font-weight: bold;
-      padding: 8px 16px;
-    }
-    .sub-nav {
-      margin-bottom: 20px;
-    }
-    .sub-nav a {
-      text-decoration: none;
-      color: #333;
-      margin-right: 10px;
-      padding: 8px 16px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    .sub-nav a:hover {
-      background-color: #eee;
-    }
-    /* Simple styling for the endpoint cards */
-    .endpoint-card {
-      border: 1px solid #ccc;
-      padding: 8px;
-      margin-bottom: 5px;
-      cursor: pointer;
-      background-color: #f9f9f9;
-    }
-    .endpoint-card:hover {
-      background-color: #eef;
-    }
-    .endpoint-details {
-      margin-left: 20px;
-      padding: 5px;
-      border-left: 2px solid #ccc;
-      display: none;
-    }
-    .delete-btn {
-      background-color: #f44336;
-      color: white;
-      border: none;
-      padding: 4px 8px;
-      cursor: pointer;
-      margin-top: 5px;
-    }
-    .delete-btn:hover {
-      background-color: #d32f2f;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    /* Top Navigation */
+    .nav-container { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+    .nav-container a { text-decoration: none; color: #333; font-weight: bold; padding: 8px 16px; }
+    .sub-nav { margin-bottom: 20px; }
+    .sub-nav a { text-decoration: none; color: #333; margin-right: 10px; padding: 8px 16px; border: 1px solid #ccc; border-radius: 4px; }
+    .sub-nav a:hover { background-color: #eee; }
+
+    /* Endpoint cards */
+    .endpoint-card { border: 1px solid #ccc; padding: 8px; margin-bottom: 5px; cursor: pointer; background-color: #f9f9f9; position: relative; }
+    .endpoint-card:hover { background-color: #eef; }
+    .endpoint-details { margin-left: 20px; padding: 5px; border-left: 2px solid #ccc; display: none; }
+    .delete-btn { background-color: #f44336; color: white; border: none; padding: 4px 8px; cursor: pointer; margin-top: 5px; position: absolute; right: 10px; top: 10px; }
+    .delete-btn:hover { background-color: #d32f2f; }
+
+    /* Creator */
+    .flavour-card { border: 1px solid #ccc; padding: 8px; margin-bottom: 10px; background-color: #fafafa; }
+    .flavour-card h3 { margin: 0; cursor: pointer; }
+    .flavour-form { margin-top: 10px; }
+    .flavour-form div { margin-bottom: 8px; }
   </style>
 </head>
 <body>
   <!-- Top Navigation -->
   <div class="nav-container">
-    <!-- Left side: Home + Data Portal -->
     <div class="left-nav">
       <a href="/">INN Data Portal</a>
       <a href="/interface/home">Home</a>
     </div>
-    <!-- Right side: Logout -->
     <div class="right-nav">
       <a href="/logout">Logout</a>
     </div>
   </div>
 
-    <!-- Sub Navigation -->
+  <!-- Sub Navigation -->
   <div class="sub-nav">
-    <a href="/interface/admin/policy-management">Policy Management</a>
-    <a href="/interface/admin/user-management">User Management</a>
-    <a href="/interface/admin/endpoint-management">Endpoint Management</a>
-    <a href="/interface/admin/asset-management">Asset Management</a>
+    <a href="/interface/admin/policy-management">Policies</a>
+    <a href="/interface/admin/user-management">Users</a>
+    <a href="/interface/admin/endpoint-management">Endpoints</a>
+    <a href="/interface/admin/asset-management">Assets</a>
   </div>
 
   <!-- Registered Endpoints Section -->
@@ -96,20 +54,22 @@
     <h4>Registered Endpoints</h4>
     <div id="endpoint-list">
       {% for endpoint_name, (endpoint_uid, endpoint_config) in endpoints.items() %}
-        <div class="endpoint-card" id="card-{{ endpoint_name }}">
+        <div class="endpoint-card" id="card-{{ endpoint_uid }}">
           <div onclick="toggleEndpointDetails('{{ endpoint_uid }}')">
             <strong>{{ endpoint_name }}</strong>
-            <span style="font-size: 0.8em;">(UID: {{ endpoint_uid }})</span>
+            <span style="font-size: 0.8em;">(UUID: {{ endpoint_uid }})</span>
           </div>
           <div class="endpoint-details" id="details-{{ endpoint_uid }}">
-            <p><strong>Configuration:</strong>
+            <p><strong>Configuration:</strong></p>
             <ul>
               {% for key, value in endpoint_config.items() %}
-              <li>{{ key }}: {{ value }}</li>
+                <li>{{ key }}: {{ value }}</li>
               {% endfor %}
             </ul>
-            <!-- Delete button -->
-            <button class="delete-btn" onclick="deleteEndpoint('{{ endpoint_id }}'); event.stopPropagation();">Delete</button>
+            <button class="delete-btn"
+                    onclick="deleteEndpoint('{{ endpoint_uid }}'); event.stopPropagation();">
+              Delete
+            </button>
           </div>
         </div>
       {% endfor %}
@@ -125,33 +85,50 @@
       {% for flavour_key, flavour_class in flavours.items() %}
         <div class="flavour-card">
           <h3 onclick="toggleForm('{{ flavour_key }}')">{{ flavour_key | upper }}</h3>
-          <div class="flavour-form" id="form-{{ flavour_key }}" style="display: none;">
-            <!-- The form uses an inline onsubmit handler to submit via JS -->
-            <form class="endpoint-form" data-flavour="{{ flavour_key }}" method="POST" onsubmit="return handleSubmit(event);">
+          <div class="flavour-form" id="form-{{ flavour_key }}" style="display:none;">
+            <form data-flavour="{{ flavour_key }}" onsubmit="return handleSubmit(event);">
               <input type="hidden" name="flavour" value="{{ flavour_key }}">
-              <!-- Common fields -->
               <div>
-                <label for="{{ flavour_key }}-access_point_slug">Access Point Slug:</label>
-                <input type="text" name="access_point_slug" id="{{ flavour_key }}-access_point_slug" placeholder="Unique identifier for the access point" required>
+                <label for="{{ flavour_key }}-access_point_name">Access Point Name:</label>
+                <input type="text"
+                       name="access_point_name"
+                       id="{{ flavour_key }}-access_point_name"
+                       placeholder="Unique identifier"
+                       required>
               </div>
               <div>
                 <label for="{{ flavour_key }}-endpoint_url">Endpoint URL:</label>
-                <input type="text" name="endpoint_url" id="{{ flavour_key }}-endpoint_url" placeholder="The endpoint URL" required>
+                <input type="url"
+                       name="endpoint_url"
+                       id="{{ flavour_key }}-endpoint_url"
+                       placeholder="https://example.com"
+                       required>
               </div>
-              <!-- Flavour-specific fields -->
               {% if flavour_key == 's3' %}
                 <div>
                   <label for="{{ flavour_key }}-aws_access_key_id">AWS Access Key ID:</label>
-                  <input type="text" name="aws_access_key_id" id="{{ flavour_key }}-aws_access_key_id" placeholder="The AWS access key ID" required>
+                  <input type="text"
+                         name="aws_access_key_id"
+                         id="{{ flavour_key }}-aws_access_key_id"
+                         placeholder="AWS access key ID"
+                         required>
                 </div>
                 <div>
                   <label for="{{ flavour_key }}-aws_secret_access_key">AWS Secret Access Key:</label>
-                  <input type="text" name="aws_secret_access_key" id="{{ flavour_key }}-aws_secret_access_key" placeholder="The AWS secret access key" required>
+                  <input type="text"
+                         name="aws_secret_access_key"
+                         id="{{ flavour_key }}-aws_secret_access_key"
+                         placeholder="AWS secret access key"
+                         required>
                 </div>
               {% elif flavour_key == 'posix' %}
                 <div>
                   <label for="{{ flavour_key }}-ssh_ca_key">SSH CA Key:</label>
-                  <input type="text" name="ssh_ca_key" id="{{ flavour_key }}-ssh_ca_key" placeholder="Path to the SSH CA key" required>
+                  <input type="text"
+                         name="ssh_ca_key"
+                         id="{{ flavour_key }}-ssh_ca_key"
+                         placeholder="/path/to/ca_key"
+                         required>
                 </div>
               {% endif %}
               <button type="submit">Create {{ flavour_key | upper }} Endpoint</button>
@@ -162,19 +139,116 @@
     </div>
   </div>
 
-  <!-- External JavaScript -->
-  <script src="{{ url_for('static', path='js/scripts.js') }}"></script>
+  <!-- jQuery + jsTree -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
 
-  <!-- Inline script to toggle endpoint details -->
   <script>
+    // Toggle the details panel under each endpoint card
     function toggleEndpointDetails(endpointId) {
-      var detailsDiv = document.getElementById("details-" + endpointId);
-      if (detailsDiv.style.display === "none" || detailsDiv.style.display === "") {
-        detailsDiv.style.display = "block";
-      } else {
-        detailsDiv.style.display = "none";
+      const details = document.getElementById('details-' + endpointId);
+      details.style.display = (details.style.display === 'block' ? 'none' : 'block');
+    }
+
+    // Toggle the form for each flavour
+    function toggleForm(flavour) {
+      const form = document.getElementById('form-' + flavour);
+      form.style.display = (form.style.display === 'block' ? 'none' : 'block');
+    }
+
+    // Handle form submission via JS
+    async function handleSubmit(event) {
+      event.preventDefault();
+      const form = event.target;
+      const data = {};
+      new FormData(form).forEach((v, k) => data[k] = v);
+
+      try {
+        const res = await fetch('/admin/endpoints/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          alert('Error: ' + (json.detail || JSON.stringify(json)));
+        } else {
+          alert('Success: ' + (json.detail || 'Endpoint created.'));
+          location.reload();
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Request failed');
+      }
+      return false;
+    }
+
+    // Delete an endpoint by UUID
+    async function deleteEndpoint(endpointId) {
+      if (!confirm('Really delete this endpoint?')) return;
+      try {
+        const res = await fetch(
+          `/admin/endpoints/?endpoint_uid=${encodeURIComponent(endpointId)}`,
+          { method: 'DELETE' }
+        );
+        const json = await res.json();
+        if (!res.ok) {
+          alert('Error: ' + (json.detail || JSON.stringify(json)));
+        } else {
+          alert('Deleted: ' + (json.detail || 'OK'));
+          document.getElementById('card-' + endpointId).remove();
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Request failed');
       }
     }
+  </script>
+  <script>
+    // 1) Read a cookie by name
+    function getCookie(name) {
+      return document.cookie.split("; ").reduce((r, kv) => {
+        const [k, v] = kv.split("=");
+        return k === name ? decodeURIComponent(v) : r;
+      }, "");
+    }
+
+    // 2) Call /auth/refresh when you need a new token
+    async function refreshSession() {
+      const res = await fetch("/auth/refresh", {
+        method: "POST",
+        credentials: "include"
+      });
+      if (!res.ok) {
+        // if refresh fails, bounce to login
+        window.location.href = "/auth/login";
+      }
+    }
+
+    // 3) Poll the expiry timestamp and prompt user when low
+    function startExpiryWatcher(thresholdSeconds = 300) {
+      setInterval(() => {
+        const expCookie = getCookie("access_expires_at");
+        if (!expCookie) return;
+        const exp = Number(expCookie) * 1000;
+        const secsLeft = (exp - Date.now()) / 1000;
+
+        if (secsLeft < 0) {
+          // token already expired
+          window.location.href = "/auth/login";
+        } else if (secsLeft < thresholdSeconds) {
+          // warn & optionally auto-refresh
+          if (confirm(`Session expires in ${Math.ceil(secsLeft/60)} min. Renew now?`)) {
+            refreshSession();
+          }
+        }
+      }, 60 * 1000);
+    }
+
+    // 4) Wire it all up once the DOM is ready
+    document.addEventListener("DOMContentLoaded", () => {
+      startExpiryWatcher(300);  // warn at 5 minutes remaining
+    });
   </script>
 </body>
 </html>

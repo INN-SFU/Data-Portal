@@ -1,41 +1,98 @@
-from typing import Iterable, Union
-from uuid import UUID
 from abc import abstractmethod, ABC
+from typing import Union, List
+from uuid import UUID
 
-from core.connectivity import AbstractStorageAgent
+from .models import Endpoint
 
 
 class AbstractEndpointManager(ABC):
 
+    def __init__(self) -> None:
+        self._endpoints: List[Endpoint] = []
+
     @property
+    def endpoints(self) -> list[Endpoint]:
+        return self._endpoints
+
+    @endpoints.getter
+    def get_endpoints(self) -> list[Endpoint]:
+        return self._endpoints
+
+    @endpoints.setter
+    def endpoints(self, endpoints: Union[Endpoint, list[Endpoint]]):
+        if isinstance(endpoints, Endpoint):
+            self.endpoints.append(endpoints)
+        elif isinstance(endpoints, list):
+            self.endpoints.extend(endpoints)
+        else:
+            raise TypeError("Expected Endpoint or list of Endpoints")
+
+    @endpoints.deleter
+    def endpoints(self):
+        for endpoint in self.endpoints:
+            # Close the agent including the connections
+            endpoint.close()
+
+        self._endpoints.clear()
+
     @abstractmethod
-    def endpoints(self) -> dict[UUID, AbstractStorageAgent]:
+    def save_configuration(self) -> bool:
         pass
 
     @abstractmethod
-    def get_endpoints(self) -> dict[UUID, AbstractStorageAgent]:
+    def delete_configuration(self, endpoint: Endpoint) -> bool:
         pass
 
-    @abstractmethod
-    def add_endpoint(self, value: dict[UUID, AbstractStorageAgent]):
-        pass
+    def get_endpoints_by_uuid(self, uuids: list[UUID]) -> list[Endpoint]:
+        """
+        Get endpoints by UUID.
 
-    @abstractmethod
-    def get_endpoint(self, uid: Union[UUID, Iterable[UUID]]) -> AbstractStorageAgent:
-        pass
+        :param uuids: UUID or list of UUIDs to search for.
+        :return: List of matching endpoints.
+        """
+        if isinstance(uuids, UUID):
+            uuids = [uuids]
 
-    @abstractmethod
-    def delete_endpoint(self, uid: UUID):
-        pass
+        matching_endpoints = [
+            endpoint for endpoint in self.endpoints if endpoint.uuid in uuids
+        ]
 
-    @abstractmethod
-    def get_slug(self, uid: UUID) -> str:
-        pass
+        return matching_endpoints
 
-    @abstractmethod
-    def get_uid(self, endpoint_slug: str) -> UUID:
-        pass
+    def get_endpoint_uuid(self, endpoint_name: str) -> UUID:
+        """
+        Get the UUID of an endpoint by its name.
 
-    @abstractmethod
-    def get_administrator(self, uuid: UUID) -> str:
-        pass
+        :param endpoint_name: The name of the endpoint.
+        :return: The UUID of the endpoint.
+        """
+        for endpoint in self.endpoints:
+            if endpoint.name == endpoint_name:
+                return endpoint.uuid
+
+        raise ValueError(f"Endpoint with name '{endpoint_name}' not found.")
+
+    def get_endpoint_by_uuid(self, uuid: UUID) -> Endpoint:
+        """
+        Get the endpoint by its UUID.
+
+        :param uuid: The UUID of the endpoint.
+        :return: The Endpoint object.
+        """
+        for endpoint in self.endpoints:
+            if endpoint.uuid == uuid:
+                return endpoint
+
+        raise ValueError(f"Endpoint with UUID '{uuid}' not found.")
+
+    def delete_endpoint(self, endpoint: Endpoint):
+        """
+        Delete an endpoint from the list and remove its configuration file.
+
+        :param endpoint: The Endpoint object to delete.
+        """
+        if endpoint in self.endpoints:
+            self.endpoints.remove(endpoint)
+            self.delete_configuration(endpoint)
+        else:
+            raise KeyError(f"Endpoint {endpoint.uuid} not found.")

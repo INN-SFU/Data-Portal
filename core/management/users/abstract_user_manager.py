@@ -1,22 +1,24 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
 
+from core.management.users.models import User, UserCreate
+
 
 class AbstractUserManager(ABC):
     @abstractmethod
-    def create_user(self, user_details: dict):
+    def create_user(self, user_details: UserCreate) -> User:
         pass
 
     @abstractmethod
-    def get_user(self, uuid: UUID) -> dict:
+    def get_user(self, uuid: UUID) -> User:
         pass
 
     @abstractmethod
-    def delete_user(self, uuid:UUID):
+    def delete_user(self, uuid: UUID) -> bool:
         pass
 
     @abstractmethod
-    def get_all_users(self) -> list:
+    def get_all_users(self) -> list[User]:
         pass
 
     @abstractmethod
@@ -28,9 +30,13 @@ class AbstractUserManager(ABC):
         pass
 
     @abstractmethod
-    def get_user_uid(self, user_slug: str) -> UUID:
+    def get_user_roles(self, uuid: UUID) -> list[str]:
         pass
 
     @abstractmethod
-    def get_user_uids(self) -> list:
+    def get_user_uuid(self, user_slug: str) -> UUID:
+        pass
+
+    @abstractmethod
+    def get_user_uuids(self) -> list[UUID]:
         pass

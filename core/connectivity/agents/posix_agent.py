@@ -20,23 +20,24 @@ class PosixStorageAgent(AbstractStorageAgent):
         _SSH_CA_KEY (str): The path to the SSH CA private key used for signing certificates.
     """
 
-    FLAVOUR = 'posix'
+    FLAVOUR: str = 'posix'
+    CONFIG: dict = {
+        "ssh_ca_key": str
+    }
 
     def __init__(self,
-                 access_point_slug: str,
                  endpoint_url: str,
                  ssh_ca_key: str):
         """
         Initialize a new instance of the class.
 
-        :param access_point_slug: The slug for the access point.
-        :type access_point_slug: str
         :param endpoint_url: The base URL for serving files.
         :type endpoint_url: str
         """
 
-        super().__init__(access_point_slug, endpoint_url)
+        super().__init__(endpoint_url)
 
+        # Set the SSH CA key
         self._ssh_ca_key = ssh_ca_key
 
         # Initialize the file tree
@@ -60,7 +61,7 @@ class PosixStorageAgent(AbstractStorageAgent):
                     path = rel_path + self.separator + file_name
                 self._add_file_to_tree(path)
 
-    def generate_access_links(self, resource: str, method: str, ttl: int):
+    def generate_access_link(self, resource: str, method: str, ttl: int):
         """
         Generate a URL with an embedded SSH certificate for accessing a resource.
 
@@ -138,16 +139,34 @@ class PosixStorageAgent(AbstractStorageAgent):
 
         return cert_data
 
-    def _get_config(self):
+    def config(self):
         """
         Get the configuration of the agent.
 
         :return: The configuration of the agent.
         """
-        config = {
-            "access_point_slug": self.access_point_slug,
-            "endpoint_url": self.endpoint_url,
+        base_config = super().config()
+
+        posix_config = {
             "ssh_ca_key": self._ssh_ca_key
         }
 
-        return config
+        posix_config.update(base_config)
+
+        return posix_config
+
+    def refresh_connection(self):
+        """
+        Refresh the agent's connection to the storage backend.
+        This is a placeholder for the actual implementation.
+        """
+        pass
+
+    def close(self):
+        """
+        Perform explicit cleanup of resources held by this agent.
+        For instance, if the agent holds connections or open files, they
+        should be closed here.
+        """
+        # Close any resources if needed.
+        pass
