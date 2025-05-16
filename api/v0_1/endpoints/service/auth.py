@@ -8,7 +8,7 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import PyJWKClient
 
-auth_router = APIRouter(prefix='/auth')
+auth_router = APIRouter(prefix='/auth', tags=["Authentication"])
 
 # Use auto_error=False, so we can fall back to cookies if no header is provided.
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -129,6 +129,7 @@ async def keycloak_callback(request: Request):
         value=token_data["access_token"],
         httponly=True,  # Helps prevent XSS
         secure=True,  # Change to True in production (HTTPS required)
+        samesite="lax",
         path='/'
     )
     return response

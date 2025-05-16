@@ -4,244 +4,264 @@
   <meta charset="UTF-8">
   <title>Asset Management</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <!-- jsTree CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
-  <!-- jQuery, jsTree, and htmx -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css"
+  />
+
+  <!-- jQuery, jsTree, JSZip, FileSaver -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
-  <script src="https://unpkg.com/htmx.org@1.6.1"></script>
-  <style>
-    /* Simple, minimal styling */
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    /* Top Navigation Styling */
-    .nav-container {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 10px;
-    }
-    .nav-container a {
-      text-decoration: none;
-      color: #333;
-      font-weight: bold;
-      padding: 8px 16px;
-    }
-    .sub-nav {
-      margin-bottom: 20px;
-    }
-    .sub-nav a {
-      text-decoration: none;
-      color: #333;
-      margin-right: 10px;
-      padding: 8px 16px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    .sub-nav a:hover {
-      background-color: #eee;
-    }
-    .endpoint-card {
-      border: 1px solid #ccc;
-      padding: 8px;
-      margin-bottom: 5px;
-      cursor: pointer;
-      background-color: #f9f9f9;
-      position: relative;
-    }
-    .endpoint-card:hover {
-      background-color: #eef;
-    }
-    .endpoint-details {
-      margin-left: 20px;
-      padding: 5px;
-      border-left: 2px solid #ccc;
-      display: none;
-    }
-    .file-tree {
-      display: none;
-    }
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .nav-container { display: flex; justify-content: space-between; margin-bottom:20px; border-bottom:1px solid #ccc; padding-bottom:10px; }
+    .nav-container a { text-decoration:none; color:#333; font-weight:bold; padding:8px 16px; }
+    .sub-nav { margin-bottom:20px; }
+    .sub-nav a { text-decoration:none; color:#333; margin-right:10px; padding:8px 16px; border:1px solid #ccc; border-radius:4px; }
+    .sub-nav a:hover { background:#eee; }
+
+    .endpoint-card { border:1px solid #ccc; padding:8px; margin-bottom:5px; background:#f9f9f9; position:relative; }
+    .endpoint-card:hover { background:#eef; }
+    .endpoint-header { cursor:pointer; }
+    .endpoint-details { display:none; margin-left:20px; padding:5px; border-left:2px solid #ccc; }
+    .file-tree { margin-top:10px; }
+
+    .delete-btn { background:#f44336; color:white; border:none; padding:4px 8px; cursor:pointer; position:absolute; right:10px; top:10px; }
+    .delete-btn:hover { background:#d32f2f; }
+
+    .action-btn { margin-right:8px; padding:6px 12px; }
+    .download { background:#2196f3; color:white; border:none; }
+    .upload   { background:#4caf50; color:white; border:none; }
   </style>
 </head>
 <body>
-  <!-- Top Navigation -->
+  <!-- Top Nav -->
   <div class="nav-container">
-    <!-- Left side: Home + Data Portal -->
-    <div class="left-nav">
+    <div>
       <a href="/">INN Data Portal</a>
       <a href="/interface/home">Home</a>
     </div>
-    <!-- Right side: Logout -->
-    <div class="right-nav">
-      <a href="/logout">Logout</a>
-    </div>
+    <div><a href="/logout">Logout</a></div>
   </div>
 
-    <!-- Sub Navigation -->
+  <!-- Sub Nav -->
   <div class="sub-nav">
-    <a href="/interface/admin/policy-management">Policy Management</a>
-    <a href="/interface/admin/user-management">User Management</a>
-    <a href="/interface/admin/endpoint-management">Endpoint Management</a>
-    <a href="/interface/admin/asset-management">Asset Management</a>
+    <a href="/interface/admin/policy-management">Policies</a>
+    <a href="/interface/admin/user-management">Users</a>
+    <a href="/interface/admin/endpoint-management">Endpoints</a>
+    <a href="/interface/admin/asset-management">Assets</a>
   </div>
 
-  <!-- Registered Storage Endpoints Section -->
-  <div>
-    <h4>Storage Endpoints</h4>
-    <div id="endpoint-list">
-      {% for endpoint_name, endpoint_uid in endpoints.items() %}
-        <div class="endpoint-card" id="card-{{ endpoint_name }}">
-          <div onclick="toggleEndpointDetails('{{ endpoint_name }}')">
-            <strong>{{ endpoint_name }}</strong>
-            <span style="font-size: 0.8em;">(UID: {{ endpoint_uid }})</span>
-          </div>
-          <div class="endpoint-details" id="details-{{ endpoint_name }}">
-            {% if endpoint_uid in assets %}
-              {% for access_type, tree in assets[endpoint_uid].items() %}
-                <div class="access-tree">
-                  <h5 onclick="toggleAccessTree('{{ endpoint_uid }}', '{{ access_type }}')">
-                    {{ access_type | capitalize }} Access
-                  </h5>
-                  <div id="tree-{{ endpoint_uid }}-{{ access_type }}" class="file-tree" data-tree='{{ tree | tojson }}'></div>
+  <h4>Storage Endpoints</h4>
+  <div id="endpoint-list">
+    {% for endpoint_name, endpoint_uid in endpoints.items() %}
+      {% set uid = endpoint_uid|string %}
+      <div class="endpoint-card" id="card-{{ uid }}" data-endpoint="{{ endpoint_name }}">
+        <div class="endpoint-header" onclick="toggleEndpointDetails('{{ uid }}')">
+          <strong>{{ endpoint_name }}</strong>
+          <span style="font-size:0.8em;">(UUID: {{ uid }})</span>
+        </div>
+        <button class="delete-btn"
+                onclick="deleteEndpoint('{{ uid }}'); event.stopPropagation();">
+          Delete
+        </button>
+        <div class="endpoint-details" id="details-{{ uid }}">
+          {% if uid in assets %}
+            {% for access_type, tree in assets[uid].items() %}
+              <div class="access-tree">
+                <h5 style="cursor:pointer;"
+                    onclick="event.stopPropagation(); toggleAccessTree('{{ uid }}','{{ access_type }}')">
+                  {{ access_type|capitalize }} Access
+                </h5>
+                <div class="file-tree"
+                     id="tree-{{ uid }}-{{ access_type }}"
+                     data-tree='{{ tree|tojson }}'>
                 </div>
-              {% endfor %}
-            {% else %}
-              <p>No file tree available for this endpoint.</p>
-            {% endif %}
-            <div style="margin-top:10px;">
-              <button class="action-btn upload" onclick="handleUpload('{{ endpoint_uid }}');">Upload Selected</button>
-              <button class="action-btn download" onclick="handleDownload('{{ endpoint_uid }}');">Download Selected</button>
-            </div>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p>No file tree available.</p>
+          {% endif %}
+
+          <div style="margin-top:10px;">
+            <button class="action-btn download"
+                    onclick="event.stopPropagation(); handleDownload('{{ uid }}')">
+              Download Selected
+            </button>
+            <button class="action-btn upload"
+                    onclick="event.stopPropagation(); handleUpload('{{ uid }}')">
+              Upload Selected
+            </button>
           </div>
         </div>
-      {% endfor %}
-    </div>
+      </div>
+    {% endfor %}
   </div>
 
   <hr>
-
   <div id="response"></div>
 
-  <!-- External JavaScript -->
-  <script src="{{ url_for('static', path='js/scripts.js') }}"></script>
-
-  <!-- Inline script to toggle endpoint details -->
   <script>
-    // When the DOM is fully loaded, initialize jsTree for each endpoint's file tree.
+    // Initialize jsTrees (auto-check on open)
     document.addEventListener('DOMContentLoaded', () => {
-      {% for endpoint_id, items in assets.items() %}
-        $('#tree-{{ loop.index }}').jstree({
-          'core': {
-            'data': {{ items|tojson }}
-          },
-          'plugins': ["checkbox"]
-        }).on('changed.jstree', function (e, data) {
-          console.log(`Tree ${this.id} changed:`, data.selected);
+      document.querySelectorAll('.file-tree').forEach(div => {
+        const data = JSON.parse(div.dataset.tree);
+        $(div).jstree({
+          core: { data },
+          plugins: ['checkbox']
+        })
+        .on('open_node.jstree', (e, data) => data.instance.check_node(data.node))
+        .on('click', e => e.stopPropagation());
+      });
+    });
+
+    function toggleEndpointDetails(uid) {
+      const d = document.getElementById('details-'+uid);
+      d.style.display = d.style.display === 'block' ? 'none' : 'block';
+    }
+    function toggleAccessTree(uid, type) {
+      const d = document.getElementById(`tree-${uid}-${type}`);
+      if (!d) return;
+      d.style.display = d.style.display==='block'?'none':'block';
+    }
+
+    // collect *leaf* file paths under checked nodes
+    function getFilePaths(uid) {
+      const files = [];
+      $(`#details-${uid} .file-tree`).each((_, div) => {
+        const tree = $(div).jstree(true);
+        tree.get_selected(true).forEach(n=>{
+          if (!n.children.length) {
+            files.push(n.id);
+          } else {
+            n.children_d.forEach(cid=>{
+              const c = tree.get_node(cid);
+              if (!c.children.length) files.push(c.id);
+            });
+          }
         });
-      {% endfor %}
-    });
-
-    // Toggle the display of endpoint details (including the file tree)
-    function toggleEndpointDetails(endpointId) {
-      var detailsDiv = document.getElementById("details-" + endpointId);
-      if (detailsDiv.style.display === "none" || detailsDiv.style.display === "") {
-        detailsDiv.style.display = "block";
-      } else {
-        detailsDiv.style.display = "none";
-      }
+      });
+      return [...new Set(files)];
     }
 
-    // Handle upload: collect selected nodes from jsTree and send a PUT request to generate upload URLs.
-    function handleUpload(endpointId) {
-      var treeDiv = document.getElementById("tree-" + endpointId);
-      var selectedNodes = $(treeDiv).jstree('get_selected', true).map(function(node) {
-        var isFolder = $(treeDiv).jstree('is_parent', node);
-        return node.id + (isFolder ? '/*' : '');
+    // any single checked node is our upload target
+    function getSelectedFolder(uid) {
+      const sel = [];
+      $(`#details-${uid} .file-tree`).each((_, div) => {
+        const tree = $(div).jstree(true);
+        tree.get_selected(true).forEach(n=>{
+          sel.push(n.id);
+        });
       });
-      console.log("Upload selected nodes for endpoint", endpointId, ":", selectedNodes);
-      if (selectedNodes.length === 0) {
-        alert("Please select at least one file or folder for upload.");
-        return;
-      }
-      fetch(`/asset/upload?resource=${encodeURIComponent(selectedNodes.join(','))}&access_point=${encodeURIComponent(endpointId)}`, {
-        method: "PUT",
-        credentials: "include"
-      })
-      .then(response => {
-        if (!response.ok) {
-          return response.json().then(err => { throw err; });
-        }
-        return response.json();
-      })
-      .then(result => {
-        alert("Upload URL(s) generated successfully.");
-        console.log("Upload result:", result);
-      })
-      .catch(err => {
-        alert("Error generating upload URL: " + (err.detail || JSON.stringify(err)));
-      });
+      return [...new Set(sel)];
     }
 
-    // Handle download: collect selected nodes from jsTree and send a PUT request to generate download URLs.
-    function handleDownload(endpointId) {
-      var treeDiv = document.getElementById("tree-" + endpointId);
-      var selectedNodes = $(treeDiv).jstree('get_selected', true).map(function(node) {
-        var isFolder = $(treeDiv).jstree('is_parent', node);
-        return node.id + (isFolder ? '/*' : '');
-      });
-      console.log("Download selected nodes for endpoint", endpointId, ":", selectedNodes);
-      if (selectedNodes.length === 0) {
-        alert("Please select at least one file or folder for download.");
-        return;
+    // download → zip
+    async function handleDownload(uid) {
+      const endpoint = $('#card-'+uid).data('endpoint');
+      const files = getFilePaths(uid);
+      if (!files.length) return alert('Select files or folders.');
+      const zip = new JSZip();
+      for (const r of files) {
+        try {
+          const qp = new URLSearchParams({ access_point:endpoint, resource:r, action:'read' });
+          const res = await fetch(`/asset/download?${qp}`,{method:'PUT',credentials:'include'});
+          if (!res.ok) throw await res.json();
+          const {presigned_urls, file_paths} = await res.json();
+          for (let i=0;i<presigned_urls.length;i++){
+            const blob = await fetch(presigned_urls[i]).then(r=>r.blob());
+            zip.file(file_paths[i], blob);
+          }
+        } catch(e){ alert(`Error ${r}: ${e.detail||e.message}`); }
       }
-      fetch(`/asset/download?resource=${encodeURIComponent(selectedNodes.join(','))}&access_point=${encodeURIComponent(endpointId)}`, {
-        method: "PUT",
-        credentials: "include"
-      })
-      .then(response => {
-        if (!response.ok) {
-          return response.json().then(err => { throw err; });
-        }
-        return response.json();
-      })
-      .then(result => {
-        alert("Download URL(s) generated successfully.");
-        console.log("Download result:", result);
-      })
-      .catch(err => {
-        alert("Error generating download URL: " + (err.detail || JSON.stringify(err)));
-      });
+      const b = await zip.generateAsync({type:'blob'});
+      saveAs(b, `${endpoint}_download.zip`);
     }
 
-    document.addEventListener("DOMContentLoaded", function() {
-      console.log("Asset Management script loaded");
-    });
-
-    function toggleAccessTree(endpointUid, accessType) {
-      var treeDiv = document.getElementById("tree-" + endpointUid + "-" + accessType);
-      if (!treeDiv) return;
-      if (treeDiv.style.display === "none" || treeDiv.style.display === "") {
-        treeDiv.style.display = "block";
-        // Optionally initialize jsTree if needed
-        if (!$(treeDiv).data('initialized')) {
-          var treeData = treeDiv.getAttribute("data-tree");
-          $(treeDiv).jstree({
-            'core': {
-              'data': JSON.parse(treeData)
-            },
-            'plugins': ["checkbox"]
+    // upload → pass only the folder; backend will combine with filename
+    async function handleUpload(uid) {
+      const endpoint = $('#card-'+uid).data('endpoint');
+      const targets = getSelectedFolder(uid);
+      if (targets.length!==1) return alert('Select exactly one folder (via its checkbox).');
+      const folder = targets[0];
+      const inp = $('<input type="file" multiple>').on('change', async e=>{
+        for (const file of e.target.files) {
+          const qp = new URLSearchParams({
+            access_point: endpoint,
+            resource: folder,
+            filename: file.name
           });
-          $(treeDiv).data('initialized', true);
+          const pre = await fetch(`/asset/upload?${qp}`,{method:'PUT',credentials:'include'});
+          if (!pre.ok) throw await pre.json();
+          const {presigned_urls} = await pre.json();
+          await fetch(presigned_urls[0],{method:'PUT',body:file});
         }
-      } else {
-        treeDiv.style.display = "none";
-      }
+        alert('Upload done');
+      }).appendTo('body');
+      inp.click().remove();
     }
 
+    async function deleteEndpoint(uuid) {
+      if (!confirm('Delete this endpoint?')) return;
+      const res = await fetch(`/admin/endpoints/?endpoint_uuid=${encodeURIComponent(uuid)}`,
+                              {method:'DELETE',credentials:'include'});
+      if (!res.ok) {
+        const e = await res.json();
+        return alert('Error: '+e.detail);
+      }
+      $('#card-'+uuid).remove();
+    }
   </script>
+  <script>
+  // 1) Read a cookie by name
+  function getCookie(name) {
+    return document.cookie.split("; ").reduce((r, kv) => {
+      const [k, v] = kv.split("=");
+      return k === name ? decodeURIComponent(v) : r;
+    }, "");
+  }
+
+  // 2) Call /auth/refresh when you need a new token
+  async function refreshSession() {
+    const res = await fetch("/auth/refresh", {
+      method: "POST",
+      credentials: "include"
+    });
+    if (!res.ok) {
+      // if refresh fails, bounce to login
+      window.location.href = "/auth/login";
+    }
+  }
+
+  // 3) Poll the expiry timestamp and prompt user when low
+  function startExpiryWatcher(thresholdSeconds = 300) {
+    setInterval(() => {
+      const expCookie = getCookie("access_expires_at");
+      if (!expCookie) return;
+      const exp = Number(expCookie) * 1000;
+      const secsLeft = (exp - Date.now()) / 1000;
+
+      if (secsLeft < 0) {
+        // token already expired
+        window.location.href = "/auth/login";
+      } else if (secsLeft < thresholdSeconds) {
+        // warn & optionally auto-refresh
+        if (confirm(`Session expires in ${Math.ceil(secsLeft/60)} min. Renew now?`)) {
+          refreshSession();
+        }
+      }
+    }, 60 * 1000);
+  }
+
+  // 4) Wire it all up once the DOM is ready
+  document.addEventListener("DOMContentLoaded", () => {
+    startExpiryWatcher(300);  // warn at 5 minutes remaining
+  });
+</script>
 </body>
 </html>

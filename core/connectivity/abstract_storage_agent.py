@@ -4,10 +4,10 @@ import treelib
 import re
 
 from treelib.exceptions import DuplicatedNodeIdError
-from abc import ABC
+from abc import ABC, abstractmethod
 from treelib import node, tree
 from uuid import UUID
-from core.management.policies import AbstractPolicyManager
+from core.management.policies import AbstractPolicyManager, Policy
 
 
 class AbstractStorageAgent(ABC):
@@ -25,20 +25,21 @@ class AbstractStorageAgent(ABC):
     """
 
     FLAVOUR = None
+    CONFIG = None
 
-    def __init__(self, access_point_slug: str, endpoint_url: str, endpoint_uid: UUID, separator: str = '/'):
+    def __init__(self,
+                 endpoint_url: str,
+                 separator: str = '/'):
         """
         Initialize a new instance of the class.
 
-        :param access_point_slug: The slug for the access point.
-        :type access_point_slug: str
+        :param access_point_name: The slug for the access point.
+        :type access_point_name: str
         :param endpoint_url: The endpoint_url for the access point.
         :type endpoint_url: str
         """
-        self.access_point_slug = access_point_slug
         self.endpoint_url = endpoint_url
         self.separator = separator
-        self.uid = endpoint_uid
         # File tree to store the structure of objects im the access point
         self.file_tree: treelib.Tree = None
 
@@ -110,8 +111,8 @@ class AbstractStorageAgent(ABC):
     def partition_file_tree_by_access(
             self,
             policy_manager: AbstractPolicyManager,
-            user_uid: UUID,
-            access_point_uid: UUID,
+            user_uuid: UUID,
+            access_point_uuid: UUID,
             access_types: Union[str, List[str]]
     ) -> Dict[str, treelib.Tree]:
         """
@@ -119,8 +120,8 @@ class AbstractStorageAgent(ABC):
         in a single traversal, using the provided policy manager.
 
         :param policy_manager: An instance responsible for validating policies.
-        :param user_uid: The user UUID.
-        :param access_point_uid: The identifier for the storage endpoint.
+        :param user_uuid: The user UUID.
+        :param access_point_uuid: The identifier for the storage endpoint.
         :param access_types: A single access type (as a string) or a list of access types (e.g. 'read' or ['read', 'write']).
         :return: A dict mapping each access type to a filtered treelib.Tree.
         """
@@ -129,21 +130,29 @@ class AbstractStorageAgent(ABC):
             access_types = [access_types]  # type: List[str]
 
         # Convert UUIDs to strings.
-        user_uid_str: str = str(user_uid)
-        access_point_uid_str: str = str(access_point_uid)
+        user_uid_str: str = str(user_uuid)
+        access_point_uid_str: str = str(access_point_uuid)
 
         # Alias for a partition dictionary.
         Partition = Dict[str, Any]
 
-        def partition_node(node: treelib.Node) -> Dict[str, Optional[Partition]]:
-            # Check policy for the current node for each access type.
-            current_allowed: Dict[str, bool] = {
-                access: policy_manager.validate_policy(user_uid_str, access_point_uid_str, node.identifier, access)
-                for access in access_types
-            }
+        current_allowed: Dict[str, bool] = {}
+
+        def partition_node(node_: treelib.Node) -> Dict[str, Optional[Partition]]:
+            # Create the policy to check
+            for access in access_types:
+                policy = Policy(
+                    user_uuid=user_uuid,
+                    endpoint_uuid=access_point_uuid,
+                    resource=node_.identifier,
+                    action=access
+                )
+                # Check policy for the current node for each access type.
+                current_allowed[access] = policy_manager.validate_policy(policy)
+
             # Recurse on children.
             children_partitions: List[Dict[str, Optional[Partition]]] = [
-                partition_node(child) for child in self.file_tree.children(node.identifier)
+                partition_node(child) for child in self.file_tree.children(node_.identifier)
             ]
 
             # For each access type, gather partitions from children that are not empty.
@@ -155,10 +164,10 @@ class AbstractStorageAgent(ABC):
                     if child_partition[access] is not None
                 ]
                 # Include the node if it is the root, it passes the policy, or has allowed children.
-                if node.identifier == 'root' or current_allowed[access] or allowed_children:
+                if node_.identifier == 'root' or current_allowed[access] or allowed_children:
                     partitions[access] = {
-                        'identifier': node.identifier,
-                        'tag': node.tag,
+                        'identifier': node_.identifier,
+                        'tag': node_.tag,
                         'children': allowed_children
                     }
                 else:
@@ -188,7 +197,7 @@ class AbstractStorageAgent(ABC):
                 trees[access] = dict_to_tree(partitions[access])
         return trees
 
-    def generate_access_links(self, resource: str, method: str, ttl: int):
+    def generate_access_link(self, resource: str, method: str, ttl: int):
         """
         Generate a presigned URL for accessing an asset.
 
@@ -219,26 +228,50 @@ class AbstractStorageAgent(ABC):
 
         return [user_node.identifier for user_node in self.file_tree.filter_nodes(node_filter)]
 
-    def get_config(self):
+    def config(self, secrets: bool = False) -> Dict[str, Any]:
         """
         Return the configuration of the agent.
 
         :return: The configuration of the agent.
         """
         config = {
-            'access_point_slug': self.access_point_slug,
-            'access_point_uid': self.uid,
-            'endpoint_url': self.endpoint_url,
-            'flavour': self.FLAVOUR
+            'endpoint_url': self.endpoint_url
         }
+
+        if secrets:
+            for key, value in self._secrets().items():
+                config[key] = value
 
         return config
 
-    def _get_config(self):
+    @abstractmethod
+    def _secrets(self):
         """
-        Return the configuration of the agent including sensitive information.
+        Return the secrets of the agent.
 
-        :return: The configuration of the agent.
-        :rtype: dict
+        :return: The secrets of the agent.
         """
-        raise NotImplementedError
+        pass
+
+    def refresh_file_tree(self):
+        """
+        Refresh the file tree of the agent.
+        This method should be implemented by subclasses to refresh the file tree.
+        """
+        self._load_file_tree()
+
+    @abstractmethod
+    def refresh_connection(self):
+        """
+        Refresh the agent's connection to the storage backend.
+        """
+        pass
+
+    @abstractmethod
+    def close(self):
+        """
+        Perform explicit cleanup of resources held by this agent.
+        For instance, if the agent holds connections or open files, they
+        should be closed here.
+        """
+        pass
