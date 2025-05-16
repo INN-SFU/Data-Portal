@@ -18,6 +18,17 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
     f.close()
 
+    # Exporting the configuration to environment variables
+    print("Exporting configuration to environment variables...")
+    for key, value in config.items():
+        if isinstance(value, dict):
+            for sub_key, sub_value in value.items():
+                env_key = f"{key}_{sub_key}".upper()
+                print(f"\t{env_key}={sub_value}")
+                os.environ[env_key] = str(sub_value)
+        else:
+            os.environ[key.upper()] = str(value)
+
     # ENVIRONMENT VARIABLES
     print("Loading environment variables...")
     # Get .env relative path
@@ -30,7 +41,7 @@ if __name__ == "__main__":
 
     # Accessing path variables and converting to absolute paths
     for path in path_envs:
-        print(path)
+        print(f"\t{path}={os.getenv(path)}")
         os.environ[path] = os.path.abspath(os.getenv(path))
 
     # ROOT DIRECTORY

@@ -4,80 +4,40 @@
   <meta charset="UTF-8">
   <title>Policy Management</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Include jsTree CSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
+
+  <!-- jsTree CSS/JS -->
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/themes/default/style.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.12/jstree.min.js"></script>
+
   <style>
-    /* Simple, minimal styling */
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    /* Top Navigation Styling */
-    .nav-container {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 10px;
-    }
-    .nav-container a {
-      text-decoration: none;
-      color: #333;
-      font-weight: bold;
-      padding: 8px 16px;
-    }
-    .sub-nav {
-      margin-bottom: 20px;
-    }
-    .sub-nav a {
-      text-decoration: none;
-      color: #333;
-      margin-right: 10px;
-      padding: 8px 16px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    .sub-nav a:hover {
-      background-color: #eee;
-    }
-    .endpoint-card {
-      border: 1px solid #ccc;
-      padding: 8px;
-      margin-bottom: 5px;
-      cursor: pointer;
-      background-color: #f9f9f9;
-      position: relative;
-    }
-    .endpoint-card:hover {
-      background-color: #eef;
-    }
-    .endpoint-details {
-      margin-left: 20px;
-      padding: 5px;
-      border-left: 2px solid #ccc;
-      display: none;
-    }
-    .delete-btn {
-      background-color: #f44336;
-      color: white;
-      border: none;
-      padding: 4px 8px;
-      cursor: pointer;
-      position: absolute;
-      right: 10px;
-      top: 10px;
-    }
-    .delete-btn:hover {
-      background-color: #d32f2f;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .nav-container { display: flex; justify-content: space-between; margin-bottom:20px; border-bottom:1px solid #ccc; padding-bottom:10px; }
+    .nav-container a { text-decoration:none; color:#333; font-weight:bold; padding:8px 16px; }
+    .sub-nav { margin-bottom:20px; }
+    .sub-nav a { text-decoration:none; color:#333; margin-right:10px; padding:8px 16px; border:1px solid #ccc; border-radius:4px; }
+    .sub-nav a:hover { background:#eee; }
+
+    .endpoint-card { border:1px solid #ccc; padding:8px; margin-bottom:5px; background:#f9f9f9; position:relative; }
+    .endpoint-card:hover { background:#eef; }
+    .endpoint-header { cursor: pointer; }
+    .endpoint-details { display:none; margin-left:20px; padding:5px; border-left:2px solid #ccc; }
+    .file-tree { margin-top:10px; }
+
     .new-policy-form {
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-bottom: 10px;
-      background-color: #fafafa;
-      position: relative;
+      border:1px solid #ccc;
+      padding:8px;
+      margin-bottom:5px;
+      background-color:#fafafa;
+      position:relative;
+    }
+    .new-policy-form input {
+      margin-right:8px;
+      padding:4px 6px;
+    }
+    .new-policy-form button {
+      padding:4px 8px;
     }
   </style>
 </head>
@@ -95,25 +55,26 @@
 
   <!-- Sub Navigation -->
   <div class="sub-nav">
-    <a href="/interface/admin/policy-management">Policy Management</a>
-    <a href="/interface/admin/user-management">User Management</a>
-    <a href="/interface/admin/endpoint-management">Endpoint Management</a>
-    <a href="/interface/admin/asset-management">Asset Management</a>
+    <a href="/interface/admin/policy-management">Policies</a>
+    <a href="/interface/admin/user-management">Users</a>
+    <a href="/interface/admin/endpoint-management">Endpoints</a>
+    <a href="/interface/admin/asset-management">Assets</a>
   </div>
 
-  <!-- Storage Endpoints -->
+  <!-- Registered Endpoints -->
   <div>
     <h4>Registered Endpoints</h4>
     <div id="endpoint-list">
-      {% for endpoint_name, endpoint_uid in endpoints.items() %}
-        <div class="endpoint-card" id="card-{{ endpoint_name }}" data-endpoint="{{ endpoint_name }}">
-          <div onclick="toggleEndpointDetails('{{ endpoint_name }}')">
-            <strong>{{ endpoint_name }}</strong>
-            <span style="font-size: 0.8em;">(UID: {{ endpoint_uid }})</span>
+      {% for endpoint in endpoints %}
+        <div class="endpoint-card"
+             id="card-{{ endpoint.uuid }}"
+             data-endpoint="{{ endpoint.name }}">
+          <div class="endpoint-header"
+               onclick="toggleEndpointDetails('{{ endpoint.uuid }}')">
+            <strong>{{ endpoint.name }}</strong>
+            <span style="font-size:0.8em;">(UUID: {{ endpoint.uuid }})</span>
           </div>
-          <button class="delete-btn" onclick="deleteEndpoint('{{ endpoint_uid }}'); event.stopPropagation();">Delete</button>
-          <div class="endpoint-details" id="details-{{ endpoint_name }}">
-            <!-- File tree container for this endpoint -->
+          <div class="endpoint-details" id="details-{{ endpoint.uuid }}">
             <div id="tree-{{ loop.index }}" class="file-tree"></div>
           </div>
         </div>
@@ -122,206 +83,134 @@
   </div>
 
   <hr>
-  <!-- User Policy Editor -->
-  <div>
-    <h4>User Policy Editor</h4>
-    <form id="admin-form" class="new-policy-form">
-      <label for="username">User ID:</label>
-      <input type="text" id="username" name="username" required>
-      <br>
-      <label for="accessType">Access Type:</label>
-      <input type="text" id="accessType" name="accessType" required placeholder="e.g., admin">
-      <br>
-      <!-- Two buttons: one for updating and one for removing policies -->
-      <button type="submit">Update Policy</button>
-      <button type="button" id="remove-policy-btn">Remove Policy</button>
-    </form>
+
+  <!-- Add/Delete Policy Form -->
+  <div class="new-policy-form">
+    <input id="policy-username" placeholder="Username" />
+    <input id="policy-action"   placeholder="Action (e.g. admin)" />
+    <button onclick="addPolicy()">Add Policy</button>
+    <button onclick="deletePolicy()">Delete Policy</button>
   </div>
 
   <script>
-    // When the DOM is fully loaded, initialize jsTree for each endpoint's file tree.
+    // initialize each jsTree
     document.addEventListener('DOMContentLoaded', () => {
       {% for endpoint_id, items in assets.items() %}
         $('#tree-{{ loop.index }}').jstree({
-          'core': {
-            'data': {{ items|tojson }}
-          },
-          'plugins': ["checkbox"]
-        }).on('changed.jstree', function (e, data) {
-          console.log(`Tree ${this.id} changed:`, data.selected);
+          core: { data: {{ items|tojson }} },
+          plugins: ["checkbox"]
         });
       {% endfor %}
     });
 
-    // Toggle endpoint details visibility.
-    function toggleEndpointDetails(endpointId) {
-      var detailsDiv = document.getElementById("details-" + endpointId);
-      if (detailsDiv.style.display === "none" || detailsDiv.style.display === "") {
-        detailsDiv.style.display = "block";
-      } else {
-        detailsDiv.style.display = "none";
-      }
+    function toggleEndpointDetails(uid) {
+      const det = document.getElementById("details-" + uid);
+      det.style.display = det.style.display === "block" ? "none" : "block";
     }
 
-    // --- Selection and Filtering Functions ---
-    // Gather selected nodes from all jsTree file trees.
     function gatherSelectedNodes() {
-      let selectedNodes = [];
-      $('.file-tree').each(function() {
-        const treeInstance = $(this).jstree(true);
-        const selected = treeInstance.get_selected(true);
-        console.log(`Selected nodes for tree: ${$(this).attr('id')}`, selected);
-        selected.forEach(node => {
-          const isFolder = treeInstance.is_parent(node);
-          selectedNodes.push({
-            endpoint: $(this).closest('.endpoint-card').data('endpoint'),
-            id: node.id,
-            node: node,       // full jsTree node object for filtering
-            isFolder: isFolder
-          });
+      const all = [];
+      document.querySelectorAll('.file-tree').forEach(div => {
+        const tree = $(div).jstree(true);
+        const endpoint = $(div).closest('.endpoint-card').data('endpoint');
+        tree.get_selected(true).forEach(node => {
+          all.push({ endpoint, node, isFolder: tree.is_parent(node) });
         });
       });
-      return selectedNodes;
+      // filter out descendants
+      return all.filter(n =>
+        !all.some(o =>
+          o.node.id !== n.node.id &&
+          n.node.parents.includes(o.node.id)
+        )
+      );
     }
 
-    // Filter out descendant nodes if their ancestor is also selected.
-    function filterTopLevelNodes(nodes) {
-      return nodes.filter(function(nodeObj) {
-        return !nodes.some(function(other) {
-          return other.node.id !== nodeObj.node.id &&
-                 nodeObj.node.parents.includes(other.node.id);
-        });
+    async function addPolicy() {
+      const username = document.getElementById('policy-username').value.trim();
+      const action   = document.getElementById('policy-action').value.trim();
+      if (!username || !action) return alert('Username & action required');
+      const nodes = gatherSelectedNodes();
+      if (!nodes.length) return alert('Select at least one file/folder');
+      await Promise.all(nodes.map(n => {
+        const res = encodeURIComponent(n.node.id + (n.isFolder ? '/*' : ''));
+        const ep  = encodeURIComponent(n.endpoint);
+        return fetch(
+          `/admin/policy?username=${encodeURIComponent(username)}` +
+          `&endpoint_name=${ep}` +
+          `&resource=${res}` +
+          `&action=${encodeURIComponent(action)}`,
+          { method:'PUT', credentials:'include' }
+        ).then(r => r.ok || r.json().then(e=>{throw Error(e.detail)}));
+      }));
+      alert('Policies added');
+    }
+
+    async function deletePolicy() {
+      const username = document.getElementById('policy-username').value.trim();
+      const action   = document.getElementById('policy-action').value.trim();
+      if (!username || !action) return alert('Username & action required');
+      const nodes = gatherSelectedNodes();
+      if (!nodes.length) return alert('Select at least one file/folder');
+      await Promise.all(nodes.map(n => {
+        const res = encodeURIComponent(n.node.id + (n.isFolder ? '/*' : ''));
+        const ep  = encodeURIComponent(n.endpoint);
+        return fetch(
+          `/admin/policy?username=${encodeURIComponent(username)}` +
+          `&endpoint_name=${ep}` +
+          `&resource=${res}` +
+          `&action=${encodeURIComponent(action)}`,
+          { method:'DELETE', credentials:'include' }
+        ).then(r => r.ok || r.json().then(e=>{throw Error(e.detail)}));
+      }));
+      alert('Policies removed');
+    }
+  </script>
+  <script>
+    // 1) Read a cookie by name
+    function getCookie(name) {
+      return document.cookie.split("; ").reduce((r, kv) => {
+        const [k, v] = kv.split("=");
+        return k === name ? decodeURIComponent(v) : r;
+      }, "");
+    }
+
+    // 2) Call /auth/refresh when you need a new token
+    async function refreshSession() {
+      const res = await fetch("/auth/refresh", {
+        method: "POST",
+        credentials: "include"
       });
+      if (!res.ok) {
+        // if refresh fails, bounce to login
+        window.location.href = "/auth/login";
+      }
     }
 
-    // --- Policy Update (Add) Function ---
-    async function updatePolicies(username, accessTypeInput) {
-      const accessType = String(accessTypeInput).trim();
-      const allSelected = gatherSelectedNodes();
-      console.log("All selected nodes (raw):", allSelected);
-      const topLevelNodes = filterTopLevelNodes(allSelected);
-      console.log("Top-level nodes:", topLevelNodes);
-      const finalSelectedNodes = topLevelNodes.map(nodeObj => ({
-        endpoint: nodeObj.endpoint,
-        id: nodeObj.id + (nodeObj.isFolder ? '/*' : '')
-      }));
-      console.log("Final selected nodes for updating policies:", finalSelectedNodes);
-      if (finalSelectedNodes.length === 0) {
-        alert("Please select at least one file or folder.");
-        return;
-      }
-      const updates = finalSelectedNodes.map(node =>
-        fetch(
-          `/admin/policy?username=${encodeURIComponent(username)}&access_point=${encodeURIComponent(node.endpoint)}&resource=${encodeURIComponent(node.id)}&action=${encodeURIComponent(accessType)}`,
-          { method: 'PUT', credentials: 'include' }
-        ).then(response => {
-          if (!response.ok) {
-            return response.json().then(error => { throw new Error(error.detail); });
-          }
-        })
-      );
-      await Promise.all(updates);
-    }
+    // 3) Poll the expiry timestamp and prompt user when low
+    function startExpiryWatcher(thresholdSeconds = 300) {
+      setInterval(() => {
+        const expCookie = getCookie("access_expires_at");
+        if (!expCookie) return;
+        const exp = Number(expCookie) * 1000;
+        const secsLeft = (exp - Date.now()) / 1000;
 
-    // --- Policy Removal Function ---
-    async function removePolicies(username, accessType) {
-      const allSelected = gatherSelectedNodes();
-      console.log("All selected nodes (raw):", allSelected);
-      const topLevelNodes = filterTopLevelNodes(allSelected);
-      console.log("Top-level nodes:", topLevelNodes);
-      const finalSelectedNodes = topLevelNodes.map(nodeObj => ({
-        endpoint: nodeObj.endpoint,
-        id: nodeObj.id + (nodeObj.isFolder ? '/*' : '')
-      }));
-      console.log("Final selected nodes for removal:", finalSelectedNodes);
-      if (finalSelectedNodes.length === 0) {
-        alert("Please select at least one file or folder to remove a policy.");
-        return;
-      }
-      const removals = finalSelectedNodes.map(node =>
-        fetch(
-          `/admin/policy?username=${encodeURIComponent(username)}&access_point=${encodeURIComponent(node.endpoint)}&resource=${encodeURIComponent(node.id)}&action=${encodeURIComponent(accessType)}`,
-          { method: 'DELETE', credentials: 'include' }
-        ).then(response => {
-          if (!response.ok) {
-            return response.json().then(error => { throw new Error(error.detail); });
+        if (secsLeft < 0) {
+          // token already expired
+          window.location.href = "/auth/login";
+        } else if (secsLeft < thresholdSeconds) {
+          // warn & optionally auto-refresh
+          if (confirm(`Session expires in ${Math.ceil(secsLeft/60)} min. Renew now?`)) {
+            refreshSession();
           }
-        })
-      );
-      await Promise.all(removals);
-    }
-
-    // --- Form Submission Listeners ---
-    document.getElementById('admin-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const username = document.getElementById('username').value.trim();
-      if (!username) {
-        alert("Please enter a username.");
-        return;
-      }
-      const accessType = document.getElementById('accessType').value.trim();
-      if (!accessType) {
-        alert("Please enter an access type.");
-        return;
-      }
-      try {
-        await updatePolicies(username, accessType);
-        alert('Policies updated successfully.');
-      } catch (error) {
-        if (error.message.includes('User not found')) {
-          const create = confirm("User does not exist. Do you want to create this user?");
-          if (create) {
-            const role = prompt("Enter the role for the new user:");
-            if (role) {
-              try {
-                const userSecretKey = await createUser(username, role);
-                await updatePolicies(username, accessType);
-                alert(`User created and policies updated successfully.\nUser Secret Key: ${userSecretKey}`);
-              } catch (createError) {
-                alert(`Error creating user: ${createError.message}`);
-              }
-            } else {
-              alert("Role is required to create a new user.");
-            }
-          }
-        } else {
-          alert(`Error updating policies: ${error.message}`);
         }
-      }
-    });
-
-    document.getElementById('remove-policy-btn').addEventListener('click', async (event) => {
-      event.preventDefault();
-      const username = document.getElementById('username').value.trim();
-      if (!username) {
-        alert("Please enter a username.");
-        return;
-      }
-      const accessType = document.getElementById('accessType').value.trim();
-      if (!accessType) {
-        alert("Please enter an access type.");
-        return;
-      }
-      try {
-        await removePolicies(username, accessType);
-        alert('Policies removed successfully.');
-      } catch (error) {
-        alert(`Error removing policies: ${error.message}`);
-      }
-    });
-
-    async function createUser(username, role) {
-      const response = await fetch(`/admin/user/${encodeURIComponent(username)}?role=${encodeURIComponent(role)}`, {
-        method: 'PUT',
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail);
-      }
-      const data = await response.json();
-      return data.secret_key;
+      }, 60 * 1000);
     }
+
+    // 4) Wire it all up once the DOM is ready
+    document.addEventListener("DOMContentLoaded", () => {
+      startExpiryWatcher(300);  // warn at 5 minutes remaining
+    });
   </script>
 </body>
 </html>

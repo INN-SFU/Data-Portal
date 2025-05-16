@@ -1,28 +1,29 @@
 import os
-from uuid import UUID
 
 from fastapi import Request, Depends, APIRouter, HTTPException, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from treelib import node
 
 from api.v0_1.endpoints.service.auth import decode_token, is_user_admin
 from api.v0_1.endpoints.dependencies import get_user_manager, get_policy_manager, get_endpoint_manager
 
-from core.management.policies import AbstractPolicyManager
+from api.v0_1.endpoints.service.models import model_registry
+
+from core.management.policies import AbstractPolicyManager, Policy
 from core.management.users import AbstractUserManager
 from core.management.endpoints import AbstractEndpointManager
 
 from core.connectivity.agents import available_flavours
 from api.v0_1.endpoints.utils import convert_file_tree_to_dict
 
-admin_ui_router = APIRouter(prefix='/admin')
+admin_ui_router = APIRouter(prefix='/admin', tags=["Admin UI"])
 templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
 
 @admin_ui_router.get("/policy-management", response_class=HTMLResponse)
 async def policy_management(request: Request,
                             token_payload: dict = Depends(decode_token),
+                            user_manager: AbstractUserManager = Depends(get_user_manager),
                             policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
                             endpoint_manager: AbstractEndpointManager = Depends(get_endpoint_manager)):
     """
@@ -32,25 +33,30 @@ async def policy_management(request: Request,
     if not is_user_admin(token_payload):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
 
-    # Use the preferred_username from the token as uid
-    uuid = token_payload.get("sub")
+    username = token_payload.get("preferred_username")
+    uuid = user_manager.get_user_uuid(username)
+
+    policy = Policy(
+        user_uuid=uuid,
+        action='admin'
+    )
 
     # Get all endpoints the user has 'admin' access to.
-    admin_policies = policy_manager.filter_policies(uuid, None, 'admin')
-    admin_endpoint_uids = set(map(UUID, admin_policies.keys()))
-    admin_endpoints = endpoint_manager.get_endpoint(admin_endpoint_uids)
+    admin_policies = policy_manager.filter_policies(policy)
+    admin_endpoint_uuids = list(set(policy.endpoint_uuid for policy in admin_policies))
+    admin_endpoints = endpoint_manager.get_endpoints_by_uuid(admin_endpoint_uuids)
 
     assets = {}
-    access_point_names = {endpoint.access_point_slug: uid.__str__() for uid, endpoint in admin_endpoints.items()}
     # Populate the file trees for each endpoint
-    for uid, agent in admin_endpoints.items():
-        assets[agent.access_point_slug] = convert_file_tree_to_dict(
-            agent.partition_file_tree_by_access(policy_manager, uuid, uid, 'admin')['admin']
+    for endpoint in admin_endpoints:
+        # Partition the file type based on the policy
+        assets[endpoint.name] = convert_file_tree_to_dict(
+            endpoint.agent.partition_file_tree_by_access(policy_manager, uuid, endpoint.uuid, 'admin')['admin']
         )
 
     return templates.TemplateResponse(
         "/admin/policy_management.html",
-        {"request": request, "assets": assets, "endpoints": access_point_names}
+        {"request": request, "assets": assets, "endpoints": admin_endpoints}
     )
 
 
@@ -73,28 +79,42 @@ async def user_management(request: Request,
 
     # Loop through users to build file trees based on write access.
     for user in users:
-        uuid = user['id']
-
-        # Get all storage access points the user has read access to.
-        endpoint_uids = set([UUID(policy[1]) for policy in policy_manager.get_user_policies(uuid)])
-        endpoints = endpoint_manager.get_endpoint(endpoint_uids)
+        # Get all storage endpoints the user has read access to.
+        endpoint_uuids = list(set(policy.endpoint_uuid for policy in policy_manager.get_user_policies(user.uuid)))
+        endpoints = endpoint_manager.get_endpoints_by_uuid(endpoint_uuids)
 
         user_trees = {}
 
         # Loop through each storage endpoint and filter its file tree.
-        for uid, agent in endpoints.items():
-            def node_filter(n: node):
-                vals = (uuid, uid.__str__(), n.identifier, '*')
-                return policy_manager.validate_policy(*vals)
+        for endpoint in endpoints:
+            f_trees = endpoint.agent.partition_file_tree_by_access(policy_manager, user.uuid, endpoint.uuid,
+                                                                   ['read', 'write', 'admin'])
 
-            user_trees[uid.__str__()] = convert_file_tree_to_dict(agent.filter_file_tree(node_filter))
+            if f_trees is not None:
+                user_trees[(endpoint.name, endpoint.uuid)] = \
+                    {access_type: convert_file_tree_to_dict(tree) for access_type, tree in f_trees.items()}
 
-        access_point_names = {endpoint.access_point_slug: uid.__str__() for uid, endpoint in endpoints.items()}
-        file_trees[uuid] = user_trees
+        file_trees[user.uuid] = user_trees
+
+    # Include the required form metadata for the models
+    required_models = [
+        "AddUserRequest",
+        "AddUserResponse",
+        "RemoveUserResponse"
+    ]
+
+    json_registry = {
+        name: {
+            "endpoint": entry["endpoint"],
+            "schema": entry["model_class"].model_json_schema()
+        }
+        for name, entry in model_registry.items()
+        if name in required_models
+    }
 
     return templates.TemplateResponse(
         "/admin/user_management.html",
-        {"request": request, "users": users, "file_trees": file_trees}
+        {"request": request, "users": users, "file_trees": file_trees, "models": json_registry}
     )
 
 
@@ -106,14 +126,14 @@ async def endpoint_management(request: Request,
         raise HTTPException(status_code=403, detail="Admin privileges required")
 
     # Gather endpoint details
-    endpoints = endpoint_manager.get_endpoints()
+    endpoints = endpoint_manager.endpoints
 
     configs = {
-        endpoint.access_point_slug: (str(uid), endpoint.get_config())
-        for uid, endpoint in endpoints.items()
+        endpoint.name: (endpoint.uuid.__str__(), endpoint.config(secrets=False))
+        for endpoint in endpoints
     }
 
-    # 3) Render template
+    # Render template
     return templates.TemplateResponse(
         "admin/endpoint_management.html",
         {"request": request, "endpoints": configs, "flavours": available_flavours}
@@ -128,28 +148,34 @@ async def assets_management(request: Request,
     if not is_user_admin(token_payload):
         raise HTTPException(status_code=403, detail="Admin privileges required")
 
-    # Retrieve the user's uuid from the token payload.
+    # Retrieve the user's user_uuid from the token payload.
     uuid = token_payload.get("sub")
 
     # Get all storage access points the user has read access to.
-    endpoint_uids = set([UUID(policy[1]) for policy in policy_manager.get_user_policies(uuid)])
-    endpoints = endpoint_manager.get_endpoint(endpoint_uids)
+    endpoint_uuids = list(
+        set(policy.endpoint_uuid for policy in policy_manager.get_user_policies(uuid))
+    )
+    endpoints = endpoint_manager.get_endpoints_by_uuid(endpoint_uuids)
 
     file_trees = {}
+    for endpoint in endpoints:
+        f_trees = endpoint.agent.partition_file_tree_by_access(
+            policy_manager, uuid, endpoint.uuid, ["read", "write"]
+        )
+        if f_trees is not None:
+            file_trees[str(endpoint.uuid)] = {
+                access_type: convert_file_tree_to_dict(tree)
+                for access_type, tree in f_trees.items()
+            }
 
-    # Loop through each storage endpoint and filter its file tree based on access types
-    for uid, agent in endpoints.items():
-        def node_filter(n: node):
-            vals = (uuid, uid.__str__(), n.identifier, 'read')
-            return policy_manager.validate_policy(*vals)
-
-        f_trees = agent.partition_file_tree_by_access(policy_manager, uuid, uid, ['read', 'write'])
-        file_trees[uid.__str__()] = {access_type: convert_file_tree_to_dict(tree) for access_type, tree in f_trees.items()}
-
-
-    access_point_names = {endpoint.access_point_slug: uid.__str__() for uid, endpoint in endpoints.items()}
+    # **Convert to simple string → string mapping** so Jinja can JSON‐encode it:
+    endpoint_names = {endpoint.name: str(endpoint.uuid) for endpoint in endpoints}
 
     return templates.TemplateResponse(
         "admin/asset_management.html",
-        {"request": request, "assets": file_trees, 'endpoints': access_point_names}
+        {
+            "request": request,
+            "assets": file_trees,
+            "endpoints": endpoint_names,   # now both keys & values are plain strings
+        },
     )
