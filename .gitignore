@@ -1,14 +1,79 @@
-_*/
-.*/
-core/connectivity/arbutus/*.sh
-core/settings/endpoints/agents.json
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+.env
+.venv
+
+# Configuration files (contain sensitive data)
 config.yaml
-*.policies
 core/settings/.env
 core/settings/security/.secrets
+*.policies
+
+# Legacy authentication data
 core/authentication/user_data/
 core/authentication/uuids.json
+core/settings/endpoints/agents.json
+
+# OpenStack/Cloud credentials
+core/connectivity/arbutus/*.sh
+core/settings/security/def-rmcintos-dev-openrc.sh
+
+# Logs
 *.log
-*__pycache__*
-venv/
-config.yaml
+loggers/logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Security scanning
+.bandit
+.safety
+
+# Temporary files
+tmp/
+temp/
+.temporary/
+
+# Docker
+.dockerignore
+
+# Documentation build
+docs/_build/

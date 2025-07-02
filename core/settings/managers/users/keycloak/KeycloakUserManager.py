@@ -20,7 +20,7 @@ class KeycloakUserManager(AbstractUserManager):
             realm_name=realm_name,
             client_id=client_id,
             client_secret_key=client_secret,
-            verify=False
+            verify=True
         )
 
         self.identity_manager = KeycloakAdmin(connection=keycloak_connection)
