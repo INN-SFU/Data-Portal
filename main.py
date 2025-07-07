@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
     # LOG INITIALIZATION
     print("Initializing loggers...")
-    log_config_path = os.path.abspath(config['logging']['config'])
+    log_config_path = os.path.abspath(config['log_config'])
     with open(log_config_path, 'r') as f:
         log_config = yaml.safe_load(f)
     logging.config.dictConfig(log_config)
