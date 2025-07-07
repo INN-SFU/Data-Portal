@@ -23,22 +23,6 @@ For detailed information, see the [project wiki](https://github.com/INN-SFU/Data
 
 ## Quick Start
 
-### Option 1: Docker (Recommended)
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd AMS
-
-# Set up configuration
-python scripts/setup.py --all
-
-# Start with Docker Compose
-docker compose -f deployment/docker-compose.yml up -d
-```
-
-### Option 2: Local Development
-
 ```bash
 # 1. Clone and setup Python environment
 git clone <repository-url>
@@ -60,7 +44,9 @@ docker compose -f deployment/docker-compose.yml up keycloak -d
 #    d) Update config.yaml with the secret (see example below)
 
 # 5. Start the application
-python3 main.py config.yaml
+#    Choose one:
+#    Docker: docker compose -f deployment/docker-compose.yml up -d
+#    Local:  python3 main.py config.yaml
 
 # 6. Access the application
 #    - Main app: http://localhost:8000
@@ -71,6 +57,14 @@ python3 main.py config.yaml
 ```yaml
 keycloak:
   admin_client_secret: "${KEYCLOAK_ADMIN_CLIENT_SECRET:-<paste-your-copied-secret-here>}"
+```
+
+**Local Development Setup:**
+If running locally (not Docker), also install dependencies:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 ## Detailed Setup
