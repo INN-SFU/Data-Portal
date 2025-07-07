@@ -1,32 +1,27 @@
 {
+  "id": "ams-portal",
   "realm": "ams-portal",
   "displayName": "AMS Data Portal",
   "enabled": true,
+  "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
-  "bruteForceProtected": true,
-  "permanentLockout": false,
-  "maxFailureWait": 900,
-  "minimumQuickLoginWait": 60,
-  "waitIncrementSeconds": 60,
-  "quickLoginCheckMilliSeconds": 1000,
-  "maxDeltaTimeSeconds": 43200,
-  "failureFactor": 30,
-  "defaultRoles": ["default-roles-ams-portal", "offline_access", "uma_authorization"],
-  "requiredCredentials": ["password"],
-  "passwordPolicy": "length(8) and digits(1) and lowerCase(1) and upperCase(1)",
-  "otpPolicyType": "totp",
-  "otpPolicyAlgorithm": "HmacSHA1",
-  "otpPolicyInitialCounter": 0,
-  "otpPolicyDigits": 6,
-  "otpPolicyLookAheadWindow": 1,
-  "otpPolicyPeriod": 30,
+  "bruteForceProtected": false,
+  "defaultRoles": [
+    "default-roles-ams-portal",
+    "offline_access",
+    "uma_authorization"
+  ],
+  "requiredCredentials": [
+    "password"
+  ],
   "roles": {
     "realm": [
       {
+        "id": "admin-role-id",
         "name": "admin",
         "description": "Administrator role with full access to the AMS Data Portal",
         "composite": false,
@@ -34,6 +29,7 @@
         "containerId": "ams-portal"
       },
       {
+        "id": "user-role-id", 
         "name": "user",
         "description": "Standard user role with basic access to the AMS Data Portal",
         "composite": false,
@@ -41,21 +37,23 @@
         "containerId": "ams-portal"
       },
       {
-        "name": "data-manager",
+        "id": "data-manager-role-id",
+        "name": "data-manager", 
         "description": "Data manager role with access to manage data endpoints and policies",
         "composite": false,
         "clientRole": false,
         "containerId": "ams-portal"
       },
       {
+        "id": "default-roles-id",
         "name": "default-roles-ams-portal",
         "description": "Default roles for AMS Portal realm",
         "composite": true,
         "composites": {
-          "realm": ["offline_access", "uma_authorization"],
-          "client": {
-            "account": ["view-profile", "manage-account"]
-          }
+          "realm": [
+            "offline_access",
+            "uma_authorization"
+          ]
         },
         "clientRole": false,
         "containerId": "ams-portal"
@@ -64,14 +62,14 @@
   },
   "clients": [
     {
+      "id": "ams-portal-ui-id",
       "clientId": "ams-portal-ui",
       "name": "AMS Portal UI Client",
       "description": "Public client for the AMS Data Portal web interface",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
       "redirectUris": [
-        "http://localhost:8000/*",
-        "http://localhost:8000/auth/callback"
+        "http://localhost:8000/*"
       ],
       "webOrigins": [
         "http://localhost:8000"
@@ -86,28 +84,14 @@
       "publicClient": true,
       "frontchannelLogout": false,
       "protocol": "openid-connect",
-      "attributes": {
-        "saml.assertion.signature": "false",
-        "saml.force.post.binding": "false",
-        "saml.multivalued.roles": "false",
-        "saml.encrypt": "false",
-        "saml.server.signature": "false",
-        "saml.server.signature.keyinfo.ext": "false",
-        "exclude.session.state.from.auth.response": "false",
-        "saml_force_name_id_format": "false",
-        "saml.client.signature": "false",
-        "tls.client.certificate.bound.access.tokens": "false",
-        "saml.authnstatement": "false",
-        "display.on.consent.screen": "false",
-        "saml.onetimeuse.condition": "false"
-      },
+      "attributes": {},
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
       "defaultClientScopes": [
         "web-origins",
         "roles",
-        "profile",
+        "profile", 
         "email"
       ],
       "optionalClientScopes": [
@@ -118,12 +102,12 @@
       ]
     },
     {
+      "id": "ams-portal-admin-id",
       "clientId": "ams-portal-admin",
       "name": "AMS Portal Admin Client",
-      "description": "Confidential client for AMS Data Portal backend operations",
+      "description": "Confidential client for AMS Data Portal backend operations", 
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
       "redirectUris": [],
       "webOrigins": [],
       "notBefore": 0,
@@ -136,21 +120,7 @@
       "publicClient": false,
       "frontchannelLogout": false,
       "protocol": "openid-connect",
-      "attributes": {
-        "saml.assertion.signature": "false",
-        "saml.force.post.binding": "false",
-        "saml.multivalued.roles": "false",
-        "saml.encrypt": "false",
-        "saml.server.signature": "false",
-        "saml.server.signature.keyinfo.ext": "false",
-        "exclude.session.state.from.auth.response": "false",
-        "saml_force_name_id_format": "false",
-        "saml.client.signature": "false",
-        "tls.client.certificate.bound.access.tokens": "false",
-        "saml.authnstatement": "false",
-        "display.on.consent.screen": "false",
-        "saml.onetimeuse.condition": "false"
-      },
+      "attributes": {},
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
@@ -161,40 +131,17 @@
         "email"
       ],
       "optionalClientScopes": [
-        "address",
+        "address", 
         "phone",
         "offline_access",
         "microprofile-jwt"
       ]
     }
   ],
-  "clientScopes": [
-    {
-      "name": "ams-portal-scope",
-      "description": "Custom scope for AMS Portal",
-      "protocol": "openid-connect",
-      "attributes": {
-        "include.in.token.scope": "true",
-        "display.on.consent.screen": "true"
-      },
-      "protocolMappers": [
-        {
-          "name": "ams-realm-roles",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-realm-role-mapper",
-          "consentRequired": false,
-          "config": {
-            "multivalued": "true",
-            "userinfo.token.claim": "true",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "realm_access.roles",
-            "jsonType.label": "String"
-          }
-        }
-      ]
-    }
-  ],
+  "users": [],
+  "scopeMappings": [],
+  "clientScopeMappings": {},
+  "groups": [],
   "defaultDefaultClientScopes": [
     "role_list",
     "profile",
@@ -218,38 +165,21 @@
     "strictTransportSecurity": "max-age=31536000; includeSubDomains"
   },
   "smtpServer": {},
-  "loginTheme": "keycloak",
-  "accountTheme": "keycloak",
-  "adminTheme": "keycloak",
-  "emailTheme": "keycloak",
   "eventsEnabled": false,
-  "eventsListeners": ["jboss-logging"],
+  "eventsListeners": [
+    "jboss-logging"
+  ],
   "enabledEventTypes": [],
   "adminEventsEnabled": false,
   "adminEventsDetailsEnabled": false,
   "internationalizationEnabled": false,
   "supportedLocales": [],
-  "defaultLocale": "",
   "authenticationFlows": [],
   "authenticatorConfig": [],
   "requiredActions": [],
   "browserFlow": "browser",
-  "registrationFlow": "registration",
+  "registrationFlow": "registration", 
   "directGrantFlow": "direct grant",
   "resetCredentialsFlow": "reset credentials",
-  "clientAuthenticationFlow": "clients",
-  "dockerAuthenticationFlow": "docker auth",
-  "attributes": {
-    "cibaBackchannelTokenDeliveryMode": "poll",
-    "cibaExpiresIn": "120",
-    "cibaInterval": "5",
-    "cibaAuthRequestedUserHint": "login_hint",
-    "parRequestUriLifespan": "60",
-    "frontendUrl": "",
-    "consentsEnabled": "false",
-    "clientSessionIdleTimeout": "0",
-    "clientSessionMaxLifespan": "0",
-    "clientOfflineSessionIdleTimeout": "0",
-    "clientOfflineSessionMaxLifespan": "0"
-  }
+  "clientAuthenticationFlow": "clients"
 }
