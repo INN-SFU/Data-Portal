@@ -54,9 +54,9 @@ python3 scripts/setup.py --all
 docker compose -f deployment/docker-compose.yml up keycloak -d
 
 # 4. Configure Keycloak (one-time setup)
-#    a) Go to http://localhost:8080 (admin/admin123)  
-#    b) Create realm 'ams-portal' (see Keycloak Setup section)
-#    c) Create clients and get admin secret
+#    a) Go to http://localhost:8080 (admin/admin123)
+#    b) Add realm → Import config/keycloak-realm-export.json
+#    c) Get client secret: Clients → ams-portal-admin → Credentials
 #    d) Update config.yaml with the secret (see example below)
 
 # 5. Start the application
@@ -127,51 +127,34 @@ If you prefer manual setup:
    python -c "from core.settings.security._generate_secrets import _generate_secrets; _generate_secrets()"
    ```
 
-### 3. Keycloak Setup (Manual)
+### 3. Keycloak Configuration
 
-**Step 1: Create Realm**
+**Import Pre-configured Realm:**
 1. Go to http://localhost:8080 (admin/admin123)
 2. Click dropdown next to "Master" → "Add realm"
-3. Name: `ams-portal` → Create
+3. Click "Select file" → Choose `config/keycloak-realm-export.json`
+4. Click "Create"
 
-**Step 2: Create UI Client (Public)**
-1. Go to Clients → Create
-2. Client ID: `ams-portal-ui`
-3. Client Protocol: `openid-connect` → Save
-4. Settings tab:
-   - Access Type: `public`
-   - Standard Flow Enabled: `ON`
-   - Valid Redirect URIs: `http://localhost:8000/*`
-   - Web Origins: `http://localhost:8000`
-   - Save
+**Get Admin Client Secret:**
+1. Go to Clients → `ams-portal-admin`
+2. Click "Credentials" tab
+3. Copy the Secret value
 
-**Step 3: Create Admin Client (Confidential)**
-1. Go to Clients → Create  
-2. Client ID: `ams-portal-admin`
-3. Client Protocol: `openid-connect` → Save
-4. Settings tab:
-   - Access Type: `confidential`
-   - Service Accounts Enabled: `ON`
-   - Save
-5. Credentials tab → Copy the Secret
-
-**Step 4: Create Roles**
-1. Go to Roles → Add Role
-2. Create these roles:
-   - `admin` (Administrator access)
-   - `user` (Standard user access)
-   - `data-manager` (Data management access)
-
-**Step 5: Update config.yaml**
+**Update config.yaml:**
 ```yaml
 keycloak:
-  admin_client_secret: "paste-secret-from-step-3-here"
+  admin_client_secret: "paste-your-copied-secret-here"
 ```
 
-**Step 6: Create Test Users (Optional)**
-1. Go to Users → Add user
-2. Set username, email, password
-3. Role Mappings tab → Assign roles
+**What gets configured automatically:**
+- ✅ Realm: `ams-portal`
+- ✅ UI Client: `ams-portal-ui` (public, for web interface)
+- ✅ Admin Client: `ams-portal-admin` (confidential, for backend)
+- ✅ Roles: `admin`, `user`, `data-manager`
+
+**Create Test Users:**
+- Users → Add user → Set username, email, password
+- Role Mappings tab → Assign `admin` or `user` role
 
 ### 4. Storage Endpoints
 

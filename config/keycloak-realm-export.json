@@ -1,185 +1,87 @@
 {
-  "id": "ams-portal",
-  "realm": "ams-portal",
-  "displayName": "AMS Data Portal",
-  "enabled": true,
-  "sslRequired": "external",
-  "registrationAllowed": false,
-  "loginWithEmailAllowed": true,
-  "duplicateEmailsAllowed": false,
-  "resetPasswordAllowed": true,
-  "editUsernameAllowed": false,
-  "bruteForceProtected": false,
-  "defaultRoles": [
-    "default-roles-ams-portal",
-    "offline_access",
-    "uma_authorization"
-  ],
-  "requiredCredentials": [
-    "password"
-  ],
-  "roles": {
-    "realm": [
-      {
-        "id": "admin-role-id",
-        "name": "admin",
-        "description": "Administrator role with full access to the AMS Data Portal",
-        "composite": false,
-        "clientRole": false,
-        "containerId": "ams-portal"
-      },
-      {
-        "id": "user-role-id", 
-        "name": "user",
-        "description": "Standard user role with basic access to the AMS Data Portal",
-        "composite": false,
-        "clientRole": false,
-        "containerId": "ams-portal"
-      },
-      {
-        "id": "data-manager-role-id",
-        "name": "data-manager", 
-        "description": "Data manager role with access to manage data endpoints and policies",
-        "composite": false,
-        "clientRole": false,
-        "containerId": "ams-portal"
-      },
-      {
-        "id": "default-roles-id",
-        "name": "default-roles-ams-portal",
-        "description": "Default roles for AMS Portal realm",
-        "composite": true,
-        "composites": {
-          "realm": [
-            "offline_access",
-            "uma_authorization"
-          ]
-        },
-        "clientRole": false,
-        "containerId": "ams-portal"
-      }
-    ]
+  "id" : "ams-portal",
+  "realm" : "ams-portal",
+  "displayName" : "AMS Data Portal",
+  "enabled" : true,
+  "sslRequired" : "external",
+  "registrationAllowed" : false,
+  "loginWithEmailAllowed" : true,
+  "duplicateEmailsAllowed" : false,
+  "resetPasswordAllowed" : true,
+  "editUsernameAllowed" : false,
+  "bruteForceProtected" : false,
+  "roles" : {
+    "realm" : [ {
+      "id" : "admin-role",
+      "name" : "admin",
+      "description" : "Administrator role with full access",
+      "composite" : false,
+      "clientRole" : false,
+      "containerId" : "ams-portal"
+    }, {
+      "id" : "user-role", 
+      "name" : "user",
+      "description" : "Standard user role",
+      "composite" : false,
+      "clientRole" : false,
+      "containerId" : "ams-portal"
+    }, {
+      "id" : "data-manager-role",
+      "name" : "data-manager",
+      "description" : "Data management role", 
+      "composite" : false,
+      "clientRole" : false,
+      "containerId" : "ams-portal"
+    } ],
+    "client" : { }
   },
-  "clients": [
-    {
-      "id": "ams-portal-ui-id",
-      "clientId": "ams-portal-ui",
-      "name": "AMS Portal UI Client",
-      "description": "Public client for the AMS Data Portal web interface",
-      "enabled": true,
-      "clientAuthenticatorType": "client-secret",
-      "redirectUris": [
-        "http://localhost:8000/*"
-      ],
-      "webOrigins": [
-        "http://localhost:8000"
-      ],
-      "notBefore": 0,
-      "bearerOnly": false,
-      "consentRequired": false,
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "publicClient": true,
-      "frontchannelLogout": false,
-      "protocol": "openid-connect",
-      "attributes": {},
-      "authenticationFlowBindingOverrides": {},
-      "fullScopeAllowed": true,
-      "nodeReRegistrationTimeout": -1,
-      "defaultClientScopes": [
-        "web-origins",
-        "roles",
-        "profile", 
-        "email"
-      ],
-      "optionalClientScopes": [
-        "address",
-        "phone",
-        "offline_access",
-        "microprofile-jwt"
-      ]
-    },
-    {
-      "id": "ams-portal-admin-id",
-      "clientId": "ams-portal-admin",
-      "name": "AMS Portal Admin Client",
-      "description": "Confidential client for AMS Data Portal backend operations", 
-      "enabled": true,
-      "clientAuthenticatorType": "client-secret",
-      "redirectUris": [],
-      "webOrigins": [],
-      "notBefore": 0,
-      "bearerOnly": false,
-      "consentRequired": false,
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": true,
-      "publicClient": false,
-      "frontchannelLogout": false,
-      "protocol": "openid-connect",
-      "attributes": {},
-      "authenticationFlowBindingOverrides": {},
-      "fullScopeAllowed": true,
-      "nodeReRegistrationTimeout": -1,
-      "defaultClientScopes": [
-        "web-origins",
-        "roles",
-        "profile",
-        "email"
-      ],
-      "optionalClientScopes": [
-        "address", 
-        "phone",
-        "offline_access",
-        "microprofile-jwt"
-      ]
-    }
-  ],
-  "users": [],
-  "scopeMappings": [],
-  "clientScopeMappings": {},
-  "groups": [],
-  "defaultDefaultClientScopes": [
-    "role_list",
-    "profile",
-    "email",
-    "roles",
-    "web-origins"
-  ],
-  "defaultOptionalClientScopes": [
-    "offline_access",
-    "address",
-    "phone",
-    "microprofile-jwt"
-  ],
-  "browserSecurityHeaders": {
-    "contentSecurityPolicyReportOnly": "",
-    "xContentTypeOptions": "nosniff",
-    "xRobotsTag": "none",
-    "xFrameOptions": "SAMEORIGIN",
-    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
-    "xXSSProtection": "1; mode=block",
-    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  "groups" : [ ],
+  "users" : [ ],
+  "clients" : [ {
+    "id" : "ui-client-id",
+    "clientId" : "ams-portal-ui",
+    "name" : "AMS Portal UI Client",
+    "enabled" : true,
+    "publicClient" : true,
+    "redirectUris" : [ "http://localhost:8000/*" ],
+    "webOrigins" : [ "http://localhost:8000" ],
+    "protocol" : "openid-connect",
+    "standardFlowEnabled" : true,
+    "implicitFlowEnabled" : false,
+    "directAccessGrantsEnabled" : false,
+    "serviceAccountsEnabled" : false
+  }, {
+    "id" : "admin-client-id", 
+    "clientId" : "ams-portal-admin",
+    "name" : "AMS Portal Admin Client",
+    "enabled" : true,
+    "publicClient" : false,
+    "protocol" : "openid-connect",
+    "standardFlowEnabled" : false,
+    "implicitFlowEnabled" : false,
+    "directAccessGrantsEnabled" : true,
+    "serviceAccountsEnabled" : true
+  } ],
+  "clientScopes" : [ ],
+  "defaultDefaultClientScopes" : [ "role_list", "profile", "email", "roles", "web-origins" ],
+  "defaultOptionalClientScopes" : [ "offline_access", "address", "phone", "microprofile-jwt" ],
+  "browserSecurityHeaders" : {
+    "contentSecurityPolicyReportOnly" : "",
+    "xContentTypeOptions" : "nosniff",
+    "xRobotsTag" : "none",
+    "xFrameOptions" : "SAMEORIGIN",
+    "contentSecurityPolicy" : "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xXSSProtection" : "1; mode=block",
+    "strictTransportSecurity" : "max-age=31536000; includeSubDomains"
   },
-  "smtpServer": {},
-  "eventsEnabled": false,
-  "eventsListeners": [
-    "jboss-logging"
-  ],
-  "enabledEventTypes": [],
-  "adminEventsEnabled": false,
-  "adminEventsDetailsEnabled": false,
-  "internationalizationEnabled": false,
-  "supportedLocales": [],
-  "authenticationFlows": [],
-  "authenticatorConfig": [],
-  "requiredActions": [],
-  "browserFlow": "browser",
-  "registrationFlow": "registration", 
-  "directGrantFlow": "direct grant",
-  "resetCredentialsFlow": "reset credentials",
-  "clientAuthenticationFlow": "clients"
+  "internationalizationEnabled" : false,
+  "supportedLocales" : [ ],
+  "authenticationFlows" : [ ],
+  "authenticatorConfig" : [ ],
+  "requiredActions" : [ ],
+  "browserFlow" : "browser",
+  "registrationFlow" : "registration",
+  "directGrantFlow" : "direct grant",
+  "resetCredentialsFlow" : "reset credentials",
+  "clientAuthenticationFlow" : "clients"
 }
