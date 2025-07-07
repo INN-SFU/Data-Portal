@@ -70,7 +70,7 @@ python3 main.py config.yaml
 **Example config.yaml update:**
 ```yaml
 keycloak:
-  admin_client_secret: "your-copied-secret-here"  # Replace this line only
+  admin_client_secret: "${KEYCLOAK_ADMIN_CLIENT_SECRET:-<paste-your-copied-secret-here>}"
 ```
 
 ## Detailed Setup
@@ -143,7 +143,7 @@ If you prefer manual setup:
 **Update config.yaml:**
 ```yaml
 keycloak:
-  admin_client_secret: "paste-your-copied-secret-here"
+  admin_client_secret: "${KEYCLOAK_ADMIN_CLIENT_SECRET:-<paste-your-copied-secret-here>}"
 ```
 
 **What gets configured automatically:**
