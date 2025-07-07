@@ -34,7 +34,7 @@ cd AMS
 python scripts/setup.py --all
 
 # Start with Docker Compose
-docker-compose -f deployment/docker-compose.yml up -d
+docker compose -f deployment/docker-compose.yml up -d
 ```
 
 ### Option 2: Local Development
@@ -55,7 +55,13 @@ pip install -r requirements.txt
 python3 scripts/setup.py --all
 
 # Start Keycloak (required for app startup)
-docker-compose -f deployment/docker-compose.yml up keycloak -d
+docker compose -f deployment/docker-compose.yml up keycloak -d
+
+# Configure Keycloak (first time only)
+# 1. Wait for Keycloak to start (check: http://localhost:8080)
+# 2. Login to admin console: admin/admin123
+# 3. Import realm: config/keycloak-realm-export.json
+# 4. Get admin client secret and update config.yaml
 
 # Start the application
 python3 main.py config.yaml
@@ -66,8 +72,10 @@ python3 main.py config.yaml
 ### Prerequisites
 
 - Python 3.12+
-- Docker & Docker Compose (for containerized deployment)
+- Docker & Docker Compose V2 (for containerized deployment)
 - Keycloak server (included in Docker setup)
+
+**Note:** If you have Docker Compose V1, use `docker-compose` (with hyphen) instead of `docker compose`.
 
 ### 1. Configuration Setup
 
@@ -115,18 +123,51 @@ If you prefer manual setup:
 
 ### 3. Keycloak Setup
 
-#### Using Docker (Included)
-```bash
-docker-compose up keycloak -d
-```
-- Admin Console: http://localhost:8080
-- Admin credentials: admin/admin123 (change in production)
+#### Quick Setup (Recommended)
 
-#### Manual Keycloak Setup
-1. Create a new realm for AMS
-2. Create clients for UI and admin access
-3. Configure redirect URIs and client settings
-4. Update `config.yaml` with client details
+1. **Start Keycloak:**
+   ```bash
+   docker compose -f deployment/docker-compose.yml up keycloak -d
+   ```
+
+2. **Access Admin Console:**
+   - URL: http://localhost:8080
+   - Username: `admin`
+   - Password: `admin123`
+
+3. **Import Pre-configured Realm:**
+   - Click the dropdown next to "Master" realm
+   - Select "Add realm"
+   - Click "Select file" and choose `config/keycloak-realm-export.json`
+   - Click "Create"
+
+4. **Get Admin Client Secret:**
+   - Go to Clients → `ams-portal-admin`
+   - Click "Credentials" tab
+   - Copy the "Secret" value
+
+5. **Update config.yaml:**
+   ```yaml
+   keycloak:
+     domain: "http://localhost:8080"
+     realm: "ams-portal"
+     ui_client_id: "ams-portal-ui"
+     ui_client_secret: ""  # Leave empty for public client
+     admin_client_id: "ams-portal-admin"
+     admin_client_secret: "paste-your-copied-secret-here"
+     redirect_uri: "http://localhost:8000/auth/callback"
+   ```
+
+6. **Create Test Users (Optional):**
+   - Go to Users → Add user
+   - Set username, email, and password
+   - Go to Role Mappings tab
+   - Assign roles: `admin` or `user`
+
+**Pre-configured Roles:**
+- `admin` - Full administrative access
+- `user` - Standard user access  
+- `data-manager` - Data management capabilities
 
 ### 4. Storage Endpoints
 
