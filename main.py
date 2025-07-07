@@ -37,7 +37,7 @@ if __name__ == "__main__":
     load_dotenv(env_path)
 
     path_envs = ['ENFORCER_MODEL', 'ENFORCER_POLICY', 'USER_POLICIES', 'JINJA_TEMPLATES',
-                 'ENDPOINT_CONFIGS', 'STATIC_FILES', 'LOG_CONFIG']
+                 'ENDPOINT_CONFIGS', 'STATIC_FILES']
 
     # Accessing path variables and converting to absolute paths
     for path in path_envs:
@@ -83,7 +83,8 @@ if __name__ == "__main__":
 
     # LOG INITIALIZATION
     print("Initializing loggers...")
-    with open(os.getenv('LOG_CONFIG'), 'r') as f:
+    log_config_path = os.path.abspath(config['logging']['config'])
+    with open(log_config_path, 'r') as f:
         log_config = yaml.safe_load(f)
     logging.config.dictConfig(log_config)
     app_logger = logging.getLogger('app')
