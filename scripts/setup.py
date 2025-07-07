@@ -25,7 +25,7 @@ def create_config_files(environment='development'):
     print(f"Setting up configuration for {environment} environment...")
     
     # Create config.yaml from template
-    config_template = project_root / 'config.template.yaml'
+    config_template = project_root / 'config' / 'config.template.yaml'
     config_file = project_root / 'config.yaml'
     
     if not config_file.exists():
@@ -49,7 +49,7 @@ def create_config_files(environment='development'):
         print(f"⚠ {config_file} already exists, skipping")
     
     # Create .env file
-    env_template = project_root / '.env.template'
+    env_template = project_root / 'config' / '.env.template'
     env_file = project_root / 'core' / 'settings' / '.env'
     
     if not env_file.exists():
