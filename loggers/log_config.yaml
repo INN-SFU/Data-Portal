@@ -6,6 +6,8 @@ formatters:
     format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
   detailed:
     format: '%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)d - %(message)s'
+  component:
+    format: '%(asctime)s - [%(name)s] - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
 
 handlers:
   console:
@@ -17,11 +19,26 @@ handlers:
     filename: loggers/logs/app.log
     mode: a
     formatter: detailed
-  casbin_file:
+  user_manager_file:
     class: logging.FileHandler
-    filename: loggers/logs/casbin.log
+    filename: loggers/logs/user-manager.log
     mode: a
-    formatter: detailed
+    formatter: component
+  endpoint_manager_file:
+    class: logging.FileHandler
+    filename: loggers/logs/endpoint-manager.log
+    mode: a
+    formatter: component
+  policy_manager_file:
+    class: logging.FileHandler
+    filename: loggers/logs/policy-manager.log
+    mode: a
+    formatter: component
+  storage_file:
+    class: logging.FileHandler
+    filename: loggers/logs/storage.log
+    mode: a
+    formatter: component
   uvicorn_file:
     class: logging.FileHandler
     filename: loggers/logs/uvicorn.log
@@ -29,6 +46,37 @@ handlers:
     formatter: detailed
 
 loggers:
+  # Application-level loggers
+  app:
+    level: INFO
+    handlers: [console, app_file]
+    propagate: false
+  
+  # Management component loggers
+  user-manager:
+    level: INFO
+    handlers: [console, user_manager_file]
+    propagate: false
+  endpoint-manager:
+    level: INFO
+    handlers: [console, endpoint_manager_file]
+    propagate: false
+  policy-manager:
+    level: INFO
+    handlers: [console, policy_manager_file]
+    propagate: false
+  
+  # Storage-specific loggers (POSIX and S3 only)
+  storage.posix:
+    level: INFO
+    handlers: [console, storage_file]
+    propagate: false
+  storage.s3:
+    level: INFO
+    handlers: [console, storage_file]
+    propagate: false
+  
+  # Server loggers
   uvicorn:
     level: INFO
     handlers: [console, uvicorn_file]
@@ -41,13 +89,11 @@ loggers:
     level: INFO
     handlers: [console, uvicorn_file]
     propagate: false
+  
+  # Legacy casbin logger (will be replaced by policy-manager)
   casbin:
     level: INFO
-    handlers: [console, casbin_file]
-    propagate: false
-  app:
-    level: INFO
-    handlers: [console, app_file]
+    handlers: [console, policy_manager_file]
     propagate: false
 
 root:

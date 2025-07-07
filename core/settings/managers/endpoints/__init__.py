@@ -1,11 +1,13 @@
 import os
 import json
+import logging
 from uuid import UUID
 
 from core.connectivity.endpoint_factory import endpoint_factory
 from core.management.endpoints.models import Endpoint
 from .EndpointManager import EndpointManager
 
+logger = logging.getLogger('endpoint-manager')
 endpoint_manager = EndpointManager()
 
 # Loop through the endpoint configuration files and create the endpoint agents

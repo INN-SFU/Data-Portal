@@ -7,8 +7,7 @@ import treelib
 from typing import List, Tuple
 from core.connectivity import AbstractStorageAgent
 
-casbin_logger = logging.getLogger("casbin")
-app_logger = logging.getLogger("app")
+logger = logging.getLogger('storage.s3')
 
 
 class S3StorageAgent(AbstractStorageAgent):
@@ -80,7 +79,7 @@ class S3StorageAgent(AbstractStorageAgent):
                 Params={"Bucket": bucket, "Key": key},
                 ExpiresIn=ttl
             )
-            casbin_logger.info(f"generate_access_link (write): URL for {resource}")
+            logger.info(f"generate_access_link (write): URL for {resource}")
             return [url], [resource]
 
         # READ: treat resource as regex, full‐match
@@ -92,7 +91,7 @@ class S3StorageAgent(AbstractStorageAgent):
         ]
         matched = [p for p in all_paths if pattern.fullmatch(p)]
         if not matched:
-            casbin_logger.info(f"No objects match regex: {resource}")
+            logger.info(f"No objects match regex: {resource}")
             return [], []
 
         urls = []
@@ -104,7 +103,7 @@ class S3StorageAgent(AbstractStorageAgent):
                 ExpiresIn=ttl
             ))
 
-        casbin_logger.info(f"generate_access_link (read): matched {len(matched)} for {resource}")
+        logger.info(f"generate_access_link (read): matched {len(matched)} for {resource}")
         return urls, matched
 
     def _enable_cors(self):
@@ -124,7 +123,7 @@ class S3StorageAgent(AbstractStorageAgent):
             }]
         }
         for bucket in self.fetch_all_buckets():
-            app_logger.info(f"Applying dev CORS to bucket {bucket}")
+            logger.info(f"Applying dev CORS to bucket {bucket}")
             self.s3_client.put_bucket_cors(
                 Bucket=bucket,
                 CORSConfiguration=cors_conf

@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import os
 import subprocess
 import tempfile
@@ -7,6 +8,8 @@ import tempfile
 import treelib
 
 from core.connectivity import AbstractStorageAgent
+
+logger = logging.getLogger('storage.posix')
 
 
 class PosixStorageAgent(AbstractStorageAgent):
