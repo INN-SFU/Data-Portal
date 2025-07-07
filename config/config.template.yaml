@@ -2,8 +2,8 @@
 # Copy this file to config.yaml and update values for your environment
 
 system:
-  # Set to true on first run to initialize system (will auto-reset to false)
-  reset: true
+  # Set to true only if you need to reset/initialize system (clears all data!)
+  reset: false
 
 uvicorn:
   # Server configuration
