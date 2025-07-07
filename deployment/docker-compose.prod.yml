@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Production Docker Compose configuration
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
 

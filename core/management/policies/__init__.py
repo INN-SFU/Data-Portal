@@ -1,2 +1,2 @@
 from .abstract_policy_manager import AbstractPolicyManager
-from .abstract_policy_manager import Policy
+from .models import Policy
