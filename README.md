@@ -34,7 +34,7 @@ cd AMS
 python scripts/setup.py --all
 
 # Start with Docker Compose
-docker-compose up -d
+docker-compose -f deployment/docker-compose.yml up -d
 ```
 
 ### Option 2: Local Development
@@ -45,17 +45,20 @@ git clone <repository-url>
 cd AMS
 
 # Set up Python environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Set up configuration
-python scripts/setup.py --all
+python3 scripts/setup.py --all
+
+# Start Keycloak (required for app startup)
+docker-compose -f deployment/docker-compose.yml up keycloak -d
 
 # Start the application
-python main.py config.yaml
+python3 main.py config.yaml
 ```
 
 ## Detailed Setup
@@ -199,9 +202,15 @@ AMS/
 │   ├── connectivity/      # Storage adapters
 │   ├── management/        # Policy & user management
 │   └── settings/          # Configuration management
+├── config/                # Configuration templates
+│   ├── config.template.yaml
+│   ├── .env.template
+│   └── .secrets.template
+├── deployment/            # Docker and deployment files
+│   ├── docker-compose.yml
+│   └── docker-compose.prod.yml
 ├── loggers/               # Logging configuration
-├── scripts/               # Setup and utility scripts
-└── docker-compose*.yml    # Container orchestration
+└── scripts/               # Setup and utility scripts
 ```
 
 ## Troubleshooting
