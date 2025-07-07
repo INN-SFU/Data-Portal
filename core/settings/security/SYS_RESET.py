@@ -2,7 +2,8 @@ import json
 import os
 import shutil
 
-from core.management.users import keycloak_administrator
+from core.settings.managers.users.keycloak.KeycloakUserManager import KeycloakUserManager
+from core.management.users.models import UserCreate
 from core.management.policies import DataAccessManager
 from core.settings.security._generate_secrets import _generate_secrets
 
@@ -22,13 +23,21 @@ def SYS_RESET():
 
     dam = DataAccessManager()
 
-    users = keycloak_administrator.get_users()
+    # Initialize Keycloak admin client
+    keycloak_administrator = KeycloakUserManager(
+        realm_name=os.getenv('KEYCLOAK_REALM'),
+        client_id=os.getenv('KEYCLOAK_ADMIN_CLIENT_ID'),
+        client_secret=os.getenv('KEYCLOAK_ADMIN_CLIENT_SECRET'),
+        base_url=os.getenv('KEYCLOAK_DOMAIN')
+    )
+
+    users = keycloak_administrator.get_all_users()
 
     for user in users:
-        keycloak_administrator.delete_user(user['id'])
+        keycloak_administrator.delete_user(user.uuid)
 
         try:
-            dam.remove_user(user['username'])
+            dam.remove_user(user.username)
         except ValueError:
             pass
 
@@ -58,21 +67,17 @@ def SYS_RESET():
     admin_username = admin_email.split('@')[0]
     print('Enter admin user password:')
     admin_key = input()
-    user_representation = {
-        "username": admin_username,
-        "email": admin_email,
-        "enabled": True,
-        "credentials": [{"value": admin_key, "temporary": False}]
-    }
-    keycloak_administrator.create_user(user_representation)
-    admin_id = keycloak_administrator.get_users(query={"username": admin_username})[0]['id']
-    admin_role_obj = keycloak_administrator.get_realm_role("admin")
-    keycloak_administrator.assign_realm_roles(
-        user_id=admin_id,
-        roles=[admin_role_obj]
+    
+    # Create admin user using UserCreate model
+    admin_user_create = UserCreate(
+        username=admin_username,
+        email=admin_email,
+        roles=["admin"]
     )
-
-    dam.add_user(admin_username, admin_id, 'admin')
+    
+    admin_user = keycloak_administrator.create_user(admin_user_create)
+    
+    dam.add_user(admin_username, admin_user.uuid, 'admin')
 
     # Provide the admin user with read and write access to all endpoints
 
