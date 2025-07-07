@@ -40,31 +40,37 @@ docker compose -f deployment/docker-compose.yml up -d
 ### Option 2: Local Development
 
 ```bash
-# Clone the repository
+# 1. Clone and setup Python environment
 git clone <repository-url>
 cd AMS
-
-# Set up Python environment
 python3 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
 
-# Set up configuration
+# 2. Initialize configuration files
 python3 scripts/setup.py --all
 
-# Start Keycloak (required for app startup)
+# 3. Start Keycloak service
 docker compose -f deployment/docker-compose.yml up keycloak -d
 
-# Configure Keycloak (first time only)
-# 1. Wait for Keycloak to start (check: http://localhost:8080)
-# 2. Login to admin console: admin/admin123
-# 3. Import realm: config/keycloak-realm-export.json
-# 4. Get admin client secret and update config.yaml
+# 4. Configure Keycloak (one-time setup)
+#    a) Go to http://localhost:8080 (admin/admin123)
+#    b) Add realm → Import config/keycloak-realm-export.json
+#    c) Get client secret: Clients → ams-portal-admin → Credentials
+#    d) Update config.yaml with the secret (see example below)
 
-# Start the application
+# 5. Start the application
 python3 main.py config.yaml
+
+# 6. Access the application
+#    - Main app: http://localhost:8000
+#    - API docs: http://localhost:8000/docs
+```
+
+**Example config.yaml update:**
+```yaml
+keycloak:
+  admin_client_secret: "your-copied-secret-here"  # Replace this line only
 ```
 
 ## Detailed Setup
@@ -121,52 +127,28 @@ If you prefer manual setup:
    python -c "from core.settings.security._generate_secrets import _generate_secrets; _generate_secrets()"
    ```
 
-### 3. Keycloak Setup
+### 3. Keycloak Configuration Details
 
-#### Quick Setup (Recommended)
+**The realm import (`config/keycloak-realm-export.json`) automatically configures:**
+- ✅ Realm: `ams-portal`
+- ✅ UI Client: `ams-portal-ui` (public client for web interface)
+- ✅ Admin Client: `ams-portal-admin` (confidential client for backend)
+- ✅ Roles: `admin`, `user`, `data-manager`
+- ✅ OAuth flows and security settings
 
-1. **Start Keycloak:**
-   ```bash
-   docker compose -f deployment/docker-compose.yml up keycloak -d
-   ```
+**You only need to:**
+1. Import the file
+2. Copy the generated admin client secret
+3. Update config.yaml
 
-2. **Access Admin Console:**
-   - URL: http://localhost:8080
-   - Username: `admin`
-   - Password: `admin123`
+**Creating Test Users:**
+- Go to Users → Add user
+- Set username, email, and password  
+- Assign roles in Role Mappings tab
 
-3. **Import Pre-configured Realm:**
-   - Click the dropdown next to "Master" realm
-   - Select "Add realm"
-   - Click "Select file" and choose `config/keycloak-realm-export.json`
-   - Click "Create"
-
-4. **Get Admin Client Secret:**
-   - Go to Clients → `ams-portal-admin`
-   - Click "Credentials" tab
-   - Copy the "Secret" value
-
-5. **Update config.yaml:**
-   ```yaml
-   keycloak:
-     domain: "http://localhost:8080"
-     realm: "ams-portal"
-     ui_client_id: "ams-portal-ui"
-     ui_client_secret: ""  # Leave empty for public client
-     admin_client_id: "ams-portal-admin"
-     admin_client_secret: "paste-your-copied-secret-here"
-     redirect_uri: "http://localhost:8000/auth/callback"
-   ```
-
-6. **Create Test Users (Optional):**
-   - Go to Users → Add user
-   - Set username, email, and password
-   - Go to Role Mappings tab
-   - Assign roles: `admin` or `user`
-
-**Pre-configured Roles:**
+**Available Roles:**
 - `admin` - Full administrative access
-- `user` - Standard user access  
+- `user` - Standard user access
 - `data-manager` - Data management capabilities
 
 ### 4. Storage Endpoints
