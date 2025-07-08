@@ -24,40 +24,44 @@ For detailed information, see the [project wiki](https://github.com/INN-SFU/Data
 ## Quick Start
 
 ```bash
-# 1. Clone and setup Python environment
+# 1. Clone the repository
 git clone <repository-url>
 cd AMS
+
+# 2. Create and activate Python virtual environment
 python3 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# 3. Install Python dependencies
 pip install -r requirements.txt
 
-# 2. Initialize configuration files
+# 4. Initialize configuration files
 #    Option A: Automated setup (recommended)
-python3 scripts/setup.py --all
+python scripts/setup.py --all
 
 #    Option B: Manual setup
 #    cp config/config.template.yaml config.yaml
 #    cp config/.env.template core/settings/.env
 #    cp config/.secrets.template core/settings/security/.secrets
 
-# 3. Start Keycloak service
+# 5. Start Keycloak service
 docker compose -f deployment/docker-compose.yml up keycloak -d
 
-# 4. Configure Keycloak (one-time setup)
+# 6. Configure Keycloak (one-time setup)
 #    a) Go to http://localhost:8080 (admin/admin123)
 #    b) Add realm → Import config/keycloak-realm-export.json
 #    c) Get client secret: Clients → ams-portal-admin → Credentials
 #    d) Update config.yaml with the secret (see example below)
 
-# 5. Start the application
+# 7. Start the application
 #    Choose one:
 #    Docker: docker compose -f deployment/docker-compose.yml up -d
-#    Local:  python3 main.py config.yaml
+#    Local:  python main.py config.yaml
 
-# 6. Create your first admin user
+# 8. Create your first admin user
 python scripts/create_admin_user.py
 
-# 7. Access the application
+# 9. Access the application
 #    - Main app: http://localhost:8000
 #    - API docs: http://localhost:8000/docs
 ```
@@ -68,12 +72,20 @@ keycloak:
   admin_client_secret: $KEYCLOAK_ADMIN_CLIENT_SECRET|<paste-your-copied-secret-here>
 ```
 
+**💡 Virtual Environment Notes:**
+- The repository does **not** include a virtual environment (this was cleaned up for repo size)
+- You **must** create your own virtual environment as shown above
+- Always activate your virtual environment before running scripts: `source .venv/bin/activate`
+- To deactivate: `deactivate`
+
 **Local Development Setup:**
-If running locally (not Docker), also install dependencies:
+If you're developing locally (not using Docker):
 ```bash
-python3 -m venv .venv
+# Ensure virtual environment is activated
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+
+# Install development dependencies
+pip install -r requirements-dev.txt
 ```
 
 ## Detailed Setup
@@ -324,24 +336,35 @@ AMS/
 
 ### Common Issues
 
-1. **Keycloak Connection Failed**
+1. **Virtual Environment Issues**
+   - Error: `ModuleNotFoundError: No module named 'xyz'`
+   - Solution: Ensure virtual environment is activated: `source .venv/bin/activate`
+   - Reinstall dependencies: `pip install -r requirements.txt`
+   - If still having issues, delete `.venv` and recreate: `rm -rf .venv && python3 -m venv .venv`
+
+2. **Python Command Not Found**
+   - Error: `command not found: python`
+   - Solution: Use `python3` instead of `python` on most systems
+   - Or ensure Python is properly installed and in your PATH
+
+3. **Keycloak Connection Failed**
    - Verify `KEYCLOAK_DOMAIN` is accessible
    - Check client configuration in Keycloak admin console
 
-2. **Environment Variables Not Found**
+4. **Environment Variables Not Found**
    - Error: `TypeError: expected str, bytes or os.PathLike object, not NoneType`
    - Solution: Copy `.env.template` to `core/settings/.env`
    - Run: `cp config/.env.template core/settings/.env`
 
-3. **Secrets Generation Failed**  
+5. **Secrets Generation Failed**  
    - Ensure `core/settings/security/` directory exists
    - Run: `python scripts/setup.py --generate-secrets`
 
-4. **Storage Endpoint Issues**
+6. **Storage Endpoint Issues**
    - Verify endpoint configurations in `core/settings/managers/endpoints/configs/`
    - Check network connectivity to storage services
 
-5. **Permission Denied**
+7. **Permission Denied**
    - Review Casbin policies in `core/settings/managers/policies/casbin/`
    - Check user assignments and roles
 
