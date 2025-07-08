@@ -109,6 +109,9 @@ python scripts/setup.py --environment development
 # Production setup  
 python scripts/setup.py --environment production
 
+# Create required directories only
+python scripts/setup.py --create-dirs
+
 # Generate new secrets only
 python scripts/setup.py --generate-secrets
 

@@ -61,6 +61,28 @@ def create_config_files(environment='development'):
         print(f"⚠ {env_file} already exists, skipping")
 
 
+def create_directory_structure():
+    """Create required directory structure."""
+    print("Creating required directory structure...")
+    
+    # Create logs directory
+    logs_dir = project_root / 'loggers' / 'logs'
+    logs_dir.mkdir(parents=True, exist_ok=True)
+    print(f"✓ Created {logs_dir}")
+    
+    # Create other required directories
+    required_dirs = [
+        'core/settings/security',
+        'core/settings/managers/endpoints/configs',
+        'core/settings/managers/policies/casbin'
+    ]
+    
+    for dir_path in required_dirs:
+        full_path = project_root / dir_path
+        full_path.mkdir(parents=True, exist_ok=True)
+        print(f"✓ Ensured {full_path} exists")
+
+
 def generate_secrets():
     """Generate cryptographic secrets."""
     print("Generating cryptographic secrets...")
@@ -87,11 +109,24 @@ def validate_environment():
         'core/settings/security/.secrets'
     ]
     
+    required_dirs = [
+        'loggers/logs',
+        'core/settings/security',
+        'core/settings/managers/endpoints/configs',
+        'core/settings/managers/policies/casbin'
+    ]
+    
     missing_files = []
     for file_path in required_files:
         full_path = project_root / file_path
         if not full_path.exists():
             missing_files.append(file_path)
+    
+    missing_dirs = []
+    for dir_path in required_dirs:
+        full_path = project_root / dir_path
+        if not full_path.exists():
+            missing_dirs.append(dir_path)
     
     if missing_files:
         print("✗ Missing required configuration files:")
@@ -99,7 +134,13 @@ def validate_environment():
             print(f"  - {file_path}")
         return False
     
-    print("✓ All required configuration files present")
+    if missing_dirs:
+        print("✗ Missing required directories:")
+        for dir_path in missing_dirs:
+            print(f"  - {dir_path}")
+        return False
+    
+    print("✓ All required configuration files and directories present")
     
     # Check if secrets have been generated
     secrets_file = project_root / 'core' / 'settings' / 'security' / '.secrets'
@@ -125,6 +166,8 @@ def main():
     parser = argparse.ArgumentParser(description='AMS Data Portal Setup Script')
     parser.add_argument('--environment', choices=['development', 'production'], 
                        default='development', help='Environment to configure for')
+    parser.add_argument('--create-dirs', action='store_true', 
+                       help='Create required directory structure')
     parser.add_argument('--generate-secrets', action='store_true', 
                        help='Generate new cryptographic secrets')
     parser.add_argument('--validate', action='store_true', 
@@ -139,13 +182,16 @@ def main():
     print("AMS Data Portal Setup")
     print("=" * 50)
     
-    if args.all or not any([args.generate_secrets, args.validate, args.docker]):
+    if args.all or not any([args.create_dirs, args.generate_secrets, args.validate, args.docker]):
+        create_directory_structure()
         create_config_files(args.environment)
         generate_secrets()
         if args.docker or args.all:
             create_docker_files()
         validate_environment()
     else:
+        if args.create_dirs:
+            create_directory_structure()
         if args.generate_secrets:
             generate_secrets()
         if args.validate:
