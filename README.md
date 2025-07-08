@@ -55,11 +55,7 @@ docker compose -f deployment/docker-compose.yml up keycloak -d
 #    Local:  python3 main.py config.yaml
 
 # 6. Create your first admin user
-#    Option A: Manual setup (recommended for learning Keycloak)
-#    Follow "Initial User Setup" section below
-#    
-#    Option B: Automated script (faster setup)
-#    python scripts/create_admin_user.py
+python scripts/create_admin_user.py
 
 # 7. Access the application
 #    - Main app: http://localhost:8000
@@ -161,51 +157,7 @@ keycloak:
 
 ## Initial User Setup
 
-After Keycloak is configured, you need to create your first admin user. Choose one of the methods below:
-
-### Method A: Manual Setup (Recommended for Learning)
-
-**Step-by-step user creation:**
-
-1. **Access Keycloak Admin Console**
-   - Go to http://localhost:8080
-   - Login with `admin` / `admin123`
-
-2. **Switch to your application realm**
-   - Click "Master" dropdown → Select "ams-portal"
-
-3. **Create admin user**
-   - Navigate to "Users" → Click "Add user"
-   - Fill in details (suggested defaults):
-     - Username: `admin`
-     - Email: `admin@localhost`
-     - First Name: `Admin`
-     - Last Name: `User`
-   - Click "Save"
-
-4. **Set password**
-   - Go to "Credentials" tab
-   - Enter password (suggested: `admin123`)
-   - Turn OFF "Temporary" (so password doesn't expire)
-   - Click "Set password"
-
-5. **Assign admin role**
-   - Go to "Role Mappings" tab
-   - Select "admin" from Available Roles
-   - Click "Add selected"
-
-6. **Test login**
-   - Go to http://localhost:8000
-   - Login with your new credentials
-
-**Default Credentials (for development):**
-- Username: `admin`
-- Password: `admin123`
-- Email: `admin@localhost`
-
-### Method B: Automated Script (Faster Setup)
-
-**Quick user creation with script:**
+After Keycloak is configured, create your first admin user with the automated script:
 
 ```bash
 # Run the admin user creation script
@@ -224,6 +176,11 @@ The script will:
 - ✅ Set a permanent password
 - ✅ Assign admin role automatically
 - ✅ Verify the setup worked
+
+**Suggested Development Credentials:**
+- Username: `admin`
+- Password: `admin123`
+- Email: `admin@localhost`
 
 **Troubleshooting:**
 - Ensure Keycloak is running at http://localhost:8080
