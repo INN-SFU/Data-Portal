@@ -32,7 +32,13 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 2. Initialize configuration files
+#    Option A: Automated setup (recommended)
 python3 scripts/setup.py --all
+
+#    Option B: Manual setup
+#    cp config/config.template.yaml config.yaml
+#    cp config/.env.template core/settings/.env
+#    cp config/.secrets.template core/settings/security/.secrets
 
 # 3. Start Keycloak service
 docker compose -f deployment/docker-compose.yml up keycloak -d
@@ -359,15 +365,20 @@ AMS/
    - Verify `KEYCLOAK_DOMAIN` is accessible
    - Check client configuration in Keycloak admin console
 
-2. **Secrets Generation Failed**  
+2. **Environment Variables Not Found**
+   - Error: `TypeError: expected str, bytes or os.PathLike object, not NoneType`
+   - Solution: Copy `.env.template` to `core/settings/.env`
+   - Run: `cp config/.env.template core/settings/.env`
+
+3. **Secrets Generation Failed**  
    - Ensure `core/settings/security/` directory exists
    - Run: `python scripts/setup.py --generate-secrets`
 
-3. **Storage Endpoint Issues**
+4. **Storage Endpoint Issues**
    - Verify endpoint configurations in `core/settings/managers/endpoints/configs/`
    - Check network connectivity to storage services
 
-4. **Permission Denied**
+5. **Permission Denied**
    - Review Casbin policies in `core/settings/managers/policies/casbin/`
    - Check user assignments and roles
 
