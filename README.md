@@ -56,7 +56,7 @@ docker compose -f deployment/docker-compose.yml up keycloak -d
 **Example config.yaml update:**
 ```yaml
 keycloak:
-  admin_client_secret: "${KEYCLOAK_ADMIN_CLIENT_SECRET:-<paste-your-copied-secret-here>}"
+  admin_client_secret: $KEYCLOAK_ADMIN_CLIENT_SECRET|<paste-your-copied-secret-here>
 ```
 
 **Local Development Setup:**
@@ -137,7 +137,7 @@ If you prefer manual setup:
 **Update config.yaml:**
 ```yaml
 keycloak:
-  admin_client_secret: "${KEYCLOAK_ADMIN_CLIENT_SECRET:-<paste-your-copied-secret-here>}"
+  admin_client_secret: $KEYCLOAK_ADMIN_CLIENT_SECRET|<paste-your-copied-secret-here>
 ```
 
 **What gets configured automatically:**

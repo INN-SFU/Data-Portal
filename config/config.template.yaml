@@ -7,30 +7,30 @@ system:
 
 uvicorn:
   # Server configuration
-  host: "${AMS_HOST:-0.0.0.0}"
-  port: ${AMS_PORT:-8000}
-  reload: ${AMS_RELOAD:-true}
+  host: $AMS_HOST|0.0.0.0
+  port: $AMS_PORT|8000
+  reload: $AMS_RELOAD|true
 
 keycloak:
   # Keycloak OIDC Configuration
   # Required: Update these values for your Keycloak instance
-  domain: "${KEYCLOAK_DOMAIN:-http://localhost:8080}"
-  realm: "${KEYCLOAK_REALM:-ams-portal}"
+  domain: $KEYCLOAK_DOMAIN|http://localhost:8080
+  realm: $KEYCLOAK_REALM|ams-portal
   
   # UI Client (public client for web interface)
-  ui_client_id: "${KEYCLOAK_UI_CLIENT_ID:-ams-portal-ui}"
-  ui_client_secret: "${KEYCLOAK_UI_CLIENT_SECRET:-}"  # Leave empty for public clients
+  ui_client_id: $KEYCLOAK_UI_CLIENT_ID|ams-portal-ui
+  ui_client_secret: $KEYCLOAK_UI_CLIENT_SECRET|  # Leave empty for public clients
   
   # Admin Client (confidential client for admin operations)
-  admin_client_id: "${KEYCLOAK_ADMIN_CLIENT_ID:-ams-portal-admin}"
-  admin_client_secret: "${KEYCLOAK_ADMIN_CLIENT_SECRET:-your-admin-client-secret}"
+  admin_client_id: $KEYCLOAK_ADMIN_CLIENT_ID|ams-portal-admin
+  admin_client_secret: $KEYCLOAK_ADMIN_CLIENT_SECRET|your-admin-client-secret
   
   # Redirect URI for OAuth flow
-  redirect_uri: "${KEYCLOAK_REDIRECT_URI:-http://localhost:8000/auth/callback}"
+  redirect_uri: $KEYCLOAK_REDIRECT_URI|http://localhost:8000/auth/callback
 
 logging:
   # Path to logging configuration
-  config: "${LOG_CONFIG:-./loggers/log_config.yaml}"
+  config: $LOG_CONFIG|./loggers/log_config.yaml
 
 # Environment-specific configurations can be overridden via environment variables
-# Format: SECTION_KEY (e.g., KEYCLOAK_DOMAIN, UVICORN_PORT)
+# EnvYAML syntax: $VARIABLE|default_value (e.g., $KEYCLOAK_DOMAIN|http://localhost:8080)

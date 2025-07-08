@@ -13,24 +13,24 @@ def step_valid_config_file(context):
     """Create a temporary config file for testing"""
     config_content = {
         'keycloak': {
-            'domain': '${KEYCLOAK_DOMAIN:-http://localhost:8080}',
-            'realm': '${KEYCLOAK_REALM:-ams-portal}',
-            'ui_client_id': '${KEYCLOAK_UI_CLIENT_ID:-ams-portal-ui}',
-            'ui_client_secret': '${KEYCLOAK_UI_CLIENT_SECRET:-}',
-            'admin_client_id': '${KEYCLOAK_ADMIN_CLIENT_ID:-ams-portal-admin}',
-            'admin_client_secret': '${KEYCLOAK_ADMIN_CLIENT_SECRET:-secret}',
-            'redirect_uri': '${KEYCLOAK_REDIRECT_URI:-http://localhost:8000/auth/callback}'
+            'domain': '$KEYCLOAK_DOMAIN|http://localhost:8080',
+            'realm': '$KEYCLOAK_REALM|ams-portal',
+            'ui_client_id': '$KEYCLOAK_UI_CLIENT_ID|ams-portal-ui',
+            'ui_client_secret': '$KEYCLOAK_UI_CLIENT_SECRET|',
+            'admin_client_id': '$KEYCLOAK_ADMIN_CLIENT_ID|ams-portal-admin',
+            'admin_client_secret': '$KEYCLOAK_ADMIN_CLIENT_SECRET|secret',
+            'redirect_uri': '$KEYCLOAK_REDIRECT_URI|http://localhost:8000/auth/callback'
         },
         'system': {
             'reset': False
         },
         'uvicorn': {
-            'host': '${AMS_HOST:-0.0.0.0}',
-            'port': '${AMS_PORT:-8000}',
-            'reload': '${AMS_RELOAD:-true}'
+            'host': '$AMS_HOST|0.0.0.0',
+            'port': '$AMS_PORT|8000',
+            'reload': '$AMS_RELOAD|true'
         },
         'logging': {
-            'config': '${LOG_CONFIG:-./loggers/log_config.yaml}'
+            'config': '$LOG_CONFIG|./loggers/log_config.yaml'
         }
     }
     
