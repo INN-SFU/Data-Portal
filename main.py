@@ -52,13 +52,13 @@ if __name__ == "__main__":
     # Ensure you have these variables in your .env or config file:
     # KEYCLOAK_DOMAIN, REALM, CLIENT_ID, and optionally CLIENT_SECRET.
     print("Initializing Keycloak configuration...")
-    os.environ['KEYCLOAK_DOMAIN'] = config['keycloak']['domain']
-    os.environ['KEYCLOAK_REALM'] = config['keycloak']['realm']
-    os.environ['KEYCLOAK_UI_CLIENT_ID'] = config['keycloak']['ui_client_id']
-    os.environ['KEYCLOAK_UI_CLIENT_SECRET'] = config['keycloak']['ui_client_secret']
-    os.environ['KEYCLOAK_ADMIN_CLIENT_ID'] = config['keycloak']['admin_client_id']
-    os.environ['KEYCLOAK_ADMIN_CLIENT_SECRET'] = config['keycloak']['admin_client_secret']
-    os.environ['KEYCLOAK_REDIRECT_URI'] = config['keycloak']['redirect_uri']
+    os.environ['KEYCLOAK_DOMAIN'] = str(config['keycloak']['domain'])
+    os.environ['KEYCLOAK_REALM'] = str(config['keycloak']['realm'])
+    os.environ['KEYCLOAK_UI_CLIENT_ID'] = str(config['keycloak']['ui_client_id'])
+    os.environ['KEYCLOAK_UI_CLIENT_SECRET'] = str(config['keycloak']['ui_client_secret'] or '')
+    os.environ['KEYCLOAK_ADMIN_CLIENT_ID'] = str(config['keycloak']['admin_client_id'])
+    os.environ['KEYCLOAK_ADMIN_CLIENT_SECRET'] = str(config['keycloak']['admin_client_secret'])
+    os.environ['KEYCLOAK_REDIRECT_URI'] = str(config['keycloak']['redirect_uri'])
     os.environ[
         'KEYCLOAK_WELL_KNOWN_URL'] = f"{os.getenv('KEYCLOAK_DOMAIN')}/realms/{os.getenv('KEYCLOAK_REALM')}/.well-known/openid-configuration"
     os.environ[
