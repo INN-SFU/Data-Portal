@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from core.connectivity.agents.agent_factory import AgentFactory
+# AgentFactory import removed - not used in health checks
 
 
 logger = logging.getLogger('app')
