@@ -48,7 +48,14 @@ docker compose -f deployment/docker-compose.yml up keycloak -d
 #    Docker: docker compose -f deployment/docker-compose.yml up -d
 #    Local:  python3 main.py config.yaml
 
-# 6. Access the application
+# 6. Create your first admin user
+#    Option A: Manual setup (recommended for learning Keycloak)
+#    Follow "Initial User Setup" section below
+#    
+#    Option B: Automated script (faster setup)
+#    python scripts/create_admin_user.py
+
+# 7. Access the application
 #    - Main app: http://localhost:8000
 #    - API docs: http://localhost:8000/docs
 ```
@@ -146,9 +153,70 @@ keycloak:
 - ✅ Admin Client: `ams-portal-admin` (confidential, for backend)
 - ✅ Roles: `admin`, `user`, `data-manager`
 
-**Create Test Users:**
-- Users → Add user → Set username, email, password
-- Role Mappings tab → Assign `admin` or `user` role
+## Initial User Setup
+
+After Keycloak is configured, you need to create your first admin user. Choose one of the methods below:
+
+### Method A: Manual Setup (Recommended for Learning)
+
+**Step-by-step user creation:**
+
+1. **Access Keycloak Admin Console**
+   - Go to http://localhost:8080
+   - Login with `admin` / `admin123`
+
+2. **Switch to your application realm**
+   - Click "Master" dropdown → Select "ams-portal"
+
+3. **Create admin user**
+   - Navigate to "Users" → Click "Add user"
+   - Fill in details:
+     - Username: `your-username`
+     - Email: `your-email@example.com`
+     - First Name: `Your Name`
+     - Last Name: `Your Surname`
+   - Click "Save"
+
+4. **Set password**
+   - Go to "Credentials" tab
+   - Enter password
+   - Turn OFF "Temporary" (so password doesn't expire)
+   - Click "Set password"
+
+5. **Assign admin role**
+   - Go to "Role Mappings" tab
+   - Select "admin" from Available Roles
+   - Click "Add selected"
+
+6. **Test login**
+   - Go to http://localhost:8000
+   - Login with your new credentials
+
+### Method B: Automated Script (Faster Setup)
+
+**Quick user creation with script:**
+
+```bash
+# Run the admin user creation script
+python scripts/create_admin_user.py
+
+# Follow the prompts to enter:
+# - Username
+# - Email  
+# - First/Last Name
+# - Password
+```
+
+The script will:
+- ✅ Create the user in Keycloak
+- ✅ Set a permanent password
+- ✅ Assign admin role automatically
+- ✅ Verify the setup worked
+
+**Troubleshooting:**
+- Ensure Keycloak is running at http://localhost:8080
+- Check that the `ams-portal` realm exists
+- Verify your `config.yaml` has correct Keycloak settings
 
 ### 4. Storage Endpoints
 
