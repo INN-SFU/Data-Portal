@@ -99,5 +99,5 @@ if __name__ == "__main__":
     os.environ['APP_PORT'] = str(config['uvicorn']['port'])
     uvicorn.run(app='api.v0_1.app:app',
                 host=config['uvicorn']['host'],
-                port=config['uvicorn']['port'],
+                port=int(config['uvicorn']['port']),
                 reload=config['uvicorn']['reload'])
