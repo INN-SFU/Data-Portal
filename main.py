@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     # Exporting the configuration to environment variables
     print("Exporting configuration to environment variables...")
-    for key, value in config.items():
+    for key, value in config.export().items():
         if isinstance(value, dict):
             for sub_key, sub_value in value.items():
                 env_key = f"{key}_{sub_key}".upper()
