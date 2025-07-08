@@ -6,6 +6,7 @@ import sys
 import uvicorn
 
 from dotenv import load_dotenv
+from envyaml import EnvYAML
 
 # APP SPIN UP
 if __name__ == "__main__":
@@ -14,9 +15,7 @@ if __name__ == "__main__":
     config_file = sys.argv[1]
 
     print("Loading configuration file...")
-    with open(config_file, 'r') as f:
-        config = yaml.safe_load(f)
-    f.close()
+    config = EnvYAML(config_file)
 
     # Exporting the configuration to environment variables
     print("Exporting configuration to environment variables...")
@@ -99,5 +98,5 @@ if __name__ == "__main__":
     os.environ['APP_PORT'] = str(config['uvicorn']['port'])
     uvicorn.run(app='api.v0_1.app:app',
                 host=config['uvicorn']['host'],
-                port=int(config['uvicorn']['port']),
+                port=config['uvicorn']['port'],
                 reload=config['uvicorn']['reload'])
