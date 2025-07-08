@@ -50,31 +50,30 @@ def create_admin_user():
         # Import the user manager (this will trigger Keycloak connection)
         from core.settings.managers.users import user_manager
         
-        # Create the user
-        user_data = {
-            'username': username,
-            'email': email,
-            'firstName': first_name,
-            'lastName': last_name,
-            'enabled': True,
-            'credentials': [{
-                'type': 'password',
-                'value': password,
-                'temporary': False
-            }]
-        }
+        # Import the UserCreate model
+        from core.management.users.models import UserCreate
         
-        # Create user via Keycloak
-        user_id = user_manager.create_user(user_data)
-        print(f"✅ User created successfully with ID: {user_id}")
+        # Create user with admin role
+        user_create = UserCreate(
+            username=username,
+            email=email,
+            roles=['admin']  # Assign admin role during creation
+        )
         
-        # Assign admin role if available
-        try:
-            user_manager.assign_role(user_id, 'admin')
+        # Create user via UserManager (this handles role assignment)
+        new_user = user_manager.create_user(user_create)
+        print(f"✅ User created successfully!")
+        print(f"   Username: {new_user.username}")
+        print(f"   UUID: {new_user.uuid}")
+        print(f"   Email: {new_user.email}")
+        print(f"   Roles: {', '.join(new_user.roles)}")
+        
+        # Verify admin role was assigned
+        if 'admin' in new_user.roles:
             print("✅ Admin role assigned successfully")
-        except Exception as e:
-            print(f"⚠️  Could not assign admin role: {e}")
-            print("   You can assign roles manually in Keycloak Admin Console")
+        else:
+            print("⚠️  Admin role not found in user roles")
+            print("   You may need to assign it manually in Keycloak Admin Console")
         
         print(f"\n🎉 Admin user '{username}' created successfully!")
         print(f"📍 You can now login at: http://localhost:8000")
