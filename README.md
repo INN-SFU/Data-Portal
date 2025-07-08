@@ -216,6 +216,50 @@ bandit -r .
 safety check
 ```
 
+### Testing
+
+The project uses a comprehensive testing framework with unit tests, integration tests, and BDD (Behavior-Driven Development) tests.
+
+**Setup:**
+```bash
+# Install test dependencies
+pip install -r requirements-dev.txt
+```
+
+**Running Tests:**
+```bash
+# BDD tests (behavioral scenarios)
+behave tests/features/
+
+# BDD tests with verbose output
+behave tests/features/ -v
+
+# BDD tests with captured output (useful for debugging)
+behave tests/features/ -s
+
+# Run specific feature
+behave tests/features/configuration.feature
+
+# Unit tests (when available)
+pytest tests/unit/
+
+# Integration tests (when available)  
+pytest tests/integration/
+
+# Run all pytest tests
+pytest tests/
+```
+
+**Test Structure:**
+- `tests/unit/` - Fast unit tests for individual functions/classes
+- `tests/integration/` - API and database integration tests
+- `tests/features/` - BDD acceptance tests using Gherkin syntax
+
+**Current Test Status:**
+- Configuration tests are available and reveal type conversion issues in EnvYAML
+- Tests use temporary config files for isolation
+- Failing tests are expected and guide development fixes
+
 ### Project Structure
 ```
 AMS/
@@ -232,7 +276,11 @@ AMS/
 │   ├── docker-compose.yml
 │   └── docker-compose.prod.yml
 ├── loggers/               # Logging configuration
-└── scripts/               # Setup and utility scripts
+├── scripts/               # Setup and utility scripts
+└── tests/                 # Test suite
+    ├── unit/              # Unit tests
+    ├── integration/       # Integration tests
+    └── features/          # BDD tests (Gherkin/behave)
 ```
 
 ## Troubleshooting
