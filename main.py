@@ -15,7 +15,7 @@ if __name__ == "__main__":
     config_file = sys.argv[1]
 
     print("Loading configuration file...")
-    config = EnvYAML(config_file)
+    config = EnvYAML(config_file, strict=False)
 
     # Exporting the configuration to environment variables
     print("Exporting configuration to environment variables...")
