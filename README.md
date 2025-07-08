@@ -176,16 +176,16 @@ After Keycloak is configured, you need to create your first admin user. Choose o
 
 3. **Create admin user**
    - Navigate to "Users" → Click "Add user"
-   - Fill in details:
-     - Username: `your-username`
-     - Email: `your-email@example.com`
-     - First Name: `Your Name`
-     - Last Name: `Your Surname`
+   - Fill in details (suggested defaults):
+     - Username: `admin`
+     - Email: `admin@localhost`
+     - First Name: `Admin`
+     - Last Name: `User`
    - Click "Save"
 
 4. **Set password**
    - Go to "Credentials" tab
-   - Enter password
+   - Enter password (suggested: `admin123`)
    - Turn OFF "Temporary" (so password doesn't expire)
    - Click "Set password"
 
@@ -198,6 +198,11 @@ After Keycloak is configured, you need to create your first admin user. Choose o
    - Go to http://localhost:8000
    - Login with your new credentials
 
+**Default Credentials (for development):**
+- Username: `admin`
+- Password: `admin123`
+- Email: `admin@localhost`
+
 ### Method B: Automated Script (Faster Setup)
 
 **Quick user creation with script:**
@@ -206,11 +211,12 @@ After Keycloak is configured, you need to create your first admin user. Choose o
 # Run the admin user creation script
 python scripts/create_admin_user.py
 
-# Follow the prompts to enter:
-# - Username
-# - Email  
-# - First/Last Name
-# - Password
+# The script will prompt you to enter:
+# - Username (e.g., 'admin')
+# - Email (e.g., 'admin@localhost')  
+# - First/Last Name (e.g., 'Admin', 'User')
+# - Password (e.g., 'admin123')
+# - Password confirmation
 ```
 
 The script will:
