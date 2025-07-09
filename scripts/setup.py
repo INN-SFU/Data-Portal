@@ -363,43 +363,70 @@ def get_keycloak_client_secret():
     """Get the admin client secret from Keycloak."""
     try:
         # Use Keycloak admin CLI to get client secret
+        # Note: authenticate against master realm, but query ams-portal realm
         secret_cmd = [
             'docker', 'exec', 'ams-keycloak',
             '/opt/keycloak/bin/kcadm.sh', 'get', 'clients',
             '--server', 'http://localhost:8080',
-            '--realm', 'ams-portal',
+            '--realm', 'master',  # Auth against master realm
             '--user', 'admin',
             '--password', 'admin123',
+            '--target-realm', 'ams-portal',  # Query ams-portal realm
             '--query', 'clientId=ams-portal-admin'
         ]
         
+        print("   Querying Keycloak for admin client...")
         result = subprocess.run(secret_cmd, capture_output=True, text=True, cwd=project_root)
+        
         if result.returncode == 0:
+            print("   ✓ Client query successful")
             import json
-            clients = json.loads(result.stdout)
-            if clients and len(clients) > 0:
-                client_id = clients[0]['id']
-                
-                # Get client secret
-                secret_cmd = [
-                    'docker', 'exec', 'ams-keycloak',
-                    '/opt/keycloak/bin/kcadm.sh', 'get', f'clients/{client_id}/client-secret',
-                    '--server', 'http://localhost:8080',
-                    '--realm', 'ams-portal',
-                    '--user', 'admin',
-                    '--password', 'admin123'
-                ]
-                
-                secret_result = subprocess.run(secret_cmd, capture_output=True, text=True, cwd=project_root)
-                if secret_result.returncode == 0:
-                    secret_data = json.loads(secret_result.stdout)
-                    return secret_data.get('value')
+            try:
+                clients = json.loads(result.stdout)
+                if clients and len(clients) > 0:
+                    client_id = clients[0]['id']
+                    print(f"   Found client with ID: {client_id}")
+                    
+                    # Get client secret
+                    secret_cmd = [
+                        'docker', 'exec', 'ams-keycloak',
+                        '/opt/keycloak/bin/kcadm.sh', 'get', f'clients/{client_id}/client-secret',
+                        '--server', 'http://localhost:8080',
+                        '--realm', 'master',  # Auth against master realm
+                        '--user', 'admin',
+                        '--password', 'admin123',
+                        '--target-realm', 'ams-portal'  # Query ams-portal realm
+                    ]
+                    
+                    print("   Retrieving client secret...")
+                    secret_result = subprocess.run(secret_cmd, capture_output=True, text=True, cwd=project_root)
+                    
+                    if secret_result.returncode == 0:
+                        try:
+                            secret_data = json.loads(secret_result.stdout)
+                            secret_value = secret_data.get('value')
+                            if secret_value:
+                                print("   ✓ Client secret retrieved successfully")
+                                return secret_value
+                            else:
+                                print("   ⚠ Client secret value is empty")
+                        except json.JSONDecodeError as e:
+                            print(f"   ⚠ Failed to parse secret JSON: {e}")
+                            print(f"   Raw output: {secret_result.stdout}")
+                    else:
+                        print(f"   ⚠ Client secret query failed (return code {secret_result.returncode})")
+                        print(f"   Error: {secret_result.stderr}")
+                        print(f"   Output: {secret_result.stdout}")
                 else:
-                    print(f"⚠ Client secret query failed: {secret_result.stderr}")
-            else:
-                print("⚠ No clients found with clientId=ams-portal-admin")
+                    print("   ⚠ No clients found with clientId=ams-portal-admin")
+                    print(f"   Raw response: {result.stdout}")
+            except json.JSONDecodeError as e:
+                print(f"   ⚠ Failed to parse clients JSON: {e}")
+                print(f"   Raw output: {result.stdout}")
         else:
-            print(f"⚠ Client query failed: {result.stderr}")
+            print(f"   ⚠ Client query failed (return code {result.returncode})")
+            print(f"   Error: {result.stderr}")
+            print(f"   Output: {result.stdout}")
         
         print("⚠ Could not retrieve client secret automatically")
         return None
@@ -445,9 +472,19 @@ def create_admin_user():
     try:
         # Set up environment to avoid config loading issues
         import os
-        os.environ['LOGGING_CONFIG'] = str(project_root / 'loggers' / 'log_config.yaml')
         
-        # Set other required environment variables
+        # Set all required environment variables with absolute paths
+        os.environ['LOGGING_CONFIG'] = str(project_root / 'loggers' / 'log_config.yaml')
+        os.environ['LOG_CONFIG'] = str(project_root / 'loggers' / 'log_config.yaml')
+        os.environ['ENFORCER_MODEL'] = str(project_root / 'core/settings/managers/policies/casbin/model.conf')
+        os.environ['ENFORCER_POLICY'] = str(project_root / 'core/settings/managers/policies/casbin/test_policies.csv')
+        os.environ['USER_POLICIES'] = str(project_root / 'core/settings/managers/policies/casbin/user_policies')
+        os.environ['JINJA_TEMPLATES'] = str(project_root / 'api/v0_1/templates')
+        os.environ['ENDPOINT_CONFIGS'] = str(project_root / 'core/settings/managers/endpoints/configs')
+        os.environ['STATIC_FILES'] = str(project_root / 'api/v0_1/static')
+        os.environ['ROOT_DIRECTORY'] = str(project_root)
+        
+        # Set Keycloak environment variables from config
         config_file = project_root / 'config.yaml'
         if config_file.exists():
             # Load the config and set environment variables
@@ -464,14 +501,20 @@ def create_admin_user():
             os.environ['KEYCLOAK_UI_CLIENT_SECRET'] = config.get('keycloak', {}).get('ui_client_secret', '')
             os.environ['KEYCLOAK_REDIRECT_URI'] = config.get('keycloak', {}).get('redirect_uri', 'http://localhost:8000/auth/callback')
             
-        # Set additional required environment variables
-        os.environ['ENFORCER_MODEL'] = str(project_root / 'core/settings/managers/policies/casbin/model.conf')
-        os.environ['ENFORCER_POLICY'] = str(project_root / 'core/settings/managers/policies/casbin/test_policies.csv')
-        os.environ['USER_POLICIES'] = str(project_root / 'core/settings/managers/policies/casbin/user_policies')
-        os.environ['JINJA_TEMPLATES'] = str(project_root / 'api/v0_1/templates')
-        os.environ['ENDPOINT_CONFIGS'] = str(project_root / 'core/settings/managers/endpoints/configs')
-        os.environ['STATIC_FILES'] = str(project_root / 'api/v0_1/static')
-        os.environ['ROOT_DIRECTORY'] = str(project_root)
+        # Verify all critical environment variables are set
+        required_vars = [
+            'LOGGING_CONFIG', 'LOG_CONFIG', 'ENFORCER_MODEL', 'ENFORCER_POLICY', 
+            'USER_POLICIES', 'JINJA_TEMPLATES', 'ENDPOINT_CONFIGS', 'STATIC_FILES', 
+            'ROOT_DIRECTORY', 'KEYCLOAK_DOMAIN', 'KEYCLOAK_REALM'
+        ]
+        
+        missing_vars = [var for var in required_vars if not os.environ.get(var)]
+        if missing_vars:
+            print(f"⚠ Missing environment variables: {missing_vars}")
+            
+        print(f"   Environment setup complete")
+        print(f"   ROOT_DIRECTORY: {os.environ.get('ROOT_DIRECTORY')}")
+        print(f"   LOGGING_CONFIG: {os.environ.get('LOGGING_CONFIG')}")
         
         # Import the user manager and creation logic directly
         from core.settings.managers.users import user_manager
@@ -503,6 +546,11 @@ def create_admin_user():
         
     except Exception as e:
         print(f"✗ Failed to create admin user: {e}")
+        print("   Debugging info:")
+        print(f"   - Current working directory: {os.getcwd()}")
+        print(f"   - Project root: {project_root}")
+        print(f"   - LOGGING_CONFIG env var: {os.environ.get('LOGGING_CONFIG')}")
+        print(f"   - LOG_CONFIG env var: {os.environ.get('LOG_CONFIG')}")
         print("   Possible issues:")
         print("   - Keycloak may not be ready yet")
         print("   - Configuration may be incorrect")
