@@ -394,6 +394,12 @@ def get_keycloak_client_secret():
                 if secret_result.returncode == 0:
                     secret_data = json.loads(secret_result.stdout)
                     return secret_data.get('value')
+                else:
+                    print(f"⚠ Client secret query failed: {secret_result.stderr}")
+            else:
+                print("⚠ No clients found with clientId=ams-portal-admin")
+        else:
+            print(f"⚠ Client query failed: {result.stderr}")
         
         print("⚠ Could not retrieve client secret automatically")
         return None
@@ -440,6 +446,32 @@ def create_admin_user():
         # Set up environment to avoid config loading issues
         import os
         os.environ['LOGGING_CONFIG'] = str(project_root / 'loggers' / 'log_config.yaml')
+        
+        # Set other required environment variables
+        config_file = project_root / 'config.yaml'
+        if config_file.exists():
+            # Load the config and set environment variables
+            with open(config_file, 'r') as f:
+                import yaml
+                config = yaml.safe_load(f)
+                
+            # Set environment variables from config
+            os.environ['KEYCLOAK_DOMAIN'] = config.get('keycloak', {}).get('domain', 'http://localhost:8080')
+            os.environ['KEYCLOAK_REALM'] = config.get('keycloak', {}).get('realm', 'ams-portal')
+            os.environ['KEYCLOAK_ADMIN_CLIENT_ID'] = config.get('keycloak', {}).get('admin_client_id', 'ams-portal-admin')
+            os.environ['KEYCLOAK_ADMIN_CLIENT_SECRET'] = config.get('keycloak', {}).get('admin_client_secret', '')
+            os.environ['KEYCLOAK_UI_CLIENT_ID'] = config.get('keycloak', {}).get('ui_client_id', 'ams-portal-ui')
+            os.environ['KEYCLOAK_UI_CLIENT_SECRET'] = config.get('keycloak', {}).get('ui_client_secret', '')
+            os.environ['KEYCLOAK_REDIRECT_URI'] = config.get('keycloak', {}).get('redirect_uri', 'http://localhost:8000/auth/callback')
+            
+        # Set additional required environment variables
+        os.environ['ENFORCER_MODEL'] = str(project_root / 'core/settings/managers/policies/casbin/model.conf')
+        os.environ['ENFORCER_POLICY'] = str(project_root / 'core/settings/managers/policies/casbin/test_policies.csv')
+        os.environ['USER_POLICIES'] = str(project_root / 'core/settings/managers/policies/casbin/user_policies')
+        os.environ['JINJA_TEMPLATES'] = str(project_root / 'api/v0_1/templates')
+        os.environ['ENDPOINT_CONFIGS'] = str(project_root / 'core/settings/managers/endpoints/configs')
+        os.environ['STATIC_FILES'] = str(project_root / 'api/v0_1/static')
+        os.environ['ROOT_DIRECTORY'] = str(project_root)
         
         # Import the user manager and creation logic directly
         from core.settings.managers.users import user_manager
