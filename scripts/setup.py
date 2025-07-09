@@ -206,6 +206,121 @@ def wait_for_keycloak():
     return False
 
 
+def configure_keycloak_realm():
+    """Configure Keycloak realm and get client secret."""
+    print("Configuring Keycloak realm...")
+    
+    try:
+        # Import the realm configuration
+        realm_file = project_root / 'config' / 'keycloak-realm-export.json'
+        if not realm_file.exists():
+            print("✗ Keycloak realm export file not found")
+            return None
+            
+        # Use Keycloak admin CLI to import realm
+        import_cmd = [
+            'docker', 'exec', 'ams-keycloak', 
+            '/opt/keycloak/bin/kcadm.sh', 'create', 'realms',
+            '-f', '/opt/keycloak/data/import/keycloak-realm-export.json',
+            '--server', 'http://localhost:8080',
+            '--realm', 'master',
+            '--user', 'admin',
+            '--password', 'admin123'
+        ]
+        
+        # Copy realm file to container first
+        subprocess.run([
+            'docker', 'cp', str(realm_file), 
+            'ams-keycloak:/opt/keycloak/data/import/keycloak-realm-export.json'
+        ], check=True, cwd=project_root)
+        
+        # Import the realm
+        result = subprocess.run(import_cmd, capture_output=True, text=True, cwd=project_root)
+        if result.returncode == 0 or 'already exists' in result.stderr:
+            print("✓ Keycloak realm configured")
+            
+            # Get the client secret
+            secret = get_keycloak_client_secret()
+            if secret:
+                # Update config.yaml with the secret
+                update_config_with_secret(secret)
+                return secret
+            else:
+                print("⚠ Could not retrieve client secret")
+                return None
+        else:
+            print(f"⚠ Realm import failed: {result.stderr}")
+            return None
+            
+    except Exception as e:
+        print(f"✗ Error configuring Keycloak realm: {e}")
+        return None
+
+
+def get_keycloak_client_secret():
+    """Get the admin client secret from Keycloak."""
+    try:
+        # Use Keycloak admin CLI to get client secret
+        secret_cmd = [
+            'docker', 'exec', 'ams-keycloak',
+            '/opt/keycloak/bin/kcadm.sh', 'get', 'clients',
+            '--server', 'http://localhost:8080',
+            '--realm', 'ams-portal',
+            '--user', 'admin',
+            '--password', 'admin123',
+            '--query', 'clientId=ams-portal-admin'
+        ]
+        
+        result = subprocess.run(secret_cmd, capture_output=True, text=True, cwd=project_root)
+        if result.returncode == 0:
+            import json
+            clients = json.loads(result.stdout)
+            if clients and len(clients) > 0:
+                client_id = clients[0]['id']
+                
+                # Get client secret
+                secret_cmd = [
+                    'docker', 'exec', 'ams-keycloak',
+                    '/opt/keycloak/bin/kcadm.sh', 'get', f'clients/{client_id}/client-secret',
+                    '--server', 'http://localhost:8080',
+                    '--realm', 'ams-portal',
+                    '--user', 'admin',
+                    '--password', 'admin123'
+                ]
+                
+                secret_result = subprocess.run(secret_cmd, capture_output=True, text=True, cwd=project_root)
+                if secret_result.returncode == 0:
+                    secret_data = json.loads(secret_result.stdout)
+                    return secret_data.get('value')
+        
+        print("⚠ Could not retrieve client secret automatically")
+        return None
+        
+    except Exception as e:
+        print(f"✗ Error getting client secret: {e}")
+        return None
+
+
+def update_config_with_secret(client_secret):
+    """Update config.yaml with the client secret."""
+    try:
+        config_file = project_root / 'config.yaml'
+        
+        with open(config_file, 'r') as f:
+            content = f.read()
+        
+        # Replace the placeholder with actual secret
+        content = content.replace('your-admin-client-secret', client_secret)
+        
+        with open(config_file, 'w') as f:
+            f.write(content)
+            
+        print("✓ Updated config.yaml with client secret")
+        
+    except Exception as e:
+        print(f"✗ Error updating config with secret: {e}")
+
+
 def create_admin_user():
     """Create the initial admin user."""
     print("Creating initial admin user...")
@@ -304,6 +419,8 @@ def main():
                        help='Create Docker configuration files')
     parser.add_argument('--start-keycloak', action='store_true',
                        help='Start Keycloak service')
+    parser.add_argument('--configure-keycloak', action='store_true',
+                       help='Configure Keycloak realm and get client secret')
     parser.add_argument('--create-admin', action='store_true',
                        help='Create initial admin user')
     parser.add_argument('--run-tests', action='store_true',
@@ -332,19 +449,25 @@ def main():
         # Step 2: Start Keycloak
         if start_keycloak():
             if wait_for_keycloak():
-                # Step 3: Create admin user
-                admin_credentials = create_admin_user()
+                # Step 3: Configure Keycloak realm and get client secret
+                client_secret = configure_keycloak_realm()
+                if client_secret:
+                    # Step 4: Create admin user
+                    admin_credentials = create_admin_user()
+                else:
+                    print("⚠ Continuing without client secret - you may need to configure manually")
+                    admin_credentials = create_admin_user()
         
-        # Step 4: Validate everything
+        # Step 5: Validate everything
         validation_success = validate_environment()
         
-        # Step 5: Run tests (optional, don't fail setup if tests fail)
+        # Step 6: Run tests (optional, don't fail setup if tests fail)
         if validation_success:
             print("\n🧪 Running validation tests...")
             run_tests()
         
     elif args.all or not any([args.create_dirs, args.generate_secrets, args.validate, args.docker, 
-                             args.start_keycloak, args.create_admin, args.run_tests]):
+                             args.start_keycloak, args.configure_keycloak, args.create_admin, args.run_tests]):
         # Legacy setup mode
         create_directory_structure()
         create_config_files(args.environment)
@@ -361,6 +484,8 @@ def main():
         if args.start_keycloak:
             start_keycloak()
             wait_for_keycloak()
+        if args.configure_keycloak:
+            configure_keycloak_realm()
         if args.create_admin:
             admin_credentials = create_admin_user()
         if args.run_tests:

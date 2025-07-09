@@ -54,6 +54,8 @@ python main.py config.yaml
 - ✅ Generates configuration files from templates  
 - ✅ Generates cryptographic secrets
 - ✅ Starts Keycloak service and waits for readiness
+- ✅ **Imports Keycloak realm and extracts client secret**
+- ✅ **Updates config.yaml with the actual client secret**
 - ✅ Creates initial admin user with default credentials
 - ✅ Validates the entire setup
 - ✅ Runs tests to ensure everything works
@@ -124,6 +126,9 @@ python scripts/setup.py --generate-secrets
 
 # Start Keycloak service
 python scripts/setup.py --start-keycloak
+
+# Configure Keycloak realm and get client secret
+python scripts/setup.py --configure-keycloak
 
 # Create admin user
 python scripts/setup.py --create-admin
