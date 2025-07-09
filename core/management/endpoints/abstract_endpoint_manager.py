@@ -14,9 +14,21 @@ class AbstractEndpointManager(ABC):
     def endpoints(self) -> list[Endpoint]:
         return self._endpoints
 
-    @endpoints.getter
-    def get_endpoints(self) -> list[Endpoint]:
-        return self._endpoints
+    def get_endpoints(self, access_points: set = None) -> dict[str, Endpoint]:
+        """
+        Get endpoints filtered by access point names.
+        
+        :param access_points: Set of endpoint names to filter by. If None, returns all endpoints.
+        :return: Dictionary mapping endpoint names to Endpoint objects
+        """
+        if access_points is None:
+            return {endpoint.name: endpoint for endpoint in self._endpoints}
+        
+        return {
+            endpoint.name: endpoint 
+            for endpoint in self._endpoints 
+            if endpoint.name in access_points
+        }
 
     @endpoints.setter
     def endpoints(self, endpoints: Union[Endpoint, list[Endpoint]]):

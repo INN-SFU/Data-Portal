@@ -8,25 +8,27 @@ from core.connectivity.agents import (
     PosixStorageAgent
 )
 
+
 # shared base:
 class EndpointBase(BaseModel):
     flavour: Literal[tuple(available_flavours.keys())]
     access_point_name: str
     endpoint_url: str
 
+
 # build per-flavour create models:
 S3EndpointCreate = create_model(
     "S3EndpointCreate",
     __base__=EndpointBase,
     flavour=(Literal[S3StorageAgent.FLAVOUR], ...),
-    **{ name: (typ, ...) for name, typ in S3StorageAgent.CONFIG.items() }
+    **{name: (typ, ...) for name, typ in S3StorageAgent.CONFIG.items()}
 )
 
 PosixEndpointCreate = create_model(
     "PosixEndpointCreate",
     __base__=EndpointBase,
     flavour=(Literal[PosixStorageAgent.FLAVOUR], ...),
-    **{ name: (typ, ...) for name, typ in PosixStorageAgent.CONFIG.items() }
+    **{name: (typ, ...) for name, typ in PosixStorageAgent.CONFIG.items()}
 )
 
 # discriminated union:

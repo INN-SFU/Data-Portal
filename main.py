@@ -4,9 +4,11 @@ import os
 import yaml
 import sys
 import uvicorn
+import warnings
 
 from dotenv import load_dotenv
 from envyaml import EnvYAML
+
 
 # APP SPIN UP
 if __name__ == "__main__":

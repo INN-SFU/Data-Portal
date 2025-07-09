@@ -19,10 +19,24 @@ home_router = APIRouter(prefix="/home", tags=["Home UI"])
 @home_router.get("", response_class=HTMLResponse)
 async def home(request: Request,
                token_payload: dict = Depends(decode_token),
-               policy_manager=Depends(get_policy_manager)):
+               policy_manager=Depends(get_policy_manager),
+               endpoint_manager=Depends(get_endpoint_manager)):
+    import logging
+    logger = logging.getLogger("app")
+    
+    user = token_payload.get("preferred_username", "unknown")
+    logger.info(f"Home page accessed by user: {user}")
+    print(f"DEBUG: Home page accessed by user: {user}")
+    print(f"DEBUG: Token payload keys: {list(token_payload.keys())}")
+    print(f"DEBUG: Token payload: {token_payload}")
+    
     if is_user_admin(token_payload):
+        logger.info(f"Serving admin home template for user: {user}")
+        print(f"DEBUG: Serving admin home template for user: {user}")
         return templates.TemplateResponse("admin/home.html", {"request": request})
     else:
+        logger.info(f"Serving user home template for user: {user}")
+        print(f"DEBUG: Serving user home template for user: {user}")
         uid = token_payload.get("preferred_username")
 
         # Get all storage access points the user has read access to.
@@ -31,10 +45,11 @@ async def home(request: Request,
         user_file_tree = dict.fromkeys(access_points)
 
         # Loop through each storage endpoint and filter its file tree.
+        storage_endpoints = endpoint_manager.get_endpoints(access_points)
         for endpoint in storage_endpoints.keys():
             def node_filter(n: node):
                 vals = (uid, endpoint, n.identifier, 'write')
-                return pm.enforcer.enforce(*vals)
+                return policy_manager.enforcer.enforce(*vals)
 
             user_file_tree[endpoint] = convert_file_tree_to_dict(
                 storage_endpoints[endpoint].filter_file_tree(node_filter)
