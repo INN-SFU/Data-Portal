@@ -23,6 +23,8 @@ For detailed information, see the [project wiki](https://github.com/INN-SFU/Data
 
 ## Quick Start
 
+**🚀 FULLY AUTOMATED SETUP (Recommended for New Developers)**
+
 ```bash
 # 1. Clone the repository
 git clone <repository-url>
@@ -35,42 +37,42 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 # 3. Install Python dependencies
 pip install -r requirements.txt
 
-# 4. Initialize configuration files
-#    Option A: Automated setup (recommended)
-python scripts/setup.py --all
+# 4. Run FULL automated setup (does everything!)
+python scripts/setup.py --full-setup
 
-#    Option B: Manual setup
-#    cp config/config.template.yaml config.yaml
-#    cp config/.env.template core/settings/.env
-#    cp config/.secrets.template core/settings/security/.secrets
+# 5. Start the application
+python main.py config.yaml
 
-# 5. Start Keycloak service
-docker compose -f deployment/docker-compose.yml up keycloak -d
-
-# 6. Configure Keycloak (one-time setup)
-#    a) Go to http://localhost:8080 (admin/admin123)
-#    b) Add realm → Import config/keycloak-realm-export.json
-#    c) Get client secret: Clients → ams-portal-admin → Credentials
-#    d) Update config.yaml with the secret (see example below)
-
-# 7. Start the application
-#    Choose one:
-#    Docker: docker compose -f deployment/docker-compose.yml up -d
-#    Local:  python main.py config.yaml
-
-# 8. Create your first admin user
-python scripts/create_admin_user.py
-
-# 9. Access the application
+# 6. Login and start developing!
 #    - Main app: http://localhost:8000
-#    - API docs: http://localhost:8000/docs
+#    - Use the admin credentials printed by setup script
 ```
 
-**Example config.yaml update:**
-```yaml
-keycloak:
-  admin_client_secret: $KEYCLOAK_ADMIN_CLIENT_SECRET|<paste-your-copied-secret-here>
+**What `--full-setup` does automatically:**
+- ✅ Creates all required directories
+- ✅ Generates configuration files from templates  
+- ✅ Generates cryptographic secrets
+- ✅ Starts Keycloak service
+- ✅ Waits for Keycloak to be ready
+- ✅ Creates initial admin user with default credentials
+- ✅ Validates the entire setup
+- ✅ Runs tests to ensure everything works
+- ✅ Prints admin credentials and access URLs
+
+**Manual Setup (Legacy)**
+```bash
+# If you prefer step-by-step control:
+python scripts/setup.py --create-dirs
+python scripts/setup.py --generate-secrets  
+python scripts/setup.py --start-keycloak
+python scripts/setup.py --create-admin
+python scripts/setup.py --validate
 ```
+
+**🎯 Development Credentials:**
+- Username: `admin`
+- Password: `admin123`  
+- Email: `admin@localhost`
 
 **💡 Virtual Environment Notes:**
 - The repository does **not** include a virtual environment (this was cleaned up for repo size)
@@ -98,111 +100,52 @@ pip install -r requirements-dev.txt
 
 **Note:** If you have Docker Compose V1, use `docker-compose` (with hyphen) instead of `docker compose`.
 
-### 1. Configuration Setup
+### 1. Automated Setup (Recommended)
 
-The setup script automates initial configuration:
+The setup script provides full automation for new developers:
 
 ```bash
-# Development setup
-python scripts/setup.py --environment development
+# Full automated setup (recommended)
+python scripts/setup.py --full-setup
 
-# Production setup  
-python scripts/setup.py --environment production
+# Full setup for production environment
+python scripts/setup.py --full-setup --environment production
+```
 
+**Individual setup commands (if needed):**
+```bash
 # Create required directories only
 python scripts/setup.py --create-dirs
 
 # Generate new secrets only
 python scripts/setup.py --generate-secrets
 
+# Start Keycloak service
+python scripts/setup.py --start-keycloak
+
+# Create admin user
+python scripts/setup.py --create-admin
+
+# Run validation tests
+python scripts/setup.py --run-tests
+
 # Validate configuration
 python scripts/setup.py --validate
 ```
 
-### 2. Manual Configuration
+### 2. Manual Configuration (Advanced Users)
 
-If you prefer manual setup:
+**⚠️ Not recommended for new developers - use `--full-setup` instead**
 
-1. **Copy configuration templates:**
-   ```bash
-   cp config.template.yaml config.yaml
-   cp .env.template core/settings/.env
-   cp .secrets.template core/settings/security/.secrets
-   ```
-
-2. **Update `config.yaml`** with your Keycloak settings:
-   ```yaml
-   keycloak:
-     domain: "https://your-keycloak-domain.com"
-     realm: "your-realm"
-     ui_client_id: "your-ui-client"
-     admin_client_id: "your-admin-client"
-     admin_client_secret: "your-admin-secret"
-   ```
-
-3. **Generate secrets:**
-   ```bash
-   python -c "from core.settings.security._generate_secrets import _generate_secrets; _generate_secrets()"
-   ```
-
-### 3. Keycloak Configuration
-
-**Import Pre-configured Realm:**
-1. Go to http://localhost:8080 (admin/admin123)
-2. Click dropdown next to "Master" → "Add realm"
-3. Click "Select file" → Choose `config/keycloak-realm-export.json`
-4. Click "Create"
-
-**Get Admin Client Secret:**
-1. Go to Clients → `ams-portal-admin`
-2. Click "Credentials" tab
-3. Copy the Secret value
-
-**Update config.yaml:**
-```yaml
-keycloak:
-  admin_client_secret: $KEYCLOAK_ADMIN_CLIENT_SECRET|<paste-your-copied-secret-here>
-```
-
-**What gets configured automatically:**
-- ✅ Realm: `ams-portal`
-- ✅ UI Client: `ams-portal-ui` (public, for web interface)
-- ✅ Admin Client: `ams-portal-admin` (confidential, for backend)
-- ✅ Roles: `admin`, `user`, `data-manager`
-
-## Initial User Setup
-
-After Keycloak is configured, create your first admin user with the automated script:
-
+If you need manual control:
 ```bash
-# Run the admin user creation script
-python scripts/create_admin_user.py
-
-# The script will prompt you to enter:
-# - Username (e.g., 'admin')
-# - Email (e.g., 'admin@localhost')  
-# - First/Last Name (e.g., 'Admin', 'User')
-# - Password (e.g., 'admin123')
-# - Password confirmation
+# Copy templates and edit manually
+cp config/config.template.yaml config.yaml
+cp config/.env.template core/settings/.env
+# Edit config.yaml as needed
 ```
 
-The script will:
-- ✅ Create the user in Keycloak
-- ✅ Set a permanent password
-- ✅ Assign admin role automatically
-- ✅ Verify the setup worked
-
-**Suggested Development Credentials:**
-- Username: `admin`
-- Password: `admin123`
-- Email: `admin@localhost`
-
-**Troubleshooting:**
-- Ensure Keycloak is running at http://localhost:8080
-- Check that the `ams-portal` realm exists
-- Verify your `config.yaml` has correct Keycloak settings
-
-### 4. Storage Endpoints
+## Storage Endpoints
 
 Configure storage endpoints in `core/settings/managers/endpoints/configs/`:
 - S3 endpoints: Configure with bucket and credentials

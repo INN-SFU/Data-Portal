@@ -11,6 +11,8 @@ import os
 import shutil
 import sys
 import yaml
+import time
+import subprocess
 from pathlib import Path
 
 # Add the project root to Python path
@@ -154,6 +156,132 @@ def validate_environment():
     return True
 
 
+def start_keycloak():
+    """Start Keycloak service."""
+    print("Starting Keycloak service...")
+    
+    try:
+        # Check if Keycloak is already running
+        result = subprocess.run(['docker', 'ps', '--filter', 'name=ams-keycloak', '--format', '{{.Names}}'], 
+                              capture_output=True, text=True, cwd=project_root)
+        if 'ams-keycloak' in result.stdout:
+            print("✓ Keycloak is already running")
+        else:
+            # Start Keycloak
+            subprocess.run(['docker', 'compose', '-f', 'deployment/docker-compose.yml', 'up', 'keycloak', '-d'], 
+                         check=True, cwd=project_root)
+            print("✓ Keycloak service started")
+            
+            # Wait for Keycloak to be ready
+            print("⏳ Waiting for Keycloak to be ready...")
+            time.sleep(30)  # Give Keycloak time to start
+            
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"✗ Failed to start Keycloak: {e}")
+        return False
+
+
+def wait_for_keycloak():
+    """Wait for Keycloak to be ready."""
+    import requests
+    
+    print("⏳ Waiting for Keycloak to be fully ready...")
+    max_attempts = 30
+    for attempt in range(max_attempts):
+        try:
+            response = requests.get('http://localhost:8080', timeout=5)
+            if response.status_code == 200:
+                print("✓ Keycloak is ready")
+                time.sleep(5)  # Extra wait for full initialization
+                return True
+        except requests.RequestException:
+            pass
+        
+        if attempt < max_attempts - 1:
+            time.sleep(10)
+            print(f"   Still waiting... (attempt {attempt + 1}/{max_attempts})")
+    
+    print("✗ Keycloak failed to become ready")
+    return False
+
+
+def create_admin_user():
+    """Create the initial admin user."""
+    print("Creating initial admin user...")
+    
+    # Default admin credentials
+    admin_credentials = {
+        'username': 'admin',
+        'email': 'admin@localhost',
+        'password': 'admin123',
+        'first_name': 'Admin',
+        'last_name': 'User'
+    }
+    
+    try:
+        # Import the user manager and creation logic directly
+        from core.settings.managers.users import user_manager
+        from core.management.users.models import UserCreate
+        
+        print(f"   Creating user: {admin_credentials['username']}")
+        
+        # Create user with admin role
+        user_create = UserCreate(
+            username=admin_credentials['username'],
+            email=admin_credentials['email'],
+            roles=['admin']  # Assign admin role during creation
+        )
+        
+        # Create user via UserManager (this handles role assignment)
+        new_user = user_manager.create_user(user_create)
+        print(f"✓ Admin user created successfully!")
+        print(f"   Username: {new_user.username}")
+        print(f"   Email: {new_user.email}")
+        print(f"   Roles: {', '.join(new_user.roles)}")
+        
+        # Verify admin role was assigned
+        if 'admin' in new_user.roles:
+            print("✓ Admin role assigned successfully")
+        else:
+            print("⚠ Admin role not found in user roles")
+        
+        return admin_credentials
+        
+    except Exception as e:
+        print(f"✗ Failed to create admin user: {e}")
+        print("   Possible issues:")
+        print("   - Keycloak may not be ready yet")
+        print("   - Configuration may be incorrect")
+        print("   - Network connectivity issues")
+        print("   You can create one manually with: python scripts/create_admin_user.py")
+        return admin_credentials  # Return credentials anyway for display
+
+
+def run_tests():
+    """Run the test suite to validate setup."""
+    print("Running tests to validate setup...")
+    
+    try:
+        # Run BDD tests
+        result = subprocess.run(['behave', 'tests/features/', '-v'], 
+                              capture_output=True, text=True, cwd=project_root)
+        
+        if result.returncode == 0:
+            print("✓ All tests passed")
+            return True
+        else:
+            print(f"⚠ Some tests failed:\n{result.stdout}\n{result.stderr}")
+            return False
+            
+    except FileNotFoundError:
+        print("⚠ behave not found, skipping tests (install with: pip install behave)")
+        return False
+    except Exception as e:
+        print(f"⚠ Error running tests: {e}")
+        return False
+
+
 def create_docker_files():
     """Create Docker configuration files."""
     print("Creating Docker configuration files...")
@@ -174,15 +302,50 @@ def main():
                        help='Validate environment configuration')
     parser.add_argument('--docker', action='store_true', 
                        help='Create Docker configuration files')
+    parser.add_argument('--start-keycloak', action='store_true',
+                       help='Start Keycloak service')
+    parser.add_argument('--create-admin', action='store_true',
+                       help='Create initial admin user')
+    parser.add_argument('--run-tests', action='store_true',
+                       help='Run test suite to validate setup')
+    parser.add_argument('--full-setup', action='store_true',
+                       help='Run complete automated setup (recommended for new developers)')
     parser.add_argument('--all', action='store_true', 
-                       help='Run all setup steps')
+                       help='Run all setup steps (legacy, use --full-setup instead)')
     
     args = parser.parse_args()
     
     print("AMS Data Portal Setup")
     print("=" * 50)
     
-    if args.all or not any([args.create_dirs, args.generate_secrets, args.validate, args.docker]):
+    admin_credentials = None
+    
+    if args.full_setup:
+        print("🚀 Running FULL AUTOMATED SETUP for new developers")
+        print("=" * 50)
+        
+        # Step 1: Directory structure and config
+        create_directory_structure()
+        create_config_files(args.environment)
+        generate_secrets()
+        
+        # Step 2: Start Keycloak
+        if start_keycloak():
+            if wait_for_keycloak():
+                # Step 3: Create admin user
+                admin_credentials = create_admin_user()
+        
+        # Step 4: Validate everything
+        validation_success = validate_environment()
+        
+        # Step 5: Run tests (optional, don't fail setup if tests fail)
+        if validation_success:
+            print("\n🧪 Running validation tests...")
+            run_tests()
+        
+    elif args.all or not any([args.create_dirs, args.generate_secrets, args.validate, args.docker, 
+                             args.start_keycloak, args.create_admin, args.run_tests]):
+        # Legacy setup mode
         create_directory_structure()
         create_config_files(args.environment)
         generate_secrets()
@@ -190,20 +353,56 @@ def main():
             create_docker_files()
         validate_environment()
     else:
+        # Individual options
         if args.create_dirs:
             create_directory_structure()
         if args.generate_secrets:
             generate_secrets()
+        if args.start_keycloak:
+            start_keycloak()
+            wait_for_keycloak()
+        if args.create_admin:
+            admin_credentials = create_admin_user()
+        if args.run_tests:
+            run_tests()
         if args.validate:
             validate_environment()
         if args.docker:
             create_docker_files()
     
-    print("\nSetup completed! Next steps:")
-    print("1. Review and update config.yaml with your specific settings")
-    print("2. Update Keycloak configuration in config.yaml")
-    print("3. Install dependencies: pip install -r requirements.txt")
-    print("4. Run the application: python main.py config.yaml")
+    # Print completion message
+    print("\n" + "=" * 70)
+    if args.full_setup and admin_credentials:
+        print("🎉 SETUP COMPLETE! Your AMS Data Portal is ready for development!")
+        print("=" * 70)
+        print("\n📋 ADMIN CREDENTIALS (save these!):")
+        print(f"   Username: {admin_credentials['username']}")
+        print(f"   Password: {admin_credentials['password']}")
+        print(f"   Email:    {admin_credentials['email']}")
+        
+        print("\n🌐 ACCESS POINTS:")
+        print("   📱 AMS Data Portal:  http://localhost:8000")
+        print("   📊 API Docs:         http://localhost:8000/docs")
+        print("   🔐 Keycloak Admin:   http://localhost:8080 (admin/admin123)")
+        
+        print("\n🚀 QUICK START:")
+        print("   1. Application is already running with Keycloak")
+        print("   2. Go to http://localhost:8000 and login with admin credentials above")
+        print("   3. Start developing!")
+        
+        print("\n💻 DEVELOPMENT WORKFLOW:")
+        print("   • Activate virtual environment: source .venv/bin/activate")
+        print("   • Run application: python main.py config.yaml")
+        print("   • Run tests: behave tests/features/")
+        
+    else:
+        print("✅ Setup completed!")
+        print("\nNext steps:")
+        if not args.full_setup:
+            print("1. Run full setup: python scripts/setup.py --full-setup")
+            print("2. Or manually: start Keycloak, create admin user, run application")
+        print("3. Install dependencies: pip install -r requirements.txt")
+        print("4. Run application: python main.py config.yaml")
 
 
 if __name__ == '__main__':
