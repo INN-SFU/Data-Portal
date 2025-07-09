@@ -26,17 +26,12 @@ async def home(request: Request,
     
     user = token_payload.get("preferred_username", "unknown")
     logger.info(f"Home page accessed by user: {user}")
-    print(f"DEBUG: Home page accessed by user: {user}")
-    print(f"DEBUG: Token payload keys: {list(token_payload.keys())}")
-    print(f"DEBUG: Token payload: {token_payload}")
     
     if is_user_admin(token_payload):
         logger.info(f"Serving admin home template for user: {user}")
-        print(f"DEBUG: Serving admin home template for user: {user}")
         return templates.TemplateResponse("admin/home.html", {"request": request})
     else:
         logger.info(f"Serving user home template for user: {user}")
-        print(f"DEBUG: Serving user home template for user: {user}")
         uid = token_payload.get("preferred_username")
 
         # Get all storage access points the user has read access to.
