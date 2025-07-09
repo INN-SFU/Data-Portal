@@ -236,7 +236,7 @@ def configure_keycloak_realm():
         
         # Import the realm
         result = subprocess.run(import_cmd, capture_output=True, text=True, cwd=project_root)
-        if result.returncode == 0 or 'already exists' in result.stderr:
+        if result.returncode == 0 or 'already exists' in result.stderr or 'Conflict detected' in result.stderr:
             print("✓ Keycloak realm configured")
             
             # Get the client secret
@@ -437,6 +437,10 @@ def create_admin_user():
     }
     
     try:
+        # Set up environment to avoid config loading issues
+        import os
+        os.environ['LOGGING_CONFIG'] = str(project_root / 'loggers' / 'log_config.yaml')
+        
         # Import the user manager and creation logic directly
         from core.settings.managers.users import user_manager
         from core.management.users.models import UserCreate
