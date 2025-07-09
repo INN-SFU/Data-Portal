@@ -456,36 +456,8 @@ def update_config_with_secret(client_secret):
         print(f"✗ Error updating config with secret: {e}")
 
 
-def show_admin_user_instructions():
-    """Display instructions for manually creating the admin user."""
-    print("📋 Manual Admin User Creation Required")
-    print("=" * 50)
-    print("The admin user must be created manually through Keycloak after starting the application.")
-    print("This is because the application's user management system requires the app to be running.")
-    print()
-    print("📝 INSTRUCTIONS:")
-    print("1. Start the application: python main.py config.yaml")
-    print("2. Go to Keycloak Admin Console: http://localhost:8080")
-    print("3. Login with admin credentials: admin / admin123")
-    print("4. Navigate to: ams-portal realm > Users")
-    print("5. Click 'Add user' and fill in:")
-    print("   - Username: admin")
-    print("   - Email: admin@localhost")
-    print("   - First name: Admin")
-    print("   - Last name: User")
-    print("   - Email verified: ON")
-    print("   - Enabled: ON")
-    print("6. Click 'Save'")
-    print("7. Go to 'Credentials' tab and set password:")
-    print("   - Password: admin123")
-    print("   - Password confirmation: admin123")
-    print("   - Temporary: OFF")
-    print("8. Click 'Set password'")
-    print("9. Go to 'Role mappings' tab and assign admin role")
-    print("10. Now you can login to the application at http://localhost:8000")
-    print()
-    print("💡 TIP: Save these credentials for future reference!")
-    
+def get_admin_user_credentials():
+    """Return admin user credentials without displaying instructions."""
     # Return credentials for display purposes
     return {
         'username': 'admin',
@@ -545,7 +517,7 @@ def main():
     parser.add_argument('--configure-keycloak', action='store_true',
                        help='Configure Keycloak realm and get client secret')
     parser.add_argument('--create-admin', action='store_true',
-                       help='Show instructions for creating initial admin user')
+                       help='Show detailed instructions for creating initial admin user')
     parser.add_argument('--run-tests', action='store_true',
                        help='Run test suite to validate setup')
     parser.add_argument('--full-setup', action='store_true',
@@ -575,11 +547,11 @@ def main():
                 # Step 3: Configure Keycloak realm and get client secret
                 client_secret = configure_keycloak_realm()
                 if client_secret:
-                    # Step 4: Show admin user creation instructions
-                    admin_credentials = show_admin_user_instructions()
+                    # Step 4: Get admin user credentials  
+                    admin_credentials = get_admin_user_credentials()
                 else:
                     print("⚠ Continuing without client secret - you may need to configure manually")
-                    admin_credentials = show_admin_user_instructions()
+                    admin_credentials = get_admin_user_credentials()
         
         # Step 5: Validate everything
         validation_success = validate_environment()
@@ -610,7 +582,35 @@ def main():
         if args.configure_keycloak:
             configure_keycloak_realm()
         if args.create_admin:
-            admin_credentials = show_admin_user_instructions()
+            # Show detailed instructions for individual command
+            print("📋 Manual Admin User Creation Required")
+            print("=" * 50)
+            print("The admin user must be created manually through Keycloak after starting the application.")
+            print("This is because the application's user management system requires the app to be running.")
+            print()
+            print("📝 INSTRUCTIONS:")
+            print("1. Start the application: python main.py config.yaml")
+            print("2. Go to Keycloak Admin Console: http://localhost:8080")
+            print("3. Login with admin credentials: admin / admin123")
+            print("4. Navigate to: ams-portal realm > Users")
+            print("5. Click 'Add user' and fill in:")
+            print("   - Username: admin")
+            print("   - Email: admin@localhost")
+            print("   - First name: Admin")
+            print("   - Last name: User")
+            print("   - Email verified: ON")
+            print("   - Enabled: ON")
+            print("6. Click 'Save'")
+            print("7. Go to 'Credentials' tab and set password:")
+            print("   - Password: admin123")
+            print("   - Password confirmation: admin123")
+            print("   - Temporary: OFF")
+            print("8. Click 'Set password'")
+            print("9. Go to 'Role mappings' tab and assign admin role")
+            print("10. Now you can login to the application at http://localhost:8000")
+            print()
+            print("💡 TIP: Save these credentials for future reference!")
+            admin_credentials = get_admin_user_credentials()
         if args.run_tests:
             run_tests()
         if args.validate:
@@ -635,8 +635,13 @@ def main():
         
         print("\n🚀 NEXT STEPS:")
         print("   1. START THE APPLICATION: python main.py config.yaml")
-        print("   2. CREATE ADMIN USER: Follow the instructions shown above")
-        print("   3. Login to http://localhost:8000 with your created admin user")
+        print("   2. CREATE ADMIN USER through Keycloak:")
+        print("      → Go to http://localhost:8080 (login: admin/admin123)")
+        print("      → Navigate to: ams-portal realm > Users > Add user")
+        print("      → Username: admin, Email: admin@localhost")
+        print("      → Set password: admin123 (non-temporary)")
+        print("      → Assign admin role in Role mappings tab")
+        print("   3. Login to http://localhost:8000 with admin credentials")
         print("   4. Start developing!")
         
         print("\n💻 DEVELOPMENT WORKFLOW:")
@@ -644,7 +649,8 @@ def main():
         print("   • Start application: python main.py config.yaml")  
         print("   • Run tests: behave tests/features/")
         print("   • Keycloak is already running and configured!")
-        print("   • Create admin user through Keycloak Admin Console (see instructions above)")
+        print()
+        print("📖 For detailed admin user creation steps, run: python scripts/setup.py --create-admin")
         
     else:
         print("✅ Setup completed!")
