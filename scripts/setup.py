@@ -216,7 +216,19 @@ def configure_keycloak_realm():
         if not realm_file.exists():
             print("✗ Keycloak realm export file not found")
             return None
-            
+        
+        # Create the import directory in the container
+        subprocess.run([
+            'docker', 'exec', 'ams-keycloak', 
+            'mkdir', '-p', '/opt/keycloak/data/import'
+        ], check=True, cwd=project_root)
+        
+        # Copy realm file to container
+        subprocess.run([
+            'docker', 'cp', str(realm_file), 
+            'ams-keycloak:/opt/keycloak/data/import/keycloak-realm-export.json'
+        ], check=True, cwd=project_root)
+        
         # Use Keycloak admin CLI to import realm
         import_cmd = [
             'docker', 'exec', 'ams-keycloak', 
@@ -227,12 +239,6 @@ def configure_keycloak_realm():
             '--user', 'admin',
             '--password', 'admin123'
         ]
-        
-        # Copy realm file to container first
-        subprocess.run([
-            'docker', 'cp', str(realm_file), 
-            'ams-keycloak:/opt/keycloak/data/import/keycloak-realm-export.json'
-        ], check=True, cwd=project_root)
         
         # Import the realm
         result = subprocess.run(import_cmd, capture_output=True, text=True, cwd=project_root)
