@@ -456,107 +456,44 @@ def update_config_with_secret(client_secret):
         print(f"✗ Error updating config with secret: {e}")
 
 
-def create_admin_user():
-    """Create the initial admin user."""
-    print("Creating initial admin user...")
+def show_admin_user_instructions():
+    """Display instructions for manually creating the admin user."""
+    print("📋 Manual Admin User Creation Required")
+    print("=" * 50)
+    print("The admin user must be created manually through Keycloak after starting the application.")
+    print("This is because the application's user management system requires the app to be running.")
+    print()
+    print("📝 INSTRUCTIONS:")
+    print("1. Start the application: python main.py config.yaml")
+    print("2. Go to Keycloak Admin Console: http://localhost:8080")
+    print("3. Login with admin credentials: admin / admin123")
+    print("4. Navigate to: ams-portal realm > Users")
+    print("5. Click 'Add user' and fill in:")
+    print("   - Username: admin")
+    print("   - Email: admin@localhost")
+    print("   - First name: Admin")
+    print("   - Last name: User")
+    print("   - Email verified: ON")
+    print("   - Enabled: ON")
+    print("6. Click 'Save'")
+    print("7. Go to 'Credentials' tab and set password:")
+    print("   - Password: admin123")
+    print("   - Password confirmation: admin123")
+    print("   - Temporary: OFF")
+    print("8. Click 'Set password'")
+    print("9. Go to 'Role mappings' tab and assign admin role")
+    print("10. Now you can login to the application at http://localhost:8000")
+    print()
+    print("💡 TIP: Save these credentials for future reference!")
     
-    # Default admin credentials
-    admin_credentials = {
+    # Return credentials for display purposes
+    return {
         'username': 'admin',
         'email': 'admin@localhost',
         'password': 'admin123',
         'first_name': 'Admin',
         'last_name': 'User'
     }
-    
-    try:
-        # Set up environment to avoid config loading issues
-        import os
-        
-        # Set all required environment variables with absolute paths
-        os.environ['LOGGING_CONFIG'] = str(project_root / 'loggers' / 'log_config.yaml')
-        os.environ['LOG_CONFIG'] = str(project_root / 'loggers' / 'log_config.yaml')
-        os.environ['ENFORCER_MODEL'] = str(project_root / 'core/settings/managers/policies/casbin/model.conf')
-        os.environ['ENFORCER_POLICY'] = str(project_root / 'core/settings/managers/policies/casbin/test_policies.csv')
-        os.environ['USER_POLICIES'] = str(project_root / 'core/settings/managers/policies/casbin/user_policies')
-        os.environ['JINJA_TEMPLATES'] = str(project_root / 'api/v0_1/templates')
-        os.environ['ENDPOINT_CONFIGS'] = str(project_root / 'core/settings/managers/endpoints/configs')
-        os.environ['STATIC_FILES'] = str(project_root / 'api/v0_1/static')
-        os.environ['ROOT_DIRECTORY'] = str(project_root)
-        
-        # Set Keycloak environment variables from config
-        config_file = project_root / 'config.yaml'
-        if config_file.exists():
-            # Load the config and set environment variables
-            with open(config_file, 'r') as f:
-                import yaml
-                config = yaml.safe_load(f)
-                
-            # Set environment variables from config
-            os.environ['KEYCLOAK_DOMAIN'] = config.get('keycloak', {}).get('domain', 'http://localhost:8080')
-            os.environ['KEYCLOAK_REALM'] = config.get('keycloak', {}).get('realm', 'ams-portal')
-            os.environ['KEYCLOAK_ADMIN_CLIENT_ID'] = config.get('keycloak', {}).get('admin_client_id', 'ams-portal-admin')
-            os.environ['KEYCLOAK_ADMIN_CLIENT_SECRET'] = config.get('keycloak', {}).get('admin_client_secret', '')
-            os.environ['KEYCLOAK_UI_CLIENT_ID'] = config.get('keycloak', {}).get('ui_client_id', 'ams-portal-ui')
-            os.environ['KEYCLOAK_UI_CLIENT_SECRET'] = config.get('keycloak', {}).get('ui_client_secret', '')
-            os.environ['KEYCLOAK_REDIRECT_URI'] = config.get('keycloak', {}).get('redirect_uri', 'http://localhost:8000/auth/callback')
-            
-        # Verify all critical environment variables are set
-        required_vars = [
-            'LOGGING_CONFIG', 'LOG_CONFIG', 'ENFORCER_MODEL', 'ENFORCER_POLICY', 
-            'USER_POLICIES', 'JINJA_TEMPLATES', 'ENDPOINT_CONFIGS', 'STATIC_FILES', 
-            'ROOT_DIRECTORY', 'KEYCLOAK_DOMAIN', 'KEYCLOAK_REALM'
-        ]
-        
-        missing_vars = [var for var in required_vars if not os.environ.get(var)]
-        if missing_vars:
-            print(f"⚠ Missing environment variables: {missing_vars}")
-            
-        print(f"   Environment setup complete")
-        print(f"   ROOT_DIRECTORY: {os.environ.get('ROOT_DIRECTORY')}")
-        print(f"   LOGGING_CONFIG: {os.environ.get('LOGGING_CONFIG')}")
-        
-        # Import the user manager and creation logic directly
-        from core.settings.managers.users import user_manager
-        from core.management.users.models import UserCreate
-        
-        print(f"   Creating user: {admin_credentials['username']}")
-        
-        # Create user with admin role
-        user_create = UserCreate(
-            username=admin_credentials['username'],
-            email=admin_credentials['email'],
-            roles=['admin']  # Assign admin role during creation
-        )
-        
-        # Create user via UserManager (this handles role assignment)
-        new_user = user_manager.create_user(user_create)
-        print(f"✓ Admin user created successfully!")
-        print(f"   Username: {new_user.username}")
-        print(f"   Email: {new_user.email}")
-        print(f"   Roles: {', '.join(new_user.roles)}")
-        
-        # Verify admin role was assigned
-        if 'admin' in new_user.roles:
-            print("✓ Admin role assigned successfully")
-        else:
-            print("⚠ Admin role not found in user roles")
-        
-        return admin_credentials
-        
-    except Exception as e:
-        print(f"✗ Failed to create admin user: {e}")
-        print("   Debugging info:")
-        print(f"   - Current working directory: {os.getcwd()}")
-        print(f"   - Project root: {project_root}")
-        print(f"   - LOGGING_CONFIG env var: {os.environ.get('LOGGING_CONFIG')}")
-        print(f"   - LOG_CONFIG env var: {os.environ.get('LOG_CONFIG')}")
-        print("   Possible issues:")
-        print("   - Keycloak may not be ready yet")
-        print("   - Configuration may be incorrect")
-        print("   - Network connectivity issues")
-        print("   You can create one manually with: python scripts/create_admin_user.py")
-        return admin_credentials  # Return credentials anyway for display
 
 
 def run_tests():
@@ -608,7 +545,7 @@ def main():
     parser.add_argument('--configure-keycloak', action='store_true',
                        help='Configure Keycloak realm and get client secret')
     parser.add_argument('--create-admin', action='store_true',
-                       help='Create initial admin user')
+                       help='Show instructions for creating initial admin user')
     parser.add_argument('--run-tests', action='store_true',
                        help='Run test suite to validate setup')
     parser.add_argument('--full-setup', action='store_true',
@@ -638,11 +575,11 @@ def main():
                 # Step 3: Configure Keycloak realm and get client secret
                 client_secret = configure_keycloak_realm()
                 if client_secret:
-                    # Step 4: Create admin user
-                    admin_credentials = create_admin_user()
+                    # Step 4: Show admin user creation instructions
+                    admin_credentials = show_admin_user_instructions()
                 else:
                     print("⚠ Continuing without client secret - you may need to configure manually")
-                    admin_credentials = create_admin_user()
+                    admin_credentials = show_admin_user_instructions()
         
         # Step 5: Validate everything
         validation_success = validate_environment()
@@ -673,7 +610,7 @@ def main():
         if args.configure_keycloak:
             configure_keycloak_realm()
         if args.create_admin:
-            admin_credentials = create_admin_user()
+            admin_credentials = show_admin_user_instructions()
         if args.run_tests:
             run_tests()
         if args.validate:
@@ -698,15 +635,16 @@ def main():
         
         print("\n🚀 NEXT STEPS:")
         print("   1. START THE APPLICATION: python main.py config.yaml")
-        print("   2. Go to http://localhost:8000 and login with admin credentials above")
-        print("   3. Start developing!")
+        print("   2. CREATE ADMIN USER: Follow the instructions shown above")
+        print("   3. Login to http://localhost:8000 with your created admin user")
+        print("   4. Start developing!")
         
         print("\n💻 DEVELOPMENT WORKFLOW:")
         print("   • Activate virtual environment: source .venv/bin/activate")
         print("   • Start application: python main.py config.yaml")  
         print("   • Run tests: behave tests/features/")
         print("   • Keycloak is already running and configured!")
-        print("   • Admin user is already created and ready to use!")
+        print("   • Create admin user through Keycloak Admin Console (see instructions above)")
         
     else:
         print("✅ Setup completed!")
