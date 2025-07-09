@@ -256,10 +256,111 @@ def configure_keycloak_realm():
                 return None
         else:
             print(f"⚠ Realm import failed: {result.stderr}")
-            return None
+            # Try alternative method using REST API
+            return configure_keycloak_via_rest_api()
             
     except Exception as e:
         print(f"✗ Error configuring Keycloak realm: {e}")
+        # Try alternative method using REST API
+        return configure_keycloak_via_rest_api()
+
+
+def configure_keycloak_via_rest_api():
+    """Alternative method to configure Keycloak using REST API."""
+    print("Trying alternative Keycloak configuration method...")
+    
+    try:
+        import requests
+        import json
+        
+        # Load the realm configuration
+        realm_file = project_root / 'config' / 'keycloak-realm-export.json'
+        if not realm_file.exists():
+            print("✗ Keycloak realm export file not found")
+            return None
+            
+        with open(realm_file, 'r') as f:
+            realm_data = json.load(f)
+        
+        # Get admin token
+        token_url = 'http://localhost:8080/realms/master/protocol/openid-connect/token'
+        token_data = {
+            'grant_type': 'password',
+            'client_id': 'admin-cli',
+            'username': 'admin',
+            'password': 'admin123'
+        }
+        
+        token_response = requests.post(token_url, data=token_data)
+        if token_response.status_code != 200:
+            print(f"✗ Failed to get admin token: {token_response.status_code}")
+            return None
+            
+        access_token = token_response.json()['access_token']
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Import realm
+        realm_url = 'http://localhost:8080/admin/realms'
+        realm_response = requests.post(realm_url, headers=headers, json=realm_data)
+        
+        if realm_response.status_code in [201, 409]:  # Created or already exists
+            print("✓ Keycloak realm configured via REST API")
+            
+            # Get client secret using REST API
+            secret = get_keycloak_client_secret_via_rest_api(access_token)
+            if secret:
+                update_config_with_secret(secret)
+                return secret
+            else:
+                print("⚠ Could not retrieve client secret via REST API")
+                return None
+        else:
+            print(f"⚠ Realm import via REST API failed: {realm_response.status_code}")
+            return None
+            
+    except Exception as e:
+        print(f"✗ Error configuring Keycloak via REST API: {e}")
+        return None
+
+
+def get_keycloak_client_secret_via_rest_api(access_token):
+    """Get client secret using REST API."""
+    try:
+        import requests
+        
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Get client ID
+        clients_url = 'http://localhost:8080/admin/realms/ams-portal/clients'
+        params = {'clientId': 'ams-portal-admin'}
+        
+        clients_response = requests.get(clients_url, headers=headers, params=params)
+        if clients_response.status_code != 200:
+            return None
+            
+        clients = clients_response.json()
+        if not clients:
+            return None
+            
+        client_uuid = clients[0]['id']
+        
+        # Get client secret
+        secret_url = f'http://localhost:8080/admin/realms/ams-portal/clients/{client_uuid}/client-secret'
+        secret_response = requests.get(secret_url, headers=headers)
+        
+        if secret_response.status_code == 200:
+            return secret_response.json()['value']
+        else:
+            return None
+            
+    except Exception as e:
+        print(f"✗ Error getting client secret via REST API: {e}")
         return None
 
 
