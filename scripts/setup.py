@@ -217,23 +217,17 @@ def configure_keycloak_realm():
             print("✗ Keycloak realm export file not found")
             return None
         
-        # Create the import directory in the container
-        subprocess.run([
-            'docker', 'exec', 'ams-keycloak', 
-            'mkdir', '-p', '/opt/keycloak/data/import'
-        ], check=True, cwd=project_root)
-        
-        # Copy realm file to container
+        # Copy realm file to container root first (avoid directory issues)
         subprocess.run([
             'docker', 'cp', str(realm_file), 
-            'ams-keycloak:/opt/keycloak/data/import/keycloak-realm-export.json'
+            'ams-keycloak:/tmp/keycloak-realm-export.json'
         ], check=True, cwd=project_root)
         
         # Use Keycloak admin CLI to import realm
         import_cmd = [
             'docker', 'exec', 'ams-keycloak', 
             '/opt/keycloak/bin/kcadm.sh', 'create', 'realms',
-            '-f', '/opt/keycloak/data/import/keycloak-realm-export.json',
+            '-f', '/tmp/keycloak-realm-export.json',
             '--server', 'http://localhost:8080',
             '--realm', 'master',
             '--user', 'admin',
@@ -255,7 +249,8 @@ def configure_keycloak_realm():
                 print("⚠ Could not retrieve client secret")
                 return None
         else:
-            print(f"⚠ Realm import failed: {result.stderr}")
+            print(f"⚠ Realm import failed (stdout): {result.stdout}")
+            print(f"⚠ Realm import failed (stderr): {result.stderr}")
             # Try alternative method using REST API
             return configure_keycloak_via_rest_api()
             
