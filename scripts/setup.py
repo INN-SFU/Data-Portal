@@ -211,15 +211,49 @@ def configure_keycloak_realm():
     print("Configuring Keycloak realm...")
     
     try:
+        # Delete existing realm first to ensure fresh setup
+        delete_cmd = [
+            'docker', 'exec', 'ams-keycloak',
+            '/opt/keycloak/bin/kcadm.sh', 'delete', 'realms/ams-portal',
+            '--server', 'http://localhost:8080',
+            '--realm', 'master',
+            '--user', 'admin',
+            '--password', 'admin123'
+        ]
+        
+        # Try to delete - ignore errors if realm doesn't exist
+        subprocess.run(delete_cmd, capture_output=True, text=True, cwd=project_root)
+        print("✓ Cleaned up existing realm (if any)")
+        
         # Import the realm configuration
         realm_file = project_root / 'config' / 'keycloak-realm-export.json'
         if not realm_file.exists():
             print("✗ Keycloak realm export file not found")
             return None
         
-        # Copy realm file to container root first (avoid directory issues)
+        # Load and modify the realm file to ensure fresh client secret
+        import json
+        with open(realm_file, 'r') as f:
+            realm_data = json.load(f)
+        
+        # Find the admin client and remove any secret field to force regeneration
+        for client in realm_data.get('clients', []):
+            if client.get('clientId') == 'ams-portal-admin':
+                # Remove any existing secret to force fresh generation
+                client.pop('secret', None)
+                client.pop('clientSecret', None)
+                # Ensure it's a confidential client
+                client['publicClient'] = False
+                print("   ✓ Prepared admin client for fresh secret generation")
+                break
+        
+        # Write modified realm file to container
+        modified_realm_file = '/tmp/keycloak-realm-export-modified.json'
+        with open(modified_realm_file, 'w') as f:
+            json.dump(realm_data, f, indent=2)
+        
         subprocess.run([
-            'docker', 'cp', str(realm_file), 
+            'docker', 'cp', modified_realm_file, 
             'ams-keycloak:/tmp/keycloak-realm-export.json'
         ], check=True, cwd=project_root)
         
@@ -236,10 +270,10 @@ def configure_keycloak_realm():
         
         # Import the realm
         result = subprocess.run(import_cmd, capture_output=True, text=True, cwd=project_root)
-        if result.returncode == 0 or 'already exists' in result.stderr or 'Conflict detected' in result.stderr:
-            print("✓ Keycloak realm configured")
+        if result.returncode == 0:
+            print("✓ Keycloak realm configured with fresh setup")
             
-            # Get the client secret
+            # Get the client secret from the freshly imported realm
             secret = get_keycloak_client_secret()
             if secret:
                 # Update config.yaml with the secret
@@ -357,6 +391,60 @@ def get_keycloak_client_secret_via_rest_api(access_token):
     except Exception as e:
         print(f"✗ Error getting client secret via REST API: {e}")
         return None
+
+
+def regenerate_client_secret():
+    """Regenerate the client secret for the admin client."""
+    try:
+        print("   Regenerating client secret for fresh setup...")
+        
+        # First, get the client UUID
+        client_query_cmd = [
+            'docker', 'exec', 'ams-keycloak',
+            '/opt/keycloak/bin/kcadm.sh', 'get', 'clients',
+            '--server', 'http://localhost:8080',
+            '--realm', 'master',
+            '--user', 'admin',
+            '--password', 'admin123',
+            '--target-realm', 'ams-portal',
+            '--query', 'clientId=ams-portal-admin'
+        ]
+        
+        result = subprocess.run(client_query_cmd, capture_output=True, text=True, cwd=project_root)
+        if result.returncode == 0:
+            import json
+            clients = json.loads(result.stdout)
+            if clients and len(clients) > 0:
+                client_uuid = clients[0]['id']
+                
+                # Regenerate the client secret
+                regenerate_cmd = [
+                    'docker', 'exec', 'ams-keycloak',
+                    '/opt/keycloak/bin/kcadm.sh', 'create', f'clients/{client_uuid}/client-secret',
+                    '--server', 'http://localhost:8080',
+                    '--realm', 'master',
+                    '--user', 'admin',
+                    '--password', 'admin123',
+                    '--target-realm', 'ams-portal'
+                ]
+                
+                regen_result = subprocess.run(regenerate_cmd, capture_output=True, text=True, cwd=project_root)
+                if regen_result.returncode == 0:
+                    print("   ✓ Client secret regenerated successfully")
+                    return True
+                else:
+                    print(f"   ⚠ Failed to regenerate secret: {regen_result.stderr}")
+                    return False
+            else:
+                print("   ⚠ Admin client not found")
+                return False
+        else:
+            print(f"   ⚠ Failed to query clients: {result.stderr}")
+            return False
+            
+    except Exception as e:
+        print(f"   ⚠ Error regenerating client secret: {e}")
+        return False
 
 
 def get_keycloak_client_secret():
