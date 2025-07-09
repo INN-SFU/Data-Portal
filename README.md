@@ -40,24 +40,26 @@ pip install -r requirements.txt
 # 4. Run FULL automated setup (does everything!)
 python scripts/setup.py --full-setup
 
-# 5. Start the application
+# 5. Start the application (Keycloak is already running!)
 python main.py config.yaml
 
 # 6. Login and start developing!
 #    - Main app: http://localhost:8000
 #    - Use the admin credentials printed by setup script
+#    - Default: admin / admin123
 ```
 
 **What `--full-setup` does automatically:**
 - ✅ Creates all required directories
 - ✅ Generates configuration files from templates  
 - ✅ Generates cryptographic secrets
-- ✅ Starts Keycloak service
-- ✅ Waits for Keycloak to be ready
+- ✅ Starts Keycloak service and waits for readiness
 - ✅ Creates initial admin user with default credentials
 - ✅ Validates the entire setup
 - ✅ Runs tests to ensure everything works
-- ✅ Prints admin credentials and access URLs
+- ✅ Prints admin credentials and next steps
+
+**⚠️ Note:** You still need to manually start the application with `python main.py config.yaml`
 
 **Manual Setup (Legacy)**
 ```bash

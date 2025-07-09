@@ -381,19 +381,21 @@ def main():
         print(f"   Email:    {admin_credentials['email']}")
         
         print("\n🌐 ACCESS POINTS:")
-        print("   📱 AMS Data Portal:  http://localhost:8000")
+        print("   📱 AMS Data Portal:  http://localhost:8000  (start with command below)")
         print("   📊 API Docs:         http://localhost:8000/docs")
         print("   🔐 Keycloak Admin:   http://localhost:8080 (admin/admin123)")
         
-        print("\n🚀 QUICK START:")
-        print("   1. Application is already running with Keycloak")
+        print("\n🚀 NEXT STEPS:")
+        print("   1. START THE APPLICATION: python main.py config.yaml")
         print("   2. Go to http://localhost:8000 and login with admin credentials above")
         print("   3. Start developing!")
         
         print("\n💻 DEVELOPMENT WORKFLOW:")
         print("   • Activate virtual environment: source .venv/bin/activate")
-        print("   • Run application: python main.py config.yaml")
+        print("   • Start application: python main.py config.yaml")  
         print("   • Run tests: behave tests/features/")
+        print("   • Keycloak is already running and configured!")
+        print("   • Admin user is already created and ready to use!")
         
     else:
         print("✅ Setup completed!")
