@@ -56,7 +56,7 @@ python main.py config.yaml
 - ✅ Starts Keycloak service and waits for readiness
 - ✅ **Imports Keycloak realm and extracts client secret**
 - ✅ **Updates config.yaml with the actual client secret**
-- ✅ **Configures admin user with credentials (admin/admin123)**
+- ✅ **Imports realm with pre-configured admin user (admin/admin123)**
 - ✅ Validates the entire setup
 - ✅ Runs tests to ensure everything works
 
@@ -164,7 +164,7 @@ python scripts/setup.py --start-keycloak
 # Configure Keycloak realm and get client secret
 python scripts/setup.py --configure-keycloak
 
-# Create/configure app admin user for application login
+# Verify app admin user (created during realm import)
 python scripts/setup.py --create-admin
 
 # Run validation tests

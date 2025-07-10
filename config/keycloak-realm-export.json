@@ -36,7 +36,23 @@
     "client" : { }
   },
   "groups" : [ ],
-  "users" : [ ],
+  "users" : [ {
+    "id" : "admin-user-id",
+    "username" : "admin",
+    "email" : "admin@localhost",
+    "firstName" : "Admin",
+    "lastName" : "User",
+    "enabled" : true,
+    "emailVerified" : true,
+    "requiredActions" : [ ],
+    "realmRoles" : [ "admin", "user" ],
+    "credentials" : [ {
+      "type" : "password",
+      "userLabel" : "Initial password",
+      "value" : "admin123",
+      "temporary" : false
+    } ]
+  } ],
   "clients" : [ {
     "id" : "ui-client-id",
     "clientId" : "ams-portal-ui",
