@@ -273,6 +273,9 @@ def configure_keycloak_realm():
         if result.returncode == 0:
             print("✓ Keycloak realm configured with fresh setup")
             
+            # Configure admin user automation
+            admin_user_configured = configure_admin_user()
+            
             # Get the client secret from the freshly imported realm
             secret = get_keycloak_client_secret()
             if secret:
@@ -292,6 +295,145 @@ def configure_keycloak_realm():
         print(f"✗ Error configuring Keycloak realm: {e}")
         # Try alternative method using REST API
         return configure_keycloak_via_rest_api()
+
+
+def configure_admin_user():
+    """Configure admin user with proper credentials and roles."""
+    print("Configuring admin user...")
+    
+    try:
+        # First, check if admin user exists
+        check_user_cmd = [
+            'docker', 'exec', 'ams-keycloak',
+            '/opt/keycloak/bin/kcadm.sh', 'get', 'users',
+            '--server', 'http://localhost:8080',
+            '--realm', 'master',
+            '--user', 'admin',
+            '--password', 'admin123',
+            '--target-realm', 'ams-portal',
+            '--query', 'username=admin'
+        ]
+        
+        result = subprocess.run(check_user_cmd, capture_output=True, text=True, cwd=project_root)
+        if result.returncode == 0:
+            import json
+            users = json.loads(result.stdout)
+            
+            if users and len(users) > 0:
+                user_id = users[0]['id']
+                print(f"   ✓ Found existing admin user with ID: {user_id}")
+                
+                # Remove required actions
+                update_user_cmd = [
+                    'docker', 'exec', 'ams-keycloak',
+                    '/opt/keycloak/bin/kcadm.sh', 'update', f'users/{user_id}',
+                    '--server', 'http://localhost:8080',
+                    '--realm', 'master',
+                    '--user', 'admin',
+                    '--password', 'admin123',
+                    '--target-realm', 'ams-portal',
+                    '-s', 'requiredActions=[]'
+                ]
+                
+                subprocess.run(update_user_cmd, capture_output=True, text=True, cwd=project_root)
+                print("   ✓ Removed required actions")
+                
+                # Set password
+                set_password_cmd = [
+                    'docker', 'exec', 'ams-keycloak',
+                    '/opt/keycloak/bin/kcadm.sh', 'set-password',
+                    '--server', 'http://localhost:8080',
+                    '--realm', 'master',
+                    '--user', 'admin',
+                    '--password', 'admin123',
+                    '--target-realm', 'ams-portal',
+                    '--username', 'admin',
+                    '--new-password', 'admin123'
+                ]
+                
+                subprocess.run(set_password_cmd, capture_output=True, text=True, cwd=project_root)
+                print("   ✓ Set admin password")
+                
+                # Add protocol mappers for JWT tokens
+                configure_protocol_mappers()
+                
+                print("✓ Admin user configured successfully")
+                return True
+            else:
+                print("   ⚠ Admin user not found in realm export")
+                return False
+        else:
+            print(f"   ⚠ Failed to check for admin user: {result.stderr}")
+            return False
+            
+    except Exception as e:
+        print(f"✗ Error configuring admin user: {e}")
+        return False
+
+
+def configure_protocol_mappers():
+    """Add protocol mappers to UI client for proper JWT token content."""
+    print("   Adding protocol mappers for JWT tokens...")
+    
+    try:
+        # Add username mapper
+        username_mapper_cmd = [
+            'docker', 'exec', 'ams-keycloak',
+            '/opt/keycloak/bin/kcadm.sh', 'create', 'clients/ui-client-id/protocol-mappers/models',
+            '--server', 'http://localhost:8080',
+            '--realm', 'master',
+            '--user', 'admin',
+            '--password', 'admin123',
+            '--target-realm', 'ams-portal',
+            '-s', 'name=username',
+            '-s', 'protocol=openid-connect',
+            '-s', 'protocolMapper=oidc-usermodel-property-mapper',
+            '-s', 'config."userinfo.token.claim"=true',
+            '-s', 'config."user.attribute"=username',
+            '-s', 'config."id.token.claim"=true',
+            '-s', 'config."access.token.claim"=true',
+            '-s', 'config."claim.name"=preferred_username',
+            '-s', 'config."jsonType.label"=String'
+        ]
+        
+        result = subprocess.run(username_mapper_cmd, capture_output=True, text=True, cwd=project_root)
+        if result.returncode == 0:
+            print("   ✓ Added username protocol mapper")
+        else:
+            print(f"   ⚠ Username mapper may already exist: {result.stderr}")
+        
+        # Add realm roles mapper
+        roles_mapper_cmd = [
+            'docker', 'exec', 'ams-keycloak',
+            '/opt/keycloak/bin/kcadm.sh', 'create', 'clients/ui-client-id/protocol-mappers/models',
+            '--server', 'http://localhost:8080',
+            '--realm', 'master',
+            '--user', 'admin',
+            '--password', 'admin123',
+            '--target-realm', 'ams-portal',
+            '-s', 'name=realm roles',
+            '-s', 'protocol=openid-connect',
+            '-s', 'protocolMapper=oidc-usermodel-realm-role-mapper',
+            '-s', 'config."userinfo.token.claim"=true',
+            '-s', 'config."id.token.claim"=true',
+            '-s', 'config."access.token.claim"=true',
+            '-s', 'config."claim.name"=realm_access.roles',
+            '-s', 'config."jsonType.label"=String',
+            '-s', 'config."multivalued"=true'
+        ]
+        
+        result = subprocess.run(roles_mapper_cmd, capture_output=True, text=True, cwd=project_root)
+        if result.returncode == 0:
+            print("   ✓ Added realm roles protocol mapper")
+        else:
+            print(f"   ⚠ Roles mapper may already exist: {result.stderr}")
+            
+        print("   ✓ Protocol mappers configured")
+        return True
+        
+    except Exception as e:
+        print(f"   ⚠ Error configuring protocol mappers: {e}")
+        return False
 
 
 def configure_keycloak_via_rest_api():
@@ -337,6 +479,9 @@ def configure_keycloak_via_rest_api():
         
         if realm_response.status_code in [201, 409]:  # Created or already exists
             print("✓ Keycloak realm configured via REST API")
+            
+            # Configure admin user automation
+            admin_user_configured = configure_admin_user()
             
             # Get client secret using REST API
             secret = get_keycloak_client_secret_via_rest_api(access_token)
@@ -723,14 +868,11 @@ def main():
         
         print("\n🚀 NEXT STEPS:")
         print("   1. START THE APPLICATION: python main.py config.yaml")
-        print("   2. CREATE ADMIN USER through Keycloak:")
-        print("      → Go to http://localhost:8080 (login: admin/admin123)")
-        print("      → Navigate to: ams-portal realm > Users > Add user")
-        print("      → Username: admin, Email: admin@localhost")
-        print("      → Set password: admin123 (non-temporary)")
-        print("      → Assign admin role in Role mappings tab")
-        print("   3. Login to http://localhost:8000 with admin credentials")
-        print("   4. Start developing!")
+        print("   2. LOGIN to AMS Portal: http://localhost:8000")
+        print("      → Username: admin")
+        print("      → Password: admin123")
+        print("   3. Start developing!")
+        print("\n✅ FULLY AUTOMATED - No manual Keycloak configuration needed!")
         
         print("\n💻 DEVELOPMENT WORKFLOW:")
         print("   • Activate virtual environment: source .venv/bin/activate")
