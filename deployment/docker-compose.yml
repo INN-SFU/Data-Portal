@@ -35,14 +35,16 @@ services:
       - KC_HOSTNAME_STRICT=false
       - KC_HOSTNAME_STRICT_HTTPS=false
       - KC_HTTP_ENABLED=true
+      - KC_LOG_LEVEL=INFO
     ports:
       - "8080:8080"
     volumes:
       - keycloak_data:/opt/keycloak/data
+      - ../config/keycloak-realm-export.json:/opt/keycloak/data/import/ams-portal-realm.json:ro
     networks:
       - ams-network
     restart: unless-stopped
-    command: start-dev
+    command: start-dev --import-realm
 
 volumes:
   keycloak_data:

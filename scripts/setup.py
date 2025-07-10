@@ -236,27 +236,21 @@ def verify_keycloak_admin():
 
 
 def configure_keycloak_realm():
-    """Configure Keycloak realm using REST API exclusively."""
-    print("Configuring Keycloak realm via REST API...")
+    """Verify Keycloak realm auto-import and get client secret."""
+    print("Verifying Keycloak realm auto-import...")
     
     try:
         import requests
-        import json
         import time
         
-        # Load the realm configuration
-        realm_file = project_root / 'config' / 'keycloak-realm-export.json'
-        if not realm_file.exists():
-            print("✗ Keycloak realm export file not found")
-            return None
-            
-        with open(realm_file, 'r') as f:
-            realm_data = json.load(f)
+        # Keycloak should auto-import the realm on startup via --import-realm
+        # Let's just verify it worked and get the client secret
         
-        # Try to get admin token with retries
+        # Try to get admin token 
         max_attempts = 10
         access_token = None
         
+        print("Attempting admin authentication...")
         for attempt in range(max_attempts):
             try:
                 token_url = 'http://localhost:8080/realms/master/protocol/openid-connect/token'
@@ -273,17 +267,20 @@ def configure_keycloak_realm():
                     print("✓ Successfully authenticated with Keycloak admin")
                     break
                 else:
-                    print(f"   ⚠ Auth attempt {attempt + 1} failed: {token_response.status_code}")
+                    if attempt == 0:
+                        print(f"   ⚠ Auth failed: {token_response.status_code} - {token_response.text}")
                     
             except Exception as e:
-                print(f"   ⚠ Auth attempt {attempt + 1} error: {e}")
+                if attempt == 0:
+                    print(f"   ⚠ Auth error: {e}")
             
             if attempt < max_attempts - 1:
                 time.sleep(15)  # Wait longer between attempts
+                print(f"   Retrying authentication... ({attempt + 2}/{max_attempts})")
         
         if not access_token:
-            print("✗ Failed to authenticate with Keycloak after multiple attempts")
-            print("   This might be a timing issue - try running the setup again")
+            print("✗ Failed to authenticate with Keycloak admin")
+            print("   Check container logs: docker logs ams-keycloak")
             return None
             
         headers = {
@@ -291,17 +288,12 @@ def configure_keycloak_realm():
             'Content-Type': 'application/json'
         }
         
-        # Delete existing realm if it exists
-        delete_url = 'http://localhost:8080/admin/realms/ams-portal'
-        requests.delete(delete_url, headers=headers)
-        print("✓ Cleaned up existing realm (if any)")
+        # Check if ams-portal realm exists (should be auto-imported)
+        realm_check_url = 'http://localhost:8080/admin/realms/ams-portal'
+        realm_response = requests.get(realm_check_url, headers=headers)
         
-        # Import realm
-        realm_url = 'http://localhost:8080/admin/realms'
-        realm_response = requests.post(realm_url, headers=headers, json=realm_data)
-        
-        if realm_response.status_code in [201, 409]:  # Created or already exists
-            print("✓ Keycloak realm imported successfully via REST API")
+        if realm_response.status_code == 200:
+            print("✓ ams-portal realm found (auto-imported successfully)")
             
             # Get client secret using REST API
             secret = get_keycloak_client_secret_via_rest_api(access_token)
@@ -310,15 +302,15 @@ def configure_keycloak_realm():
                 print("✓ Retrieved and updated client secret")
                 return secret
             else:
-                print("⚠ Could not retrieve client secret via REST API")
+                print("⚠ Could not retrieve client secret")
                 return None
         else:
-            print(f"⚠ Realm import via REST API failed: {realm_response.status_code}")
-            print(f"   Response: {realm_response.text}")
+            print(f"✗ ams-portal realm not found (auto-import may have failed)")
+            print(f"   Check container logs: docker logs ams-keycloak")
             return None
             
     except Exception as e:
-        print(f"✗ Error configuring Keycloak realm via REST API: {e}")
+        print(f"✗ Error verifying Keycloak realm: {e}")
         return None
 
 
