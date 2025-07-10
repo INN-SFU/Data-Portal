@@ -183,43 +183,28 @@ def start_keycloak():
 
 
 def wait_for_keycloak():
-    """Wait for Keycloak to be ready and admin user to be available."""
+    """Wait for Keycloak to be ready."""
     import requests
     
-    print("⏳ Waiting for Keycloak admin authentication...")
+    print("⏳ Waiting for Keycloak HTTP service...")
     max_attempts = 30
     for attempt in range(max_attempts):
         try:
-            # First check if Keycloak is responding
             response = requests.get('http://localhost:8080', timeout=5)
             if response.status_code == 200:
-                # Now test admin authentication
-                test_auth_cmd = [
-                    'docker', 'exec', 'ams-keycloak',
-                    '/opt/keycloak/bin/kcadm.sh', 'config', 'credentials',
-                    '--server', 'http://localhost:8080',
-                    '--realm', 'master',
-                    '--user', 'admin',
-                    '--password', 'admin123'
-                ]
-                
-                auth_result = subprocess.run(test_auth_cmd, capture_output=True, text=True, cwd=project_root)
-                if auth_result.returncode == 0:
-                    print("✓ Keycloak admin authentication successful")
-                    time.sleep(5)  # Extra wait for full initialization
-                    return True
-                else:
-                    if attempt == 0:  # Only show detailed error on first attempt
-                        print(f"   ⚠ Admin auth not ready yet: {auth_result.stderr}")
+                print("✓ Keycloak HTTP service is ready")
+                # Give extra time for admin user initialization
+                time.sleep(30)
+                return True
                     
         except requests.RequestException:
             pass
         
         if attempt < max_attempts - 1:
             time.sleep(10)
-            print(f"   Still waiting for admin authentication... (attempt {attempt + 1}/{max_attempts})")
+            print(f"   Still waiting for HTTP service... (attempt {attempt + 1}/{max_attempts})")
     
-    print("✗ Keycloak admin authentication failed to become available")
+    print("✗ Keycloak HTTP service failed to become available")
     return False
 
 
@@ -251,159 +236,139 @@ def verify_keycloak_admin():
 
 
 def configure_keycloak_realm():
-    """Configure Keycloak realm and get client secret."""
-    print("Configuring Keycloak realm...")
-    
-    # First verify admin access works
-    if not verify_keycloak_admin():
-        print("✗ Cannot proceed without admin access")
-        return None
+    """Configure Keycloak realm using REST API exclusively."""
+    print("Configuring Keycloak realm via REST API...")
     
     try:
-        # Delete existing realm first to ensure fresh setup
-        delete_cmd = [
-            'docker', 'exec', 'ams-keycloak',
-            '/opt/keycloak/bin/kcadm.sh', 'delete', 'realms/ams-portal',
-            '--server', 'http://localhost:8080',
-            '--realm', 'master',
-            '--user', 'admin',
-            '--password', 'admin123'
-        ]
+        import requests
+        import json
+        import time
         
-        # Try to delete - ignore errors if realm doesn't exist
-        subprocess.run(delete_cmd, capture_output=True, text=True, cwd=project_root)
-        print("✓ Cleaned up existing realm (if any)")
-        
-        # Import the realm configuration
+        # Load the realm configuration
         realm_file = project_root / 'config' / 'keycloak-realm-export.json'
         if not realm_file.exists():
             print("✗ Keycloak realm export file not found")
             return None
-        
-        # Load and modify the realm file to ensure fresh client secret
-        import json
+            
         with open(realm_file, 'r') as f:
             realm_data = json.load(f)
         
-        # Find the admin client and remove any secret field to force regeneration
-        for client in realm_data.get('clients', []):
-            if client.get('clientId') == 'ams-portal-admin':
-                # Remove any existing secret to force fresh generation
-                client.pop('secret', None)
-                client.pop('clientSecret', None)
-                # Ensure it's a confidential client
-                client['publicClient'] = False
-                print("   ✓ Prepared admin client for fresh secret generation")
-                break
+        # Try to get admin token with retries
+        max_attempts = 10
+        access_token = None
         
-        # Write modified realm file to container
-        modified_realm_file = '/tmp/keycloak-realm-export-modified.json'
-        with open(modified_realm_file, 'w') as f:
-            json.dump(realm_data, f, indent=2)
-        
-        subprocess.run([
-            'docker', 'cp', modified_realm_file, 
-            'ams-keycloak:/tmp/keycloak-realm-export.json'
-        ], check=True, cwd=project_root)
-        
-        # Use Keycloak admin CLI to import realm
-        import_cmd = [
-            'docker', 'exec', 'ams-keycloak', 
-            '/opt/keycloak/bin/kcadm.sh', 'create', 'realms',
-            '-f', '/tmp/keycloak-realm-export.json',
-            '--server', 'http://localhost:8080',
-            '--realm', 'master',
-            '--user', 'admin',
-            '--password', 'admin123'
-        ]
-        
-        # Import the realm
-        result = subprocess.run(import_cmd, capture_output=True, text=True, cwd=project_root)
-        if result.returncode == 0:
-            print("✓ Keycloak realm configured with fresh setup")
+        for attempt in range(max_attempts):
+            try:
+                token_url = 'http://localhost:8080/realms/master/protocol/openid-connect/token'
+                token_data = {
+                    'grant_type': 'password',
+                    'client_id': 'admin-cli',
+                    'username': 'admin',
+                    'password': 'admin123'
+                }
+                
+                token_response = requests.post(token_url, data=token_data, timeout=10)
+                if token_response.status_code == 200:
+                    access_token = token_response.json()['access_token']
+                    print("✓ Successfully authenticated with Keycloak admin")
+                    break
+                else:
+                    print(f"   ⚠ Auth attempt {attempt + 1} failed: {token_response.status_code}")
+                    
+            except Exception as e:
+                print(f"   ⚠ Auth attempt {attempt + 1} error: {e}")
             
-            # Configure admin user automation
-            admin_user_configured = configure_admin_user()
+            if attempt < max_attempts - 1:
+                time.sleep(15)  # Wait longer between attempts
+        
+        if not access_token:
+            print("✗ Failed to authenticate with Keycloak after multiple attempts")
+            print("   This might be a timing issue - try running the setup again")
+            return None
             
-            # Get the client secret from the freshly imported realm
-            secret = get_keycloak_client_secret()
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Delete existing realm if it exists
+        delete_url = 'http://localhost:8080/admin/realms/ams-portal'
+        requests.delete(delete_url, headers=headers)
+        print("✓ Cleaned up existing realm (if any)")
+        
+        # Import realm
+        realm_url = 'http://localhost:8080/admin/realms'
+        realm_response = requests.post(realm_url, headers=headers, json=realm_data)
+        
+        if realm_response.status_code in [201, 409]:  # Created or already exists
+            print("✓ Keycloak realm imported successfully via REST API")
+            
+            # Get client secret using REST API
+            secret = get_keycloak_client_secret_via_rest_api(access_token)
             if secret:
-                # Update config.yaml with the secret
                 update_config_with_secret(secret)
+                print("✓ Retrieved and updated client secret")
                 return secret
             else:
-                print("⚠ Could not retrieve client secret")
+                print("⚠ Could not retrieve client secret via REST API")
                 return None
         else:
-            print(f"⚠ Realm import failed (stdout): {result.stdout}")
-            print(f"⚠ Realm import failed (stderr): {result.stderr}")
-            # Try alternative method using REST API
-            return configure_keycloak_via_rest_api()
+            print(f"⚠ Realm import via REST API failed: {realm_response.status_code}")
+            print(f"   Response: {realm_response.text}")
+            return None
             
     except Exception as e:
-        print(f"✗ Error configuring Keycloak realm: {e}")
-        # Try alternative method using REST API
-        return configure_keycloak_via_rest_api()
+        print(f"✗ Error configuring Keycloak realm via REST API: {e}")
+        return None
 
 
 def configure_admin_user():
-    """Configure app admin user (created during realm import)."""
-    print("Verifying app admin user...")
-    
-    # First verify admin access works before checking users
-    if not verify_keycloak_admin():
-        print("✗ Cannot verify app admin user without admin access")
-        return False
+    """Verify app admin user exists (created during realm import)."""
+    print("Verifying app admin user from realm import...")
     
     try:
-        # Check if admin user exists (should exist from realm import)
-        check_user_cmd = [
-            'docker', 'exec', 'ams-keycloak',
-            '/opt/keycloak/bin/kcadm.sh', 'get', 'users',
-            '--server', 'http://localhost:8080',
-            '--realm', 'master',
-            '--user', 'admin',
-            '--password', 'admin123',
-            '--target-realm', 'ams-portal',
-            '--query', 'username=admin'
-        ]
+        import requests
+        import time
         
-        result = subprocess.run(check_user_cmd, capture_output=True, text=True, cwd=project_root)
+        # Get admin token for verification
+        token_url = 'http://localhost:8080/realms/master/protocol/openid-connect/token'
+        token_data = {
+            'grant_type': 'password',
+            'client_id': 'admin-cli',
+            'username': 'admin',
+            'password': 'admin123'
+        }
         
-        if result.returncode == 0:
-            import json
-            users = json.loads(result.stdout)
+        token_response = requests.post(token_url, data=token_data, timeout=10)
+        if token_response.status_code != 200:
+            print("✗ Cannot authenticate to verify app admin user")
+            return False
             
+        access_token = token_response.json()['access_token']
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Check if app admin user exists in ams-portal realm
+        users_url = 'http://localhost:8080/admin/realms/ams-portal/users'
+        params = {'username': 'admin'}
+        
+        users_response = requests.get(users_url, headers=headers, params=params)
+        if users_response.status_code == 200:
+            users = users_response.json()
             if users and len(users) > 0:
-                user_id = users[0]['id']
-                print(f"   ✓ Found app admin user with ID: {user_id}")
-                
-                # Ensure password is set correctly
-                set_password_cmd = [
-                    'docker', 'exec', 'ams-keycloak',
-                    '/opt/keycloak/bin/kcadm.sh', 'set-password',
-                    '--server', 'http://localhost:8080',
-                    '--realm', 'master',
-                    '--user', 'admin',
-                    '--password', 'admin123',
-                    '--target-realm', 'ams-portal',
-                    '--username', 'admin',
-                    '--new-password', 'admin123'
-                ]
-                
-                subprocess.run(set_password_cmd, capture_output=True, text=True, cwd=project_root)
-                print("   ✓ Verified app admin password")
-                
-                # Add protocol mappers for JWT tokens
-                configure_protocol_mappers()
-                
-                print("✓ App admin user verified and configured for ams-portal realm")
+                user = users[0]
+                print(f"   ✓ Found app admin user: {user['username']}")
+                print(f"   ✓ Email: {user.get('email', 'N/A')}")
+                print(f"   ✓ Enabled: {user.get('enabled', False)}")
+                print("✓ App admin user successfully imported with realm")
                 return True
             else:
-                print("   ✗ Admin user not found - realm import may have failed")
+                print("   ✗ App admin user not found in ams-portal realm")
                 return False
         else:
-            print(f"   ⚠ Failed to check for admin user: {result.stderr}")
+            print(f"   ✗ Failed to query users: {users_response.status_code}")
             return False
             
     except Exception as e:
