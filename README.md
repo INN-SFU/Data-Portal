@@ -64,19 +64,29 @@ python main.py config.yaml
 
 ## Admin User Access
 
-The setup script automatically configures the admin user - no manual Keycloak configuration needed!
+The setup script automatically configures TWO different admin users:
 
-**Default Admin Credentials:**
+### 1. App Admin User (for AMS Data Portal Application)
+**Purpose:** Login to the AMS Data Portal application at http://localhost:8000  
+**Realm:** `ams-portal`  
+**Credentials:**
 - Username: `admin`
 - Password: `admin123`
-- Email: `admin@localhost`
+- Roles: `admin`, `user`
 
-**To Login:**
+**To Login to Application:**
 1. Start the application: `python main.py config.yaml`
 2. Open: http://localhost:8000
-3. Login with the credentials above
+3. Login with the app admin credentials above
 
-**Keycloak Admin Console** (if needed for advanced configuration):
+### 2. Keycloak Admin User (for Keycloak Management)
+**Purpose:** Access Keycloak Admin Console for realm/user management  
+**Realm:** `master`  
+**Credentials:**
+- Username: `admin`
+- Password: `admin123`
+
+**To Access Keycloak Admin Console:**
 - URL: http://localhost:8080
 - Login: admin / admin123
 
@@ -91,9 +101,16 @@ python scripts/setup.py --validate
 ```
 
 **🎯 Development Credentials (Pre-configured by setup script):**
+
+**App Admin (for application login at :8000):**
 - Username: `admin`
 - Password: `admin123`  
 - Email: `admin@localhost`
+- Roles: `admin`, `user`
+
+**Keycloak Admin (for Keycloak console at :8080):**
+- Username: `admin`
+- Password: `admin123`
 
 **💡 Virtual Environment Notes:**
 - The repository does **not** include a virtual environment (this was cleaned up for repo size)
@@ -147,7 +164,7 @@ python scripts/setup.py --start-keycloak
 # Configure Keycloak realm and get client secret
 python scripts/setup.py --configure-keycloak
 
-# Configure admin user automatically
+# Create/configure app admin user for application login
 python scripts/setup.py --create-admin
 
 # Run validation tests

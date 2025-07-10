@@ -298,11 +298,11 @@ def configure_keycloak_realm():
 
 
 def configure_admin_user():
-    """Configure admin user with proper credentials and roles."""
-    print("Configuring admin user...")
+    """Configure/create app admin user in ams-portal realm."""
+    print("Configuring app admin user...")
     
     try:
-        # First, check if admin user exists
+        # First, check if admin user exists in ams-portal realm
         check_user_cmd = [
             'docker', 'exec', 'ams-keycloak',
             '/opt/keycloak/bin/kcadm.sh', 'get', 'users',
@@ -315,59 +315,188 @@ def configure_admin_user():
         ]
         
         result = subprocess.run(check_user_cmd, capture_output=True, text=True, cwd=project_root)
+        user_id = None
+        
         if result.returncode == 0:
             import json
             users = json.loads(result.stdout)
             
             if users and len(users) > 0:
                 user_id = users[0]['id']
-                print(f"   ✓ Found existing admin user with ID: {user_id}")
-                
-                # Remove required actions
-                update_user_cmd = [
-                    'docker', 'exec', 'ams-keycloak',
-                    '/opt/keycloak/bin/kcadm.sh', 'update', f'users/{user_id}',
-                    '--server', 'http://localhost:8080',
-                    '--realm', 'master',
-                    '--user', 'admin',
-                    '--password', 'admin123',
-                    '--target-realm', 'ams-portal',
-                    '-s', 'requiredActions=[]'
-                ]
-                
-                subprocess.run(update_user_cmd, capture_output=True, text=True, cwd=project_root)
-                print("   ✓ Removed required actions")
-                
-                # Set password
-                set_password_cmd = [
-                    'docker', 'exec', 'ams-keycloak',
-                    '/opt/keycloak/bin/kcadm.sh', 'set-password',
-                    '--server', 'http://localhost:8080',
-                    '--realm', 'master',
-                    '--user', 'admin',
-                    '--password', 'admin123',
-                    '--target-realm', 'ams-portal',
-                    '--username', 'admin',
-                    '--new-password', 'admin123'
-                ]
-                
-                subprocess.run(set_password_cmd, capture_output=True, text=True, cwd=project_root)
-                print("   ✓ Set admin password")
-                
-                # Add protocol mappers for JWT tokens
-                configure_protocol_mappers()
-                
-                print("✓ Admin user configured successfully")
-                return True
+                print(f"   ✓ Found existing app admin user with ID: {user_id}")
             else:
-                print("   ⚠ Admin user not found in realm export")
-                return False
+                print("   Creating new app admin user in ams-portal realm...")
+                # Create the user
+                create_user_cmd = [
+                    'docker', 'exec', 'ams-keycloak',
+                    '/opt/keycloak/bin/kcadm.sh', 'create', 'users',
+                    '--server', 'http://localhost:8080',
+                    '--realm', 'master',
+                    '--user', 'admin',
+                    '--password', 'admin123',
+                    '--target-realm', 'ams-portal',
+                    '-s', 'username=admin',
+                    '-s', 'email=admin@localhost',
+                    '-s', 'firstName=Admin',
+                    '-s', 'lastName=User',
+                    '-s', 'enabled=true',
+                    '-s', 'emailVerified=true'
+                ]
+                
+                create_result = subprocess.run(create_user_cmd, capture_output=True, text=True, cwd=project_root)
+                if create_result.returncode == 0:
+                    print("   ✓ Created app admin user")
+                    # Get the newly created user ID
+                    result = subprocess.run(check_user_cmd, capture_output=True, text=True, cwd=project_root)
+                    if result.returncode == 0:
+                        users = json.loads(result.stdout)
+                        if users and len(users) > 0:
+                            user_id = users[0]['id']
+                        else:
+                            print("   ✗ Could not find newly created user")
+                            return False
+                    else:
+                        print("   ✗ Could not query newly created user")
+                        return False
+                else:
+                    print(f"   ✗ Failed to create user: {create_result.stderr}")
+                    return False
         else:
             print(f"   ⚠ Failed to check for admin user: {result.stderr}")
             return False
+        
+        if user_id:
+            # Remove required actions
+            update_user_cmd = [
+                'docker', 'exec', 'ams-keycloak',
+                '/opt/keycloak/bin/kcadm.sh', 'update', f'users/{user_id}',
+                '--server', 'http://localhost:8080',
+                '--realm', 'master',
+                '--user', 'admin',
+                '--password', 'admin123',
+                '--target-realm', 'ams-portal',
+                '-s', 'requiredActions=[]',
+                '-s', 'enabled=true'
+            ]
+            
+            subprocess.run(update_user_cmd, capture_output=True, text=True, cwd=project_root)
+            print("   ✓ Updated user settings")
+            
+            # Set password
+            set_password_cmd = [
+                'docker', 'exec', 'ams-keycloak',
+                '/opt/keycloak/bin/kcadm.sh', 'set-password',
+                '--server', 'http://localhost:8080',
+                '--realm', 'master',
+                '--user', 'admin',
+                '--password', 'admin123',
+                '--target-realm', 'ams-portal',
+                '--username', 'admin',
+                '--new-password', 'admin123'
+            ]
+            
+            subprocess.run(set_password_cmd, capture_output=True, text=True, cwd=project_root)
+            print("   ✓ Set app admin password")
+            
+            # Assign admin and user roles
+            configure_user_roles(user_id)
+            
+            # Add protocol mappers for JWT tokens
+            configure_protocol_mappers()
+            
+            print("✓ App admin user configured successfully for ams-portal realm")
+            return True
+        else:
+            print("   ✗ Could not get user ID")
+            return False
             
     except Exception as e:
-        print(f"✗ Error configuring admin user: {e}")
+        print(f"✗ Error configuring app admin user: {e}")
+        return False
+
+
+def configure_user_roles(user_id):
+    """Assign admin and user roles to the app admin user."""
+    print("   Assigning admin and user roles...")
+    
+    try:
+        # Get available realm roles
+        get_roles_cmd = [
+            'docker', 'exec', 'ams-keycloak',
+            '/opt/keycloak/bin/kcadm.sh', 'get', 'roles',
+            '--server', 'http://localhost:8080',
+            '--realm', 'master',
+            '--user', 'admin',
+            '--password', 'admin123',
+            '--target-realm', 'ams-portal'
+        ]
+        
+        roles_result = subprocess.run(get_roles_cmd, capture_output=True, text=True, cwd=project_root)
+        if roles_result.returncode != 0:
+            print(f"   ⚠ Could not get realm roles: {roles_result.stderr}")
+            return False
+        
+        import json
+        roles_data = json.loads(roles_result.stdout)
+        
+        # Find admin and user roles
+        admin_role = None
+        user_role = None
+        
+        for role in roles_data:
+            if role.get('name') == 'admin':
+                admin_role = role
+            elif role.get('name') == 'user':
+                user_role = role
+        
+        # Assign admin role
+        if admin_role:
+            assign_admin_cmd = [
+                'docker', 'exec', 'ams-keycloak',
+                '/opt/keycloak/bin/kcadm.sh', 'add-roles',
+                '--server', 'http://localhost:8080',
+                '--realm', 'master',
+                '--user', 'admin',
+                '--password', 'admin123',
+                '--target-realm', 'ams-portal',
+                '--uusername', 'admin',
+                '--rolename', 'admin'
+            ]
+            
+            admin_result = subprocess.run(assign_admin_cmd, capture_output=True, text=True, cwd=project_root)
+            if admin_result.returncode == 0:
+                print("   ✓ Assigned admin role")
+            else:
+                print(f"   ⚠ Admin role assignment failed: {admin_result.stderr}")
+        else:
+            print("   ⚠ Admin role not found in realm")
+        
+        # Assign user role
+        if user_role:
+            assign_user_cmd = [
+                'docker', 'exec', 'ams-keycloak',
+                '/opt/keycloak/bin/kcadm.sh', 'add-roles',
+                '--server', 'http://localhost:8080',
+                '--realm', 'master',
+                '--user', 'admin',
+                '--password', 'admin123',
+                '--target-realm', 'ams-portal',
+                '--uusername', 'admin',
+                '--rolename', 'user'
+            ]
+            
+            user_result = subprocess.run(assign_user_cmd, capture_output=True, text=True, cwd=project_root)
+            if user_result.returncode == 0:
+                print("   ✓ Assigned user role")
+            else:
+                print(f"   ⚠ User role assignment failed: {user_result.stderr}")
+        else:
+            print("   ⚠ User role not found in realm")
+        
+        return True
+        
+    except Exception as e:
+        print(f"   ⚠ Error assigning roles: {e}")
         return False
 
 
@@ -754,7 +883,7 @@ def main():
     parser.add_argument('--configure-keycloak', action='store_true',
                        help='Configure Keycloak realm and get client secret')
     parser.add_argument('--create-admin', action='store_true',
-                       help='Automatically configure initial admin user in Keycloak')
+                       help='Create/configure app admin user in ams-portal realm for application login')
     parser.add_argument('--run-tests', action='store_true',
                        help='Run test suite to validate setup')
     parser.add_argument('--full-setup', action='store_true',
@@ -828,12 +957,13 @@ def main():
             admin_configured = configure_admin_user()
             
             if admin_configured:
-                print("✅ Admin user configured successfully!")
+                print("✅ App admin user configured successfully!")
                 print("   Username: admin")
                 print("   Password: admin123")
+                print("   Roles: admin, user")
                 print("   Ready to login at: http://localhost:8000")
             else:
-                print("❌ Admin user configuration failed!")
+                print("❌ App admin user configuration failed!")
                 print("   Ensure Keycloak is running and realm is configured")
         if args.run_tests:
             run_tests()
@@ -845,14 +975,15 @@ def main():
     # Print completion message
     if args.full_setup and admin_credentials:
         print("\n🎉 SETUP COMPLETE!")
-        print("\n📋 ADMIN CREDENTIALS:")
+        print("\n📋 APP ADMIN CREDENTIALS (for AMS Data Portal login):")
         print(f"   Username: {admin_credentials['username']}")
         print(f"   Password: {admin_credentials['password']}")
+        print("   Roles: admin, user")
         
         print("\n🚀 NEXT STEPS:")
         print("   1. Start application: python main.py config.yaml")
         print("   2. Open: http://localhost:8000")
-        print("   3. Login with admin credentials above")
+        print("   3. Login with app admin credentials above")
         
     elif not any([args.create_dirs, args.generate_secrets, args.validate, args.docker, 
                  args.start_keycloak, args.configure_keycloak, args.create_admin, args.run_tests]):
