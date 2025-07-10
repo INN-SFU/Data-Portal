@@ -174,7 +174,7 @@ def start_keycloak():
             
             # Wait for Keycloak to be ready
             print("⏳ Waiting for Keycloak to be ready...")
-            time.sleep(30)  # Give Keycloak time to start
+            time.sleep(60)  # Give Keycloak more time to start
             
         return True
     except subprocess.CalledProcessError as e:
@@ -183,32 +183,81 @@ def start_keycloak():
 
 
 def wait_for_keycloak():
-    """Wait for Keycloak to be ready."""
+    """Wait for Keycloak to be ready and admin user to be available."""
     import requests
     
-    print("⏳ Waiting for Keycloak to be fully ready...")
+    print("⏳ Waiting for Keycloak admin authentication...")
     max_attempts = 30
     for attempt in range(max_attempts):
         try:
+            # First check if Keycloak is responding
             response = requests.get('http://localhost:8080', timeout=5)
             if response.status_code == 200:
-                print("✓ Keycloak is ready")
-                time.sleep(5)  # Extra wait for full initialization
-                return True
+                # Now test admin authentication
+                test_auth_cmd = [
+                    'docker', 'exec', 'ams-keycloak',
+                    '/opt/keycloak/bin/kcadm.sh', 'config', 'credentials',
+                    '--server', 'http://localhost:8080',
+                    '--realm', 'master',
+                    '--user', 'admin',
+                    '--password', 'admin123'
+                ]
+                
+                auth_result = subprocess.run(test_auth_cmd, capture_output=True, text=True, cwd=project_root)
+                if auth_result.returncode == 0:
+                    print("✓ Keycloak admin authentication successful")
+                    time.sleep(5)  # Extra wait for full initialization
+                    return True
+                else:
+                    if attempt == 0:  # Only show detailed error on first attempt
+                        print(f"   ⚠ Admin auth not ready yet: {auth_result.stderr}")
+                    
         except requests.RequestException:
             pass
         
         if attempt < max_attempts - 1:
             time.sleep(10)
-            print(f"   Still waiting... (attempt {attempt + 1}/{max_attempts})")
+            print(f"   Still waiting for admin authentication... (attempt {attempt + 1}/{max_attempts})")
     
-    print("✗ Keycloak failed to become ready")
+    print("✗ Keycloak admin authentication failed to become available")
     return False
+
+
+def verify_keycloak_admin():
+    """Verify Keycloak admin credentials work before proceeding."""
+    print("Verifying Keycloak admin access...")
+    
+    try:
+        test_cmd = [
+            'docker', 'exec', 'ams-keycloak',
+            '/opt/keycloak/bin/kcadm.sh', 'get', 'realms',
+            '--server', 'http://localhost:8080',
+            '--realm', 'master',
+            '--user', 'admin',
+            '--password', 'admin123'
+        ]
+        
+        result = subprocess.run(test_cmd, capture_output=True, text=True, cwd=project_root)
+        if result.returncode == 0:
+            print("✓ Keycloak admin access verified")
+            return True
+        else:
+            print(f"✗ Keycloak admin access failed: {result.stderr}")
+            return False
+            
+    except Exception as e:
+        print(f"✗ Error verifying Keycloak admin: {e}")
+        return False
 
 
 def configure_keycloak_realm():
     """Configure Keycloak realm and get client secret."""
     print("Configuring Keycloak realm...")
+    
+    # First verify admin access works
+    if not verify_keycloak_admin():
+        print("✗ Cannot proceed without admin access")
+        return None
     
     try:
         # Delete existing realm first to ensure fresh setup
@@ -300,6 +349,11 @@ def configure_keycloak_realm():
 def configure_admin_user():
     """Configure app admin user (created during realm import)."""
     print("Verifying app admin user...")
+    
+    # First verify admin access works before checking users
+    if not verify_keycloak_admin():
+        print("✗ Cannot verify app admin user without admin access")
+        return False
     
     try:
         # Check if admin user exists (should exist from realm import)
