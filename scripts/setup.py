@@ -850,15 +850,17 @@ def main():
         print("   Roles: admin, user")
         
         print("\n🚀 NEXT STEPS:")
-        print("   1. Start application: python main.py config.yaml")
-        print("   2. Open: http://localhost:8000")
-        print("   3. Login with app admin credentials above")
+        print("   1. Activate virtual environment: source .venv/bin/activate")
+        print("   2. Start application: python main.py config.yaml")
+        print("   3. Open: http://localhost:8000")
+        print("   4. Login with app admin credentials above")
         
     elif not any([args.create_dirs, args.generate_secrets, args.validate, args.docker, 
                  args.start_keycloak, args.configure_keycloak, args.create_admin, args.run_tests]):
         print("\n✅ Setup completed!")
         print("Next steps:")
-        print("1. Run application: python main.py config.yaml")
+        print("1. Activate virtual environment: source .venv/bin/activate")
+        print("2. Run application: python main.py config.yaml")
 
 
 if __name__ == '__main__':
