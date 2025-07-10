@@ -52,7 +52,7 @@ class App:
                       response_class=HTMLResponse)
         def landing_page(request: Request):
             """
-            Root for serving basic landing page.
+            Root for serving basic landing page with authentication state detection.
 
             Parameters:
             - **request** (Request): The request object.
@@ -60,7 +60,15 @@ class App:
             Returns:
             - **TemplateResponse**: The HTML response containing the landing page.
             """
-            return templates.TemplateResponse("/landing/index.html", {"request": request})
+            # Check if user is authenticated by looking for access token cookie
+            access_token = request.cookies.get("access_token")
+            is_authenticated = access_token is not None
+            
+            context = {
+                "request": request,
+                "is_authenticated": is_authenticated
+            }
+            return templates.TemplateResponse("/landing/index.html", context)
 
         @self.app.get("/test", response_class=JSONResponse)
         async def test_endpoint():

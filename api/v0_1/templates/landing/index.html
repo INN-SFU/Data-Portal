@@ -50,9 +50,13 @@
       <a href="/">INN Data Portal</a>
       <a href="/interface/home">Home</a>
     </div>
-    <!-- Right side: Login -->
+    <!-- Right side: Login/Logout based on authentication status -->
     <div class="right-nav">
-      <a href="/auth/login">Login</a>
+      {% if is_authenticated %}
+        <a href="/logout">Logout</a>
+      {% else %}
+        <a href="/auth/login">Login</a>
+      {% endif %}
     </div>
   </div>
 
