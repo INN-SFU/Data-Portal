@@ -56,39 +56,29 @@ python main.py config.yaml
 - ✅ Starts Keycloak service and waits for readiness
 - ✅ **Imports Keycloak realm and extracts client secret**
 - ✅ **Updates config.yaml with the actual client secret**
+- ✅ **Configures admin user with credentials (admin/admin123)**
 - ✅ Validates the entire setup
 - ✅ Runs tests to ensure everything works
-- ✅ **Provides clear instructions for creating admin user**
 
-**⚠️ Note:** You still need to manually start the application with `python main.py config.yaml` and create the admin user through Keycloak.
+**✅ Fully Automated:** No manual Keycloak configuration needed! Just start the application and login.
 
-## Creating the Admin User
+## Admin User Access
 
-After running the setup script, you need to manually create the admin user through Keycloak:
+The setup script automatically configures the admin user - no manual Keycloak configuration needed!
 
-### Steps:
-1. **Start the application**: `python main.py config.yaml`
-2. **Go to Keycloak Admin Console**: http://localhost:8080
-3. **Login with admin credentials**: admin / admin123
-4. **Navigate to**: ams-portal realm > Users
-5. **Click 'Add user'** and fill in:
-   - Username: `admin`
-   - Email: `admin@localhost`
-   - First name: `Admin`
-   - Last name: `User`
-   - Email verified: `ON`
-   - Enabled: `ON`
-6. **Click 'Save'**
-7. **Go to 'Credentials' tab** and set password:
-   - Password: `admin123`
-   - Password confirmation: `admin123`
-   - Temporary: `OFF`
-8. **Click 'Set password'**
-9. **Go to 'Role mappings' tab** and assign admin role
-10. **Now you can login** to the application at http://localhost:8000
+**Default Admin Credentials:**
+- Username: `admin`
+- Password: `admin123`
+- Email: `admin@localhost`
 
-### Why Manual Creation?
-The admin user must be created manually because the application's user management system requires the app to be running to function properly. The setup script handles all the infrastructure (Keycloak, realm, client secrets) but user creation needs the full application stack.
+**To Login:**
+1. Start the application: `python main.py config.yaml`
+2. Open: http://localhost:8000
+3. Login with the credentials above
+
+**Keycloak Admin Console** (if needed for advanced configuration):
+- URL: http://localhost:8080
+- Login: admin / admin123
 
 **Manual Setup (Legacy)**
 ```bash
@@ -100,7 +90,7 @@ python scripts/setup.py --create-admin  # Shows instructions only
 python scripts/setup.py --validate
 ```
 
-**🎯 Development Credentials (Create manually through Keycloak):**
+**🎯 Development Credentials (Pre-configured by setup script):**
 - Username: `admin`
 - Password: `admin123`  
 - Email: `admin@localhost`
@@ -157,7 +147,7 @@ python scripts/setup.py --start-keycloak
 # Configure Keycloak realm and get client secret
 python scripts/setup.py --configure-keycloak
 
-# Show admin user creation instructions
+# Configure admin user automatically
 python scripts/setup.py --create-admin
 
 # Run validation tests

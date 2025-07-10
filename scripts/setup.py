@@ -24,7 +24,7 @@ from core.settings.security._generate_secrets import _generate_secrets
 
 def create_config_files(environment='development'):
     """Create configuration files from templates."""
-    print(f"Setting up configuration for {environment} environment...")
+    print(f"Setting up {environment} configuration...")
     
     # Create config.yaml from template
     config_template = project_root / 'config' / 'config.template.yaml'
@@ -65,7 +65,7 @@ def create_config_files(environment='development'):
 
 def create_directory_structure():
     """Create required directory structure."""
-    print("Creating required directory structure...")
+    print("Creating directories...")
     
     # Create logs directory
     logs_dir = project_root / 'loggers' / 'logs'
@@ -87,7 +87,7 @@ def create_directory_structure():
 
 def generate_secrets():
     """Generate cryptographic secrets."""
-    print("Generating cryptographic secrets...")
+    print("Generating secrets...")
     secrets_file = project_root / 'core' / 'settings' / 'security' / '.secrets'
     
     if not secrets_file.exists():
@@ -103,7 +103,7 @@ def generate_secrets():
 
 def validate_environment():
     """Validate that the environment is properly configured."""
-    print("Validating environment configuration...")
+    print("Validating configuration...")
     
     required_files = [
         'config.yaml',
@@ -158,7 +158,7 @@ def validate_environment():
 
 def start_keycloak():
     """Start Keycloak service."""
-    print("Starting Keycloak service...")
+    print("Starting Keycloak...")
     
     try:
         # Check if Keycloak is already running
@@ -674,6 +674,10 @@ def update_config_with_secret(client_secret):
     try:
         config_file = project_root / 'config.yaml'
         
+        # Ensure config file exists
+        if not config_file.exists():
+            create_config_files()
+        
         with open(config_file, 'r') as f:
             content = f.read()
         
@@ -750,7 +754,7 @@ def main():
     parser.add_argument('--configure-keycloak', action='store_true',
                        help='Configure Keycloak realm and get client secret')
     parser.add_argument('--create-admin', action='store_true',
-                       help='Show detailed instructions for creating initial admin user')
+                       help='Automatically configure initial admin user in Keycloak')
     parser.add_argument('--run-tests', action='store_true',
                        help='Run test suite to validate setup')
     parser.add_argument('--full-setup', action='store_true',
@@ -766,8 +770,7 @@ def main():
     admin_credentials = None
     
     if args.full_setup:
-        print("🚀 Running FULL AUTOMATED SETUP for new developers")
-        print("=" * 50)
+        print("🚀 Running automated setup...")
         
         # Step 1: Directory structure and config
         create_directory_structure()
@@ -791,7 +794,6 @@ def main():
         
         # Step 6: Run tests (optional, don't fail setup if tests fail)
         if validation_success:
-            print("\n🧪 Running validation tests...")
             run_tests()
         
     elif args.all or not any([args.create_dirs, args.generate_secrets, args.validate, args.docker, 
@@ -804,7 +806,15 @@ def main():
             create_docker_files()
         validate_environment()
     else:
-        # Individual options
+        # Individual options - ensure basic setup first
+        setup_needed = any([args.start_keycloak, args.configure_keycloak, args.create_admin, args.validate])
+        
+        if setup_needed:
+            # Ensure basic files exist for individual commands
+            create_directory_structure()
+            create_config_files(args.environment)
+            generate_secrets()
+        
         if args.create_dirs:
             create_directory_structure()
         if args.generate_secrets:
@@ -815,35 +825,16 @@ def main():
         if args.configure_keycloak:
             configure_keycloak_realm()
         if args.create_admin:
-            # Show detailed instructions for individual command
-            print("📋 Manual Admin User Creation Required")
-            print("=" * 50)
-            print("The admin user must be created manually through Keycloak after starting the application.")
-            print("This is because the application's user management system requires the app to be running.")
-            print()
-            print("📝 INSTRUCTIONS:")
-            print("1. Start the application: python main.py config.yaml")
-            print("2. Go to Keycloak Admin Console: http://localhost:8080")
-            print("3. Login with admin credentials: admin / admin123")
-            print("4. Navigate to: ams-portal realm > Users")
-            print("5. Click 'Add user' and fill in:")
-            print("   - Username: admin")
-            print("   - Email: admin@localhost")
-            print("   - First name: Admin")
-            print("   - Last name: User")
-            print("   - Email verified: ON")
-            print("   - Enabled: ON")
-            print("6. Click 'Save'")
-            print("7. Go to 'Credentials' tab and set password:")
-            print("   - Password: admin123")
-            print("   - Password confirmation: admin123")
-            print("   - Temporary: OFF")
-            print("8. Click 'Set password'")
-            print("9. Go to 'Role mappings' tab and assign admin role")
-            print("10. Now you can login to the application at http://localhost:8000")
-            print()
-            print("💡 TIP: Save these credentials for future reference!")
-            admin_credentials = get_admin_user_credentials()
+            admin_configured = configure_admin_user()
+            
+            if admin_configured:
+                print("✅ Admin user configured successfully!")
+                print("   Username: admin")
+                print("   Password: admin123")
+                print("   Ready to login at: http://localhost:8000")
+            else:
+                print("❌ Admin user configuration failed!")
+                print("   Ensure Keycloak is running and realm is configured")
         if args.run_tests:
             run_tests()
         if args.validate:
@@ -852,44 +843,22 @@ def main():
             create_docker_files()
     
     # Print completion message
-    print("\n" + "=" * 70)
     if args.full_setup and admin_credentials:
-        print("🎉 SETUP COMPLETE! Your AMS Data Portal is ready for development!")
-        print("=" * 70)
-        print("\n📋 ADMIN CREDENTIALS (save these!):")
+        print("\n🎉 SETUP COMPLETE!")
+        print("\n📋 ADMIN CREDENTIALS:")
         print(f"   Username: {admin_credentials['username']}")
         print(f"   Password: {admin_credentials['password']}")
-        print(f"   Email:    {admin_credentials['email']}")
-        
-        print("\n🌐 ACCESS POINTS:")
-        print("   📱 AMS Data Portal:  http://localhost:8000  (start with command below)")
-        print("   📊 API Docs:         http://localhost:8000/docs")
-        print("   🔐 Keycloak Admin:   http://localhost:8080 (admin/admin123)")
         
         print("\n🚀 NEXT STEPS:")
-        print("   1. START THE APPLICATION: python main.py config.yaml")
-        print("   2. LOGIN to AMS Portal: http://localhost:8000")
-        print("      → Username: admin")
-        print("      → Password: admin123")
-        print("   3. Start developing!")
-        print("\n✅ FULLY AUTOMATED - No manual Keycloak configuration needed!")
+        print("   1. Start application: python main.py config.yaml")
+        print("   2. Open: http://localhost:8000")
+        print("   3. Login with admin credentials above")
         
-        print("\n💻 DEVELOPMENT WORKFLOW:")
-        print("   • Activate virtual environment: source .venv/bin/activate")
-        print("   • Start application: python main.py config.yaml")  
-        print("   • Run tests: behave tests/features/")
-        print("   • Keycloak is already running and configured!")
-        print()
-        print("📖 For detailed admin user creation steps, run: python scripts/setup.py --create-admin")
-        
-    else:
-        print("✅ Setup completed!")
-        print("\nNext steps:")
-        if not args.full_setup:
-            print("1. Run full setup: python scripts/setup.py --full-setup")
-            print("2. Or manually: start Keycloak, create admin user, run application")
-        print("3. Install dependencies: pip install -r requirements.txt")
-        print("4. Run application: python main.py config.yaml")
+    elif not any([args.create_dirs, args.generate_secrets, args.validate, args.docker, 
+                 args.start_keycloak, args.configure_keycloak, args.create_admin, args.run_tests]):
+        print("\n✅ Setup completed!")
+        print("Next steps:")
+        print("1. Run application: python main.py config.yaml")
 
 
 if __name__ == '__main__':
