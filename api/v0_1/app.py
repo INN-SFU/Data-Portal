@@ -60,9 +60,11 @@ class App:
             Returns:
             - **TemplateResponse**: The HTML response containing the landing page.
             """
-            # Check if user is authenticated by looking for access token cookie
-            access_token = request.cookies.get("access_token")
-            is_authenticated = access_token is not None
+            # Check if user is authenticated by validating the access token
+            from api.v0_1.endpoints.service.auth import validate_token_from_cookie
+            
+            token_payload = validate_token_from_cookie(request)
+            is_authenticated = token_payload is not None
             
             context = {
                 "request": request,

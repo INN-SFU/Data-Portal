@@ -97,6 +97,82 @@ def decode_token(request: Request, credentials: HTTPAuthorizationCredentials = D
     return payload
 
 
+def get_cookie_security_settings() -> dict:
+    """
+    Get cookie security settings based on environment.
+    
+    Returns appropriate security settings for cookies based on whether
+    we're running in development (localhost) or production (HTTPS).
+    
+    Returns:
+        dict: Cookie security settings with keys: secure, samesite, httponly
+    """
+    # Check if we're in production by looking at the redirect URI
+    redirect_uri = os.getenv('KEYCLOAK_REDIRECT_URI', 'http://localhost:8000')
+    is_production = redirect_uri.startswith('https://')
+    
+    logger.debug(f"Cookie security mode: {'production' if is_production else 'development'}")
+    
+    return {
+        "secure": is_production,  # Only secure cookies in production (HTTPS)
+        "httponly": True,         # Always prevent XSS
+        "samesite": "lax",        # CSRF protection while allowing normal navigation
+        "path": "/"               # Available across the entire application
+    }
+
+
+def validate_token_from_cookie(request: Request) -> dict | None:
+    """
+    Validate JWT token from cookie without using FastAPI dependency injection.
+    
+    This function is designed for use outside of FastAPI endpoints where 
+    dependency injection is not available (e.g., landing page template context).
+    
+    Args:
+        request: FastAPI Request object containing cookies
+        
+    Returns:
+        dict: Token payload if valid, None if invalid/missing/expired
+    """
+    try:
+        access_token = request.cookies.get("access_token")
+        if not access_token:
+            logger.debug("No access token found in cookies")
+            return None
+            
+        # Get configuration
+        client_id = os.getenv("KEYCLOAK_UI_CLIENT_ID")
+        keycloak_domain = os.getenv("KEYCLOAK_DOMAIN")
+        realm = os.getenv("KEYCLOAK_REALM")
+        issuer = f"{keycloak_domain}/realms/{realm}"
+        
+        # Get JWKS client and validate token
+        jwks_client = get_jwks_client()
+        signing_key = jwks_client.get_signing_key_from_jwt(access_token).key
+        
+        # Decode and validate token
+        payload = jwt.decode(
+            access_token,
+            signing_key,
+            algorithms=["RS256"],
+            issuer=issuer,
+            options={"verify_aud": False}  # Skip audience validation for Keycloak
+        )
+        
+        logger.debug(f"Token validation successful for user: {payload.get('preferred_username', 'unknown')}")
+        return payload
+        
+    except jwt.ExpiredSignatureError:
+        logger.debug("Token has expired")
+        return None
+    except jwt.InvalidTokenError as e:
+        logger.debug(f"Token validation failed: {str(e)}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error during token validation: {str(e)}")
+        return None
+
+
 def is_user_admin(token_payload: dict) -> bool:
     """
     Checks if the token payload indicates that the user has admin privileges.
@@ -192,15 +268,25 @@ async def keycloak_callback(request: Request):
 
     # Create a redirect response to the home endpoint.
     response = RedirectResponse(url="/interface/home", status_code=status.HTTP_302_FOUND)
+    
+    # Get environment-appropriate cookie security settings
+    cookie_settings = get_cookie_security_settings()
+    
     # Set the access token in a cookie.
     response.set_cookie(
         key="access_token",
         value=token_data["access_token"],
-        httponly=True,  # Helps prevent XSS
-        secure=True,  # Change to True in production (HTTPS required)
-        samesite="lax",
-        path='/'
+        **cookie_settings  # Apply environment-based security settings
     )
+    
+    # Store refresh token if available (for token refresh functionality)
+    if "refresh_token" in token_data:
+        response.set_cookie(
+            key="refresh_token",
+            value=token_data["refresh_token"],
+            **cookie_settings  # Apply same security settings
+        )
+        logger.debug("Set refresh token cookie")
     logger.debug("Set access token cookie and redirecting to /interface/home")
     return response
 
@@ -218,15 +304,23 @@ async def logout(response: Response):
     logger.info("Processing logout request")
     
     # Clear the JWT token cookie
+    # Note: Parameters must match exactly how the cookie was set during login
+    cookie_settings = get_cookie_security_settings()
+    
     response.delete_cookie(
         key="access_token",
-        path="/",
-        domain=None,
-        secure=False,  # Set to True in production with HTTPS
-        httponly=True,
-        samesite="lax"
+        domain=None,  # Let browser determine domain
+        **cookie_settings  # Use same security settings as when cookie was created
     )
-    logger.debug("Cleared access token cookie")
+    
+    # Also clear refresh token cookie if it exists
+    response.delete_cookie(
+        key="refresh_token",
+        domain=None,
+        **cookie_settings
+    )
+    
+    logger.debug("Cleared access token and refresh token cookies")
     
     # Build Keycloak logout URL with proper parameters
     # Use the base URL from redirect URI (without the /auth/callback path)
@@ -243,3 +337,84 @@ async def logout(response: Response):
     
     logger.info(f"Redirecting to Keycloak logout: {keycloak_logout_url}")
     return RedirectResponse(url=keycloak_logout_url, status_code=302)
+
+
+@auth_router.post("/refresh", response_class=JSONResponse)
+async def refresh_token(request: Request, response: Response):
+    """
+    Refresh the access token using the refresh token.
+    
+    This endpoint allows clients to refresh their access token when it's close
+    to expiring, providing a seamless user experience without requiring re-login.
+    
+    Returns:
+        JSONResponse: Success/failure status of the refresh operation
+    """
+    refresh_token = request.cookies.get("refresh_token")
+    
+    if not refresh_token:
+        logger.warning("Refresh token not found in cookies")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No refresh token available"
+        )
+    
+    logger.info("Processing token refresh request")
+    
+    # Prepare token refresh request to Keycloak
+    token_url = f"{os.getenv('KEYCLOAK_DOMAIN')}/realms/{os.getenv('KEYCLOAK_REALM')}/protocol/openid-connect/token"
+    
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": os.getenv("KEYCLOAK_UI_CLIENT_ID"),
+        "client_secret": os.getenv("KEYCLOAK_UI_CLIENT_SECRET")
+    }
+    
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    
+    try:
+        token_response = requests.post(token_url, data=data, headers=headers)
+        
+        if token_response.status_code != 200:
+            logger.error(f"Token refresh failed with status {token_response.status_code}: {token_response.text}")
+            # Clear invalid refresh token
+            response.delete_cookie("refresh_token", **get_cookie_security_settings())
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token refresh failed"
+            )
+        
+        token_data = token_response.json()
+        logger.info("Successfully refreshed access token")
+        
+        # Get cookie security settings
+        cookie_settings = get_cookie_security_settings()
+        
+        # Update access token cookie
+        response.set_cookie(
+            key="access_token",
+            value=token_data["access_token"],
+            **cookie_settings
+        )
+        
+        # Update refresh token if a new one is provided
+        if "refresh_token" in token_data:
+            response.set_cookie(
+                key="refresh_token",
+                value=token_data["refresh_token"],
+                **cookie_settings
+            )
+        
+        logger.debug("Updated token cookies successfully")
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={"success": True, "message": "Token refreshed successfully"}
+        )
+        
+    except requests.RequestException as e:
+        logger.error(f"Network error during token refresh: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Token refresh service unavailable"
+        ) from e
