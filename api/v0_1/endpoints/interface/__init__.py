@@ -35,8 +35,10 @@ async def ui_logout(response: Response):
     )
     
     # Build Keycloak logout URL with proper parameters
+    # For logout, redirect to the landing page
+    base_url = os.getenv('KEYCLOAK_REDIRECT_URI', 'http://localhost:8000').split('/auth/callback')[0]
     logout_params = {
-        "redirect_uri": os.getenv('KEYCLOAK_REDIRECT_URI', 'http://localhost:8000'),
+        "redirect_uri": f"{base_url}/",
         "client_id": os.getenv('KEYCLOAK_UI_CLIENT_ID', 'ams-portal-ui')
     }
     
