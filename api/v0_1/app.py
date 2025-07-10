@@ -66,6 +66,15 @@ class App:
         async def test_endpoint():
             return JSONResponse(content={"message": "The test endpoint_url is working."})
 
+        @self.app.get("/logout")
+        async def root_logout():
+            """
+            Root logout endpoint that redirects to the interface logout handler.
+            This ensures the /logout URL in templates works correctly.
+            """
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url="/interface/logout", status_code=302)
+
     def get_app(self):
         return self.app
 
