@@ -69,11 +69,11 @@ class App:
         @self.app.get("/logout")
         async def root_logout():
             """
-            Root logout endpoint that redirects to the interface logout handler.
+            Root logout endpoint that redirects to the auth logout handler.
             This ensures the /logout URL in templates works correctly.
             """
             from fastapi.responses import RedirectResponse
-            return RedirectResponse(url="/interface/logout", status_code=302)
+            return RedirectResponse(url="/auth/logout", status_code=302)
 
     def get_app(self):
         return self.app
