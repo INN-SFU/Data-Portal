@@ -14,6 +14,12 @@ def before_all(context):
     context.project_root = project_root
     context.config_file = project_root / "config.yaml"
     
+    # Ensure we're in the correct directory for running setup scripts
+    os.chdir(project_root)
+    
+    # Set up test environment variables
+    os.environ.setdefault('PYTHONPATH', str(project_root))
+    
 def before_scenario(context, scenario):
     """Setup executed before each scenario"""
     pass
