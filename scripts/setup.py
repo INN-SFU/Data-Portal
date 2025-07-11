@@ -15,6 +15,8 @@ import time
 import subprocess
 from pathlib import Path
 
+from core.management.users.models import UserCreate
+
 # Add the project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -996,14 +998,17 @@ def create_application_admin_policy():
             base_url=keycloak_config['domain']
         )
         
-        # Get the admin user UUID from Keycloak
-        try:
-            admin_uuid = user_manager.get_user_uuid('admin')
-            print(f"   Found admin user UUID: {admin_uuid}")
-        except KeyError:
-            print("   ⚠ Admin user not found in Keycloak - ensure Keycloak is configured first")
-            return False
-        
+        # Create a new app_admin
+        new_user = UserCreate(
+            username='app_admin',
+            email='app_admin@localhost',
+            roles=['user', 'admin']
+        )
+        user_manager.create_user(new_user)
+
+        # Get the UUID of the newly created user
+        admin_uuid = user_manager.get_user_uuid(new_user.username)
+
         # Get user policies directory from environment
         user_policies_path = os.getenv('USER_POLICIES')
         if not user_policies_path:
