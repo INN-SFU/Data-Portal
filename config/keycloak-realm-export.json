@@ -121,7 +121,6 @@
     "directAccessGrantsEnabled" : true,
     "serviceAccountsEnabled" : true,
     "authorizationServicesEnabled" : false,
-    "serviceAccountsEnabled" : true,
     "attributes" : {
       "saml.assertion.signature" : "false",
       "saml.force.post.binding" : "false", 
