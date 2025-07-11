@@ -1102,7 +1102,8 @@ def main():
         
         # Step 7: Run tests (optional, don't fail setup if tests fail)
         if validation_success:
-            run_tests()
+            pass
+            #run_tests()
         
     elif args.all or not any([args.create_dirs, args.generate_secrets, args.validate, args.docker, 
                              args.start_keycloak, args.configure_keycloak, args.create_admin, args.create_admin_policy, args.run_tests]):
