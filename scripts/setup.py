@@ -952,6 +952,64 @@ def run_tests():
         return False
 
 
+def create_application_admin_policy():
+    """Create policy file for the application admin user."""
+    print("Creating application admin user policy file...")
+    
+    try:
+        # Load environment variables from .env file
+        from dotenv import load_dotenv
+        env_file = project_root / 'core' / 'settings' / '.env'
+        load_dotenv(env_file)
+        
+        # Load configuration to get paths
+        from envyaml import EnvYAML
+        config_file = project_root / 'config.yaml'
+        config = EnvYAML(str(config_file), strict=False)
+        
+        # Get the admin user details from Keycloak
+        from core.settings.managers.users.keycloak.KeycloakUserManager import KeycloakUserManager
+        keycloak_config = config['keycloak']
+        
+        user_manager = KeycloakUserManager(
+            realm_name=keycloak_config['realm'],
+            client_id=keycloak_config['admin_client_id'],
+            client_secret=keycloak_config['admin_client_secret'],
+            base_url=keycloak_config['domain']
+        )
+        
+        # Get the admin user UUID from Keycloak
+        try:
+            admin_uuid = user_manager.get_user_uuid('admin')
+            print(f"   Found admin user UUID: {admin_uuid}")
+        except KeyError:
+            print("   ⚠ Admin user not found in Keycloak - ensure Keycloak is configured first")
+            return False
+        
+        # Create user_policies directory if it doesn't exist
+        user_policies_dir = project_root / 'core' / 'settings' / 'managers' / 'policies' / 'casbin' / 'user_policies'
+        user_policies_dir.mkdir(parents=True, exist_ok=True)
+        print(f"   ✓ Created user policies directory: {user_policies_dir}")
+        
+        # Create the admin user's policy file
+        admin_policy_file = user_policies_dir / f"{admin_uuid}.policies"
+        
+        if admin_policy_file.exists():
+            print(f"   ✓ Admin policy file already exists: {admin_policy_file}")
+            return True
+        
+        # Create empty policy file (similar to create_user_policy_store)
+        with open(admin_policy_file, 'w') as f:
+            f.write("")
+        
+        print(f"   ✓ Created admin policy file: {admin_policy_file}")
+        return True
+        
+    except Exception as e:
+        print(f"   ✗ Error creating admin policy file: {e}")
+        return False
+
+
 def create_docker_files():
     """Create Docker configuration files."""
     print("Creating Docker configuration files...")
@@ -980,6 +1038,8 @@ def main():
                        help='Configure Keycloak realm and get client secret')
     parser.add_argument('--create-admin', action='store_true',
                        help='Verify and configure app admin user (created during realm import)')
+    parser.add_argument('--create-admin-policy', action='store_true',
+                       help='Create policy file for application admin user')
     parser.add_argument('--run-tests', action='store_true',
                        help='Run test suite to validate setup')
     parser.add_argument('--full-setup', action='store_true',
@@ -1008,21 +1068,23 @@ def main():
                 # Step 3: Configure Keycloak realm and get client secret
                 client_secret = configure_keycloak_realm()
                 if client_secret:
-                    # Step 4: Get admin user credentials  
+                    # Step 4: Create admin user policy file
+                    create_application_admin_policy()
+                    # Step 5: Get admin user credentials  
                     admin_credentials = get_admin_user_credentials()
                 else:
                     print("⚠ Continuing without client secret - you may need to configure manually")
                     admin_credentials = get_admin_user_credentials()
         
-        # Step 5: Validate everything
+        # Step 6: Validate everything
         validation_success = validate_environment()
         
-        # Step 6: Run tests (optional, don't fail setup if tests fail)
+        # Step 7: Run tests (optional, don't fail setup if tests fail)
         if validation_success:
             run_tests()
         
     elif args.all or not any([args.create_dirs, args.generate_secrets, args.validate, args.docker, 
-                             args.start_keycloak, args.configure_keycloak, args.create_admin, args.run_tests]):
+                             args.start_keycloak, args.configure_keycloak, args.create_admin, args.create_admin_policy, args.run_tests]):
         # Legacy setup mode
         create_directory_structure()
         create_config_files(args.environment)
@@ -1032,7 +1094,7 @@ def main():
         validate_environment()
     else:
         # Individual options - ensure basic setup first
-        setup_needed = any([args.start_keycloak, args.configure_keycloak, args.create_admin, args.validate])
+        setup_needed = any([args.start_keycloak, args.configure_keycloak, args.create_admin, args.create_admin_policy, args.validate])
         
         if setup_needed:
             # Ensure basic files exist for individual commands
@@ -1061,6 +1123,11 @@ def main():
             else:
                 print("❌ App admin user verification failed!")
                 print("   Check realm import - user should be created automatically")
+        if args.create_admin_policy:
+            if create_application_admin_policy():
+                print("✅ Application admin policy file created successfully!")
+            else:
+                print("❌ Failed to create application admin policy file!")
         if args.run_tests:
             run_tests()
         if args.validate:
