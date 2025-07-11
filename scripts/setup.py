@@ -1144,8 +1144,8 @@ def main():
             
             if admin_configured:
                 print("✅ App admin user verified successfully!")
-                print("   Username: admin")
-                print("   Password: admin123")
+                print("   Username: app_admin")
+                print("   Password: admin")
                 print("   Roles: admin, user (from realm import)")
                 print("   Ready to login at: http://localhost:8000")
             else:
