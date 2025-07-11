@@ -268,6 +268,22 @@ class TestAdminUserAuthentication:
     
     def test_auth_endpoint_dependency_chain(self):
         """Test the authentication dependency chain."""
+        # Load environment variables before importing modules
+        from dotenv import load_dotenv
+        import os
+        from pathlib import Path
+        
+        # Load .env file from correct location
+        project_root = Path(__file__).parent.parent.parent
+        env_path = project_root / 'core' / 'settings' / '.env'
+        load_dotenv(env_path)
+        
+        # Set paths to absolute values like main.py does
+        path_envs = ['ENDPOINT_CONFIGS', 'ENFORCER_MODEL', 'ENFORCER_POLICY', 'USER_POLICIES', 'JINJA_TEMPLATES', 'STATIC_FILES']
+        for path_env in path_envs:
+            if os.getenv(path_env):
+                os.environ[path_env] = str(project_root / os.getenv(path_env).lstrip('./'))
+        
         from api.v0_1.endpoints.service.auth import decode_token
         from fastapi import HTTPException, Request
         from unittest.mock import Mock
