@@ -6,8 +6,8 @@ from datetime import timedelta
 
 
 class Policy(BaseModel):
-    user_id: Union[UUID, None] = None
-    endpoint_id: Union[UUID, None] = None
+    user_uuid: Union[UUID, None] = None
+    endpoint_uuid: Union[UUID, None] = None
     resource: Optional[str] = None
     action: Optional[str] = None
 

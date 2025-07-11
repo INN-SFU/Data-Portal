@@ -180,7 +180,7 @@ async def get_policies(policy_filter: Policy = Depends(),
     if policy_filter is None:
         policy_filter = Policy(
             user_uuid=None,
-            access_point_uuid=None,
+            endpoint_uuid=None,
             resource=None,
             action=None
         )
@@ -313,9 +313,10 @@ async def create_new_endpoint(
     endpoint_manager.save_configuration()
 
     # Add a policy so the creating user can administer the new endpoint
-    uuid = token_payload.get("sub")
+    user_uuid_str = token_payload.get("sub")
+    user_uuid = UUID(user_uuid_str)
     new_admin_policy = Policy(
-        user_uuid=uuid,
+        user_uuid=user_uuid,
         endpoint_uuid=access_point_uid,
         resource='.*',
         action='admin'
