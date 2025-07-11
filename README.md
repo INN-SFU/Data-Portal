@@ -35,7 +35,7 @@ python3 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # 3. Install Python dependencies
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 
 # 4. Run FULL automated setup (does everything!)
 python scripts/setup.py --full-setup
@@ -307,7 +307,7 @@ AMS/
 1. **Virtual Environment Issues**
    - Error: `ModuleNotFoundError: No module named 'xyz'`
    - Solution: Ensure virtual environment is activated: `source .venv/bin/activate`
-   - Reinstall dependencies: `pip install -r requirements.txt`
+   - Reinstall dependencies: `pip install -r requirements-dev.txt`
    - If still having issues, delete `.venv` and recreate: `rm -rf .venv && python3 -m venv .venv`
 
 2. **Python Command Not Found**
