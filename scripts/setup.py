@@ -76,7 +76,8 @@ def create_directory_structure():
     required_dirs = [
         'core/settings/security',
         'core/settings/managers/endpoints/configs',
-        'core/settings/managers/policies/casbin'
+        'core/settings/managers/policies/casbin',
+        'core/settings/managers/policies/user_policies'
     ]
     
     for dir_path in required_dirs:
