@@ -83,6 +83,23 @@ def create_directory_structure():
         full_path = project_root / dir_path
         full_path.mkdir(parents=True, exist_ok=True)
         print(f"✓ Ensured {full_path} exists")
+    
+    # Create user policies directory from .env configuration
+    try:
+        from dotenv import load_dotenv
+        env_file = project_root / 'core' / 'settings' / '.env'
+        if env_file.exists():
+            load_dotenv(env_file)
+            user_policies_path = os.getenv('USER_POLICIES')
+            if user_policies_path:
+                # Convert relative path to absolute
+                if user_policies_path.startswith('./'):
+                    user_policies_path = user_policies_path[2:]
+                user_policies_dir = project_root / user_policies_path
+                user_policies_dir.mkdir(parents=True, exist_ok=True)
+                print(f"✓ Created user policies directory: {user_policies_dir}")
+    except Exception as e:
+        print(f"⚠ Could not create user policies directory: {e}")
 
 
 def generate_secrets():
@@ -986,10 +1003,14 @@ def create_application_admin_policy():
             print("   ⚠ Admin user not found in Keycloak - ensure Keycloak is configured first")
             return False
         
-        # Create user_policies directory if it doesn't exist
-        user_policies_dir = project_root / 'core' / 'settings' / 'managers' / 'policies' / 'casbin' / 'user_policies'
-        user_policies_dir.mkdir(parents=True, exist_ok=True)
-        print(f"   ✓ Created user policies directory: {user_policies_dir}")
+        # Get user policies directory from environment
+        user_policies_path = os.getenv('USER_POLICIES')
+        if not user_policies_path:
+            print("   ⚠ USER_POLICIES environment variable not set")
+            return False
+        if user_policies_path.startswith('./'):
+            user_policies_path = user_policies_path[2:]
+        user_policies_dir = project_root / user_policies_path
         
         # Create the admin user's policy file
         admin_policy_file = user_policies_dir / f"{admin_uuid}.policies"
