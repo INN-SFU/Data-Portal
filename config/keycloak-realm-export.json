@@ -37,7 +37,6 @@
   },
   "groups" : [ ],
   "users" : [ {
-    "id" : "admin-user-id",
     "username" : "admin",
     "email" : "admin@localhost",
     "firstName" : "Admin",
@@ -52,6 +51,13 @@
       "value" : "admin123",
       "temporary" : false
     } ]
+  }, {
+    "username" : "service-account-ams-portal-admin",
+    "enabled" : true,
+    "serviceAccountClientId" : "ams-portal-admin",
+    "clientRoles" : {
+      "realm-management" : [ "view-users", "manage-users", "query-users", "view-realm", "manage-realm" ]
+    }
   } ],
   "clients" : [ {
     "id" : "ui-client-id",
@@ -135,16 +141,6 @@
       "saml.authnstatement" : "false",
       "display.on.consent.screen" : "false",
       "saml.onetimeuse.condition" : "false"
-    }
-  } ],
-  "serviceAccountUsers" : [ {
-    "id" : "service-account-ams-portal-admin",
-    "username" : "service-account-ams-portal-admin",
-    "enabled" : true,
-    "serviceAccountClientId" : "ams-portal-admin",
-    "realmRoles" : [ "admin", "user" ],
-    "clientRoles" : {
-      "realm-management" : [ "manage-users", "view-users", "query-users", "manage-realm", "view-realm", "query-realms", "manage-clients", "view-clients", "query-clients" ]
     }
   } ],
   "clientScopes" : [ ],

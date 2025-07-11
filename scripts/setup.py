@@ -156,7 +156,7 @@ def validate_environment():
     return True
 
 
-def start_keycloak():
+def start_keycloak(force_rebuild=False):
     """Start Keycloak service."""
     print("Starting Keycloak...")
     
@@ -164,9 +164,18 @@ def start_keycloak():
         # Check if Keycloak is already running
         result = subprocess.run(['docker', 'ps', '--filter', 'name=ams-keycloak', '--format', '{{.Names}}'], 
                               capture_output=True, text=True, cwd=project_root)
-        if 'ams-keycloak' in result.stdout:
-            print("✓ Keycloak is already running")
-        else:
+        
+        if force_rebuild or 'ams-keycloak' not in result.stdout:
+            if force_rebuild and 'ams-keycloak' in result.stdout:
+                print("🔄 Force rebuilding Keycloak...")
+                # Stop and remove existing container
+                subprocess.run(['docker', 'stop', 'ams-keycloak'], check=False, cwd=project_root)
+                subprocess.run(['docker', 'rm', 'ams-keycloak'], check=False, cwd=project_root)
+                
+                # Remove data volume to ensure fresh import
+                subprocess.run(['docker', 'volume', 'rm', 'deployment_keycloak_data'], check=False, cwd=project_root)
+                print("✓ Cleaned up existing Keycloak resources")
+            
             # Start Keycloak
             subprocess.run(['docker', 'compose', '-f', 'deployment/docker-compose.yml', 'up', 'keycloak', '-d'], 
                          check=True, cwd=project_root)
@@ -175,6 +184,8 @@ def start_keycloak():
             # Wait for Keycloak to be ready
             print("⏳ Waiting for Keycloak to be ready...")
             time.sleep(60)  # Give Keycloak more time to start
+        else:
+            print("✓ Keycloak is already running")
             
         return True
     except subprocess.CalledProcessError as e:
@@ -294,6 +305,12 @@ def configure_keycloak_realm():
         
         if realm_response.status_code == 200:
             print("✓ ams-portal realm found (auto-imported successfully)")
+            
+            # Configure service account permissions
+            configure_service_account_permissions(access_token)
+            
+            # Configure client scopes for service account tokens
+            configure_client_scopes(access_token)
             
             # Get client secret using REST API
             secret = get_keycloak_client_secret_via_rest_api(access_token)
@@ -498,6 +515,204 @@ def configure_keycloak_via_rest_api():
         return None
 
 
+def configure_service_account_permissions(access_token):
+    """Configure service account permissions for the admin client."""
+    try:
+        import requests
+        
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        print("   Configuring service account permissions...")
+        
+        # Get the service account user ID
+        users_url = 'http://localhost:8080/admin/realms/ams-portal/users'
+        params = {'username': 'service-account-ams-portal-admin'}
+        
+        users_response = requests.get(users_url, headers=headers, params=params)
+        if users_response.status_code != 200:
+            print(f"   ⚠ Could not find service account user: {users_response.status_code}")
+            return False
+            
+        users = users_response.json()
+        if not users:
+            print("   ⚠ Service account user not found")
+            return False
+            
+        service_account_id = users[0]['id']
+        print(f"   Found service account user: {service_account_id}")
+        
+        # Get realm-management client ID
+        clients_url = 'http://localhost:8080/admin/realms/ams-portal/clients'
+        clients_params = {'clientId': 'realm-management'}
+        
+        clients_response = requests.get(clients_url, headers=headers, params=clients_params)
+        if clients_response.status_code != 200:
+            print(f"   ⚠ Could not find realm-management client: {clients_response.status_code}")
+            return False
+            
+        clients = clients_response.json()
+        if not clients:
+            print("   ⚠ realm-management client not found")
+            return False
+            
+        realm_mgmt_client_id = clients[0]['id']
+        print(f"   Found realm-management client: {realm_mgmt_client_id}")
+        
+        # Get available realm-management roles
+        roles_url = f'http://localhost:8080/admin/realms/ams-portal/clients/{realm_mgmt_client_id}/roles'
+        roles_response = requests.get(roles_url, headers=headers)
+        
+        if roles_response.status_code != 200:
+            print(f"   ⚠ Could not get realm-management roles: {roles_response.status_code}")
+            return False
+            
+        all_roles = roles_response.json()
+        
+        # Find the roles we need
+        required_role_names = ['view-users', 'manage-users', 'query-users', 'view-realm', 'manage-realm']
+        roles_to_assign = []
+        
+        for role_name in required_role_names:
+            role = next((r for r in all_roles if r['name'] == role_name), None)
+            if role:
+                roles_to_assign.append(role)
+                print(f"   Found role: {role_name}")
+            else:
+                print(f"   ⚠ Role not found: {role_name}")
+        
+        if not roles_to_assign:
+            print("   ⚠ No roles found to assign")
+            return False
+        
+        # Assign roles to service account
+        assign_url = f'http://localhost:8080/admin/realms/ams-portal/users/{service_account_id}/role-mappings/clients/{realm_mgmt_client_id}'
+        
+        assign_response = requests.post(assign_url, headers=headers, json=roles_to_assign)
+        
+        if assign_response.status_code in [204, 200]:
+            print(f"   ✓ Assigned {len(roles_to_assign)} realm-management roles to service account")
+            return True
+        else:
+            print(f"   ⚠ Failed to assign roles: {assign_response.status_code} - {assign_response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"   ⚠ Error configuring service account permissions: {e}")
+        return False
+
+
+def configure_client_scopes(access_token):
+    """Configure client scopes for service account tokens to include roles."""
+    try:
+        import requests
+        
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        print("   Configuring client scopes for service account...")
+        
+        # First, create the 'roles' client scope if it doesn't exist
+        roles_scope_data = {
+            "name": "roles",
+            "description": "OpenID Connect scope for add user roles to the access token",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "true",
+                "display.on.consent.screen": "true"
+            },
+            "protocolMappers": [
+                {
+                    "name": "client roles",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usermodel-client-role-mapper",
+                    "consentRequired": False,
+                    "config": {
+                        "userinfo.token.claim": "true",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "resource_access.${client_id}.roles",
+                        "jsonType.label": "String",
+                        "multivalued": "true"
+                    }
+                },
+                {
+                    "name": "realm roles",
+                    "protocol": "openid-connect", 
+                    "protocolMapper": "oidc-usermodel-realm-role-mapper",
+                    "consentRequired": False,
+                    "config": {
+                        "userinfo.token.claim": "true",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "realm_access.roles",
+                        "jsonType.label": "String",
+                        "multivalued": "true"
+                    }
+                }
+            ]
+        }
+        
+        # Create the roles client scope
+        create_scope_url = 'http://localhost:8080/admin/realms/ams-portal/client-scopes'
+        create_response = requests.post(create_scope_url, headers=headers, json=roles_scope_data)
+        
+        if create_response.status_code in [201, 409]:  # Created or already exists
+            print("   ✓ 'roles' client scope configured")
+        else:
+            print(f"   ⚠ Failed to create roles scope: {create_response.status_code}")
+        
+        # Get the admin client ID
+        clients_url = 'http://localhost:8080/admin/realms/ams-portal/clients'
+        clients_params = {'clientId': 'ams-portal-admin'}
+        
+        clients_response = requests.get(clients_url, headers=headers, params=clients_params)
+        if clients_response.status_code != 200:
+            print(f"   ⚠ Could not find admin client: {clients_response.status_code}")
+            return False
+            
+        clients = clients_response.json()
+        if not clients:
+            print("   ⚠ Admin client not found")
+            return False
+            
+        admin_client_id = clients[0]['id']
+        
+        # Get the roles client scope ID
+        scopes_response = requests.get('http://localhost:8080/admin/realms/ams-portal/client-scopes', headers=headers)
+        if scopes_response.status_code != 200:
+            print(f"   ⚠ Could not get client scopes: {scopes_response.status_code}")
+            return False
+            
+        scopes = scopes_response.json()
+        roles_scope = next((s for s in scopes if s['name'] == 'roles'), None)
+        
+        if not roles_scope:
+            print("   ⚠ Roles scope not found")
+            return False
+            
+        roles_scope_id = roles_scope['id']
+        
+        # Add the roles scope to the admin client's default scopes
+        add_scope_url = f'http://localhost:8080/admin/realms/ams-portal/clients/{admin_client_id}/default-client-scopes/{roles_scope_id}'
+        add_scope_response = requests.put(add_scope_url, headers=headers)
+        
+        if add_scope_response.status_code in [204, 200]:
+            print("   ✓ Added 'roles' scope to admin client")
+            return True
+        else:
+            print(f"   ⚠ Failed to add scope to client: {add_scope_response.status_code}")
+            return False
+            
+    except Exception as e:
+        print(f"   ⚠ Error configuring client scopes: {e}")
+        return False
+
+
 def get_keycloak_client_secret_via_rest_api(access_token):
     """Get client secret using REST API."""
     try:
@@ -679,11 +894,21 @@ def update_config_with_secret(client_secret):
         with open(config_file, 'r') as f:
             content = f.read()
         
-        # Replace the placeholder with actual secret
-        content = content.replace('your-admin-client-secret', client_secret)
+        # Use regex to replace the admin_client_secret value regardless of what it currently is
+        import re
+        
+        # Match the admin_client_secret line and replace the value after the |
+        pattern = r'(admin_client_secret:\s*\$KEYCLOAK_ADMIN_CLIENT_SECRET\|)[^|\n]+'
+        replacement = f'\\1{client_secret}'
+        
+        updated_content = re.sub(pattern, replacement, content)
+        
+        # If the regex didn't match, try the simpler placeholder replacement
+        if updated_content == content:
+            updated_content = content.replace('your-admin-client-secret', client_secret)
         
         with open(config_file, 'w') as f:
-            f.write(content)
+            f.write(updated_content)
             
         print("✓ Updated config.yaml with client secret")
         
@@ -749,6 +974,8 @@ def main():
                        help='Create Docker configuration files')
     parser.add_argument('--start-keycloak', action='store_true',
                        help='Start Keycloak service')
+    parser.add_argument('--force-keycloak-rebuild', action='store_true',
+                       help='Force rebuild Keycloak with fresh configuration (removes existing data)')
     parser.add_argument('--configure-keycloak', action='store_true',
                        help='Configure Keycloak realm and get client secret')
     parser.add_argument('--create-admin', action='store_true',
@@ -817,8 +1044,8 @@ def main():
             create_directory_structure()
         if args.generate_secrets:
             generate_secrets()
-        if args.start_keycloak:
-            start_keycloak()
+        if args.start_keycloak or args.force_keycloak_rebuild:
+            start_keycloak(force_rebuild=args.force_keycloak_rebuild)
             wait_for_keycloak()
         if args.configure_keycloak:
             configure_keycloak_realm()

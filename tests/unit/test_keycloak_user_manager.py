@@ -190,10 +190,22 @@ class TestKeycloakUserManagerIntegration:
     
     def setup_method(self):
         """Set up integration test fixtures."""
-        self.realm_name = os.getenv("KEYCLOAK_REALM", "ams-portal")
-        self.client_id = os.getenv("KEYCLOAK_ADMIN_CLIENT_ID", "ams-portal-admin")
-        self.client_secret = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET")
-        self.base_url = os.getenv("KEYCLOAK_DOMAIN", "http://localhost:8080")
+        # Load config using EnvYAML like the application does
+        try:
+            from envyaml import EnvYAML
+            config = EnvYAML('config.yaml', strict=False)
+            keycloak_config = config['keycloak']
+            
+            self.realm_name = keycloak_config['realm']
+            self.client_id = keycloak_config['admin_client_id']
+            self.client_secret = keycloak_config['admin_client_secret']
+            self.base_url = keycloak_config['domain']
+        except Exception:
+            # Fallback to environment variables
+            self.realm_name = os.getenv("KEYCLOAK_REALM", "ams-portal")
+            self.client_id = os.getenv("KEYCLOAK_ADMIN_CLIENT_ID", "ams-portal-admin")
+            self.client_secret = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET")
+            self.base_url = os.getenv("KEYCLOAK_DOMAIN", "http://localhost:8080")
     
     @pytest.mark.integration
     def test_real_keycloak_connection(self):
@@ -228,8 +240,15 @@ class TestKeycloakUserManagerIntegration:
     @pytest.mark.integration
     def test_keycloak_permissions_fix(self):
         """Test that the Keycloak permissions fix resolves the get_all_users issue."""
+        print(f"Debug: client_secret = '{self.client_secret}' (type: {type(self.client_secret)})")
+        print(f"Debug: bool(client_secret) = {bool(self.client_secret)}")
+        print(f"Debug: client_secret is None = {self.client_secret is None}")
+        print(f"Debug: len(client_secret) = {len(str(self.client_secret))}")
         if not self.client_secret:
+            print("SKIPPING: client_secret evaluated as False")
             pytest.skip("KEYCLOAK_ADMIN_CLIENT_SECRET not set")
+        else:
+            print("NOT SKIPPING: client_secret is valid")
         
         from core.settings.managers.users.keycloak.KeycloakUserManager import KeycloakUserManager
         from keycloak.exceptions import KeycloakAuthenticationError
@@ -253,6 +272,9 @@ class TestKeycloakUserManagerIntegration:
             pytest.fail(f"Authentication error - fix not working: {e}")
         except Exception as e:
             # Other errors might indicate Keycloak is not running
+            print(f"Exception caught: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             pytest.skip(f"Keycloak may not be running: {e}")
 
 
