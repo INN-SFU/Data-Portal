@@ -174,25 +174,6 @@ python scripts/setup.py --run-tests
 python scripts/setup.py --validate
 ```
 
-### 2. Manual Configuration (Advanced Users)
-
-**⚠️ Not recommended for new developers - use `--full-setup` instead**
-
-If you need manual control:
-```bash
-# Copy templates and edit manually
-cp config/config.template.yaml config.yaml
-cp config/.env.template core/settings/.env
-# Edit config.yaml as needed
-```
-
-## Storage Endpoints
-
-Configure storage endpoints in `core/settings/managers/endpoints/configs/`:
-- S3 endpoints: Configure with bucket and credentials
-- POSIX endpoints: Set local filesystem paths
-- Swift endpoints: OpenStack Swift configuration
-
 ## Deployment
 
 ### Development
