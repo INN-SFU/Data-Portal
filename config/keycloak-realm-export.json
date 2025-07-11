@@ -119,7 +119,34 @@
     "standardFlowEnabled" : false,
     "implicitFlowEnabled" : false,
     "directAccessGrantsEnabled" : true,
-    "serviceAccountsEnabled" : true
+    "serviceAccountsEnabled" : true,
+    "authorizationServicesEnabled" : false,
+    "serviceAccountsEnabled" : true,
+    "attributes" : {
+      "saml.assertion.signature" : "false",
+      "saml.force.post.binding" : "false", 
+      "saml.multivalued.roles" : "false",
+      "saml.encrypt" : "false",
+      "saml.server.signature" : "false",
+      "saml.server.signature.keyinfo.ext" : "false",
+      "exclude.session.state.from.auth.response" : "false",
+      "saml_force_name_id_format" : "false",
+      "saml.client.signature" : "false",
+      "tls.client.certificate.bound.access.tokens" : "false",
+      "saml.authnstatement" : "false",
+      "display.on.consent.screen" : "false",
+      "saml.onetimeuse.condition" : "false"
+    }
+  } ],
+  "serviceAccountUsers" : [ {
+    "id" : "service-account-ams-portal-admin",
+    "username" : "service-account-ams-portal-admin",
+    "enabled" : true,
+    "serviceAccountClientId" : "ams-portal-admin",
+    "realmRoles" : [ "admin", "user" ],
+    "clientRoles" : {
+      "realm-management" : [ "manage-users", "view-users", "query-users", "manage-realm", "view-realm", "query-realms", "manage-clients", "view-clients", "query-clients" ]
+    }
   } ],
   "clientScopes" : [ ],
   "defaultDefaultClientScopes" : [ "role_list", "profile", "email", "roles", "web-origins" ],
