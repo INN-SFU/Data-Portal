@@ -15,9 +15,25 @@ import time
 import subprocess
 from pathlib import Path
 
-# Add the project root to Python path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+def find_project_root():
+    """Find the project root by looking for key files."""
+    current_dir = Path(__file__).parent
+    
+    # Look for key files that indicate project root
+    key_files = ['requirements.txt', 'frontend', 'deployment']
+    
+    # Search up the directory tree
+    for parent in [current_dir] + list(current_dir.parents):
+        if all((parent / key).exists() for key in key_files):
+            return parent
+    
+    # Fallback to current backend directory if we can't find project root
+    return current_dir.parent
+
+# Find the actual project root dynamically
+project_root = find_project_root()
+backend_root = project_root / 'backend'
+sys.path.insert(0, str(backend_root))
 
 from core.settings.security._generate_secrets import _generate_secrets
 
@@ -27,8 +43,8 @@ def create_config_files(environment='development'):
     print(f"Setting up {environment} configuration...")
     
     # Create config.yaml from template
-    config_template = project_root / 'config' / 'config.template.yaml'
-    config_file = project_root / 'config.yaml'
+    config_template = backend_root / 'config' / 'config.template.yaml'
+    config_file = backend_root / 'config.yaml'
     
     if not config_file.exists():
         shutil.copy(config_template, config_file)
@@ -51,8 +67,8 @@ def create_config_files(environment='development'):
         print(f"⚠ {config_file} already exists, skipping")
     
     # Create .env file
-    env_template = project_root / 'config' / '.env.template'
-    env_file = project_root / 'core' / 'settings' / '.env'
+    env_template = backend_root / 'config' / '.env.template'
+    env_file = backend_root / 'core' / 'settings' / '.env'
     
     if not env_file.exists():
         # Ensure directory exists
@@ -68,7 +84,7 @@ def create_directory_structure():
     print("Creating directories...")
     
     # Create logs directory
-    logs_dir = project_root / 'loggers' / 'logs'
+    logs_dir = backend_root / 'loggers' / 'logs'
     logs_dir.mkdir(parents=True, exist_ok=True)
     print(f"✓ Created {logs_dir}")
     
@@ -81,14 +97,14 @@ def create_directory_structure():
     ]
     
     for dir_path in required_dirs:
-        full_path = project_root / dir_path
+        full_path = backend_root / dir_path
         full_path.mkdir(parents=True, exist_ok=True)
         print(f"✓ Ensured {full_path} exists")
     
     # Create user policies directory from .env configuration
     try:
         from dotenv import load_dotenv
-        env_file = project_root / 'core' / 'settings' / '.env'
+        env_file = backend_root / 'core' / 'settings' / '.env'
         if env_file.exists():
             load_dotenv(env_file)
             user_policies_path = os.getenv('USER_POLICIES')
@@ -96,7 +112,7 @@ def create_directory_structure():
                 # Convert relative path to absolute
                 if user_policies_path.startswith('./'):
                     user_policies_path = user_policies_path[2:]
-                user_policies_dir = project_root / user_policies_path
+                user_policies_dir = backend_root / user_policies_path
                 user_policies_dir.mkdir(parents=True, exist_ok=True)
                 print(f"✓ Created user policies directory: {user_policies_dir}")
     except Exception as e:
@@ -106,7 +122,7 @@ def create_directory_structure():
 def generate_secrets():
     """Generate cryptographic secrets."""
     print("Generating secrets...")
-    secrets_file = project_root / 'core' / 'settings' / 'security' / '.secrets'
+    secrets_file = backend_root / 'core' / 'settings' / 'security' / '.secrets'
     
     if not secrets_file.exists():
         # Ensure directory exists
@@ -138,13 +154,13 @@ def validate_environment():
     
     missing_files = []
     for file_path in required_files:
-        full_path = project_root / file_path
+        full_path = backend_root / file_path
         if not full_path.exists():
             missing_files.append(file_path)
     
     missing_dirs = []
     for dir_path in required_dirs:
-        full_path = project_root / dir_path
+        full_path = backend_root / dir_path
         if not full_path.exists():
             missing_dirs.append(dir_path)
     
@@ -163,7 +179,7 @@ def validate_environment():
     print("✓ All required configuration files and directories present")
     
     # Check if secrets have been generated
-    secrets_file = project_root / 'core' / 'settings' / 'security' / '.secrets'
+    secrets_file = backend_root / 'core' / 'settings' / 'security' / '.secrets'
     with open(secrets_file, 'r') as f:
         content = f.read()
         if 'REPLACE_WITH_GENERATED_VALUE' in content:
@@ -195,7 +211,8 @@ def start_keycloak(force_rebuild=False):
                 print("✓ Cleaned up existing Keycloak resources")
             
             # Start Keycloak
-            subprocess.run(['docker', 'compose', '-f', 'deployment/docker-compose.yml', 'up', 'keycloak', '-d'], 
+            docker_compose_path = project_root / 'deployment' / 'docker-compose.yml'
+            subprocess.run(['docker', 'compose', '-f', str(docker_compose_path), 'up', 'keycloak', '-d'], 
                          check=True, cwd=project_root)
             print("✓ Keycloak service started")
             
@@ -478,7 +495,7 @@ def configure_keycloak_via_rest_api():
         import json
         
         # Load the realm configuration
-        realm_file = project_root / 'config' / 'keycloak-realm-export.json'
+        realm_file = backend_root / 'config' / 'keycloak-realm-export.json'
         if not realm_file.exists():
             print("✗ Keycloak realm export file not found")
             return None
@@ -903,7 +920,7 @@ def get_keycloak_client_secret():
 def update_config_with_secret(client_secret):
     """Update config.yaml with the client secret."""
     try:
-        config_file = project_root / 'config.yaml'
+        config_file = backend_root / 'config.yaml'
         
         # Ensure config file exists
         if not config_file.exists():
@@ -953,7 +970,7 @@ def run_tests():
     try:
         # Run BDD tests
         result = subprocess.run(['behave', 'tests/features/', '-v'], 
-                              capture_output=True, text=True, cwd=project_root)
+                              capture_output=True, text=True, cwd=backend_root)
         
         if result.returncode == 0:
             print("✓ All tests passed")
@@ -977,12 +994,12 @@ def create_application_admin_policy():
     try:
         # Load environment variables from .env file
         from dotenv import load_dotenv
-        env_file = project_root / 'core' / 'settings' / '.env'
+        env_file = backend_root / 'core' / 'settings' / '.env'
         load_dotenv(env_file)
         
         # Load configuration to get paths
         from envyaml import EnvYAML
-        config_file = project_root / 'config.yaml'
+        config_file = backend_root / 'config.yaml'
         config = EnvYAML(str(config_file), strict=False)
         
         # Get the admin user details from Keycloak
@@ -1011,7 +1028,7 @@ def create_application_admin_policy():
             return False
         if user_policies_path.startswith('./'):
             user_policies_path = user_policies_path[2:]
-        user_policies_dir = project_root / user_policies_path
+        user_policies_dir = backend_root / user_policies_path
         
         # Create the admin user's policy file
         admin_policy_file = user_policies_dir / f"{admin_uuid}.policies"
