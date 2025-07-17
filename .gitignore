@@ -77,3 +77,32 @@ temp/
 
 # Documentation build
 docs/_build/
+
+# frontend configuration
+# Node.js dependencies
+/frontend/node_modules/
+
+# Production build
+/frontend/build/
+
+# Runtime logs
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+
+# OS files
+/frontend/.DS_Store
+
+# IDE/editor folders
+/frontend/.idea/
+/frontend/.vscode/
+
+# Environment variables
+/frontend/.env*
+
+# Testing
+/frontend/coverage/
+
+/frontend/package-lock.json
+/frontend/yarn.lock
+
