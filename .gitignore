@@ -28,24 +28,24 @@ ENV/
 .env
 .venv
 
-# Configuration files (contain sensitive data)
-config.yaml
-core/settings/.env
-core/settings/security/.secrets
-*.policies
+# Configuration files (contain sensitive data) - now in backend/
+/backend/config.yaml
+/backend/core/settings/.env
+/backend/core/settings/security/.secrets
+/backend/*.policies
 
-# Legacy authentication data
-core/authentication/user_data/
-core/authentication/uuids.json
-core/settings/endpoints/agents.json
+# Legacy authentication data - now in backend/
+/backend/core/authentication/user_data/
+/backend/core/authentication/uuids.json
+/backend/core/settings/endpoints/agents.json
 
-# OpenStack/Cloud credentials
-core/connectivity/arbutus/*.sh
-core/settings/security/def-rmcintos-dev-openrc.sh
+# OpenStack/Cloud credentials - now in backend/
+/backend/core/connectivity/arbutus/*.sh
+/backend/core/settings/security/def-rmcintos-dev-openrc.sh
 
-# Logs
-*.log
-loggers/logs/
+# Logs - now in backend/
+/backend/*.log
+/backend/loggers/logs/
 
 # IDE
 .vscode/
