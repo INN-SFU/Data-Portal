@@ -17,8 +17,10 @@ For detailed information, see the [project wiki](https://github.com/INN-SFU/Data
 - **Multi-Storage Support**: S3, POSIX, OpenStack Swift
 - **Policy-Based Access Control**: Casbin integration for fine-grained permissions
 - **Keycloak Authentication**: Enterprise-grade OIDC/OAuth2 authentication
+- **Bearer Token API**: React-ready JWT authentication with Authorization header support
 - **RESTful API**: FastAPI with automatic OpenAPI documentation
 - **Web Interface**: HTML templates for user-friendly data management
+- **Speed-First Testing**: <30s feedback loop for rapid development
 - **Containerized Deployment**: Docker and Docker Compose support
 
 ## Quick Start
@@ -211,6 +213,36 @@ Once running, access the API documentation at:
 - Interactive docs: http://localhost:8000/docs
 - OpenAPI spec: http://localhost:8000/openapi.json
 
+### React Frontend Integration
+
+The API supports bearer token authentication for React frontends:
+
+**Authentication Flow:**
+1. React frontend authenticates with Keycloak
+2. Keycloak returns JWT access token
+3. React sends `Authorization: Bearer <token>` header
+4. API validates JWT and extracts user info
+
+**Example API Call:**
+```javascript
+// React frontend example
+const response = await fetch('/api/admin/users', {
+  headers: {
+    'Authorization': `Bearer ${accessToken}`,
+    'Content-Type': 'application/json'
+  }
+});
+```
+
+**User Info Available:**
+- `preferred_username` - Username
+- `sub` - User UUID
+- `email` - Email address
+- `realm_access.roles` - User roles
+- `exp`, `iat` - Token timing
+
+The API automatically prioritizes Authorization headers over cookies, making it seamless for both React frontends and traditional web UI.
+
 ## Development
 
 ### Installing Development Dependencies
@@ -235,47 +267,54 @@ safety check
 
 ### Testing
 
-The project uses a comprehensive testing framework with unit tests, integration tests, and BDD (Behavior-Driven Development) tests.
+The project uses a **speed-first testing framework** designed for rapid development feedback and reliable CI.
 
-**Setup:**
+**Quick Testing:**
 ```bash
-# Install test dependencies
-pip install -r requirements-dev.txt
-```
+# Fast development feedback (<30s)
+./run-tests fast
 
-**Running Tests:**
-```bash
-# BDD tests (behavioral scenarios)
-behave tests/features/
+# Authentication tests (unit + integration)
+./run-tests auth  
 
-# BDD tests with verbose output
-behave tests/features/ -v
+# Integration tests with Docker services
+./run-tests slow --setup
 
-# BDD tests with captured output (useful for debugging)
-behave tests/features/ -s
-
-# Run specific feature
-behave tests/features/configuration.feature
-
-# Unit tests (when available)
-pytest tests/unit/
-
-# Integration tests (when available)  
-pytest tests/integration/
-
-# Run all pytest tests
-pytest tests/
+# Full CI suite
+./run-tests all --ci
 ```
 
 **Test Structure:**
-- `tests/unit/` - Fast unit tests for individual functions/classes
-- `tests/integration/` - API and database integration tests
-- `tests/features/` - BDD acceptance tests using Gherkin syntax
+```
+backend/tests/
+├── fast/                    # <30s, no external deps
+│   ├── unit/               # Pure logic tests (mocked)
+│   └── contract/           # API behavior tests (mocked services)
+├── slow/                   # >30s, requires services
+│   ├── integration/        # Real service integration
+│   └── system/            # Full system tests
+├── infra/                  # Test infrastructure
+│   └── docker/            # Docker test services
+└── legacy/                 # Existing tests (gradually migrating)
+```
 
-**Current Test Status:**
-- Configuration tests are available and reveal type conversion issues in EnvYAML
-- Tests use temporary config files for isolation
-- Failing tests are expected and guide development fixes
+**Development Workflow:**
+```bash
+# Daily development
+./run-tests fast           # Quick validation (20 tests, 30s)
+
+# Before commits
+./run-tests auth           # Auth-specific validation
+
+# Before merge
+./run-tests slow --setup   # Full integration testing
+```
+
+**Key Benefits:**
+- **🚀 Fast Feedback**: 30-second development loop
+- **🔧 Zero Setup**: Fast tests work immediately
+- **🎯 Focused Testing**: Run specific test categories
+- **📊 Clear Results**: Simple pass/fail with counts
 
 ### Project Structure
 ```
