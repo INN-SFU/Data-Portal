@@ -23,7 +23,7 @@ def put_asset(asset: PutAssetRequest = Depends(),
               endpoint_manager: AbstractEndpointManager = Depends(get_endpoint_manager)
               ) -> PutAssetResponse:
 
-    # Unpack the request
+    # Get user UUID from token payload
     user_uuid = user_manager.get_user_uuid(user['preferred_username'])
     access_point = asset.access_point
     access_point_uuid = endpoint_manager.get_endpoint_uuid(access_point)

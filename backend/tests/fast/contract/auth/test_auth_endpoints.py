@@ -61,22 +61,18 @@ class TestAuthEndpointContract:
         """Test that Bearer token in Authorization header is accepted."""
         
         # Mock the decode_token function to simulate successful validation
-        def mock_decode_token(request, credentials):
+        def mock_decode_token(credentials):
             if credentials and credentials.credentials == "valid-bearer-token":
                 return self.valid_token_payload
             raise HTTPException(status_code=401, detail="Invalid token")
         
         # Test the logic pattern
         from fastapi.security import HTTPAuthorizationCredentials
-        from fastapi import Request
-        
-        mock_request = Mock(spec=Request)
-        mock_request.cookies = {}
         
         mock_credentials = Mock(spec=HTTPAuthorizationCredentials)
         mock_credentials.credentials = "valid-bearer-token"
         
-        result = mock_decode_token(mock_request, mock_credentials)
+        result = mock_decode_token(mock_credentials)
         
         assert result == self.valid_token_payload
         assert result['preferred_username'] == 'testuser'
@@ -86,55 +82,55 @@ class TestAuthEndpointContract:
         'KEYCLOAK_DOMAIN': 'http://localhost:8080',
         'KEYCLOAK_REALM': 'test-realm'
     })
-    def test_cookie_fallback_accepted(self):
-        """Test that cookie auth works when no Bearer token provided."""
+    def test_bearer_token_required(self):
+        """Test that bearer token is required - no cookie fallback."""
         
-        def mock_decode_token(request, credentials):
-            # No bearer token, check cookie
+        def mock_decode_token(credentials):
+            # Only accept bearer tokens
             token = credentials.credentials if credentials else None
-            if not token:
-                token = request.cookies.get("access_token")
             
-            if token == "valid-cookie-token":
+            if not token:
+                raise HTTPException(status_code=401, detail="Bearer token required")
+            
+            if token == "valid-bearer-token":
                 return self.valid_token_payload
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        from fastapi import Request
+        from fastapi.security import HTTPAuthorizationCredentials
         
-        mock_request = Mock(spec=Request)
-        mock_request.cookies = {"access_token": "valid-cookie-token"}
+        # Test with valid bearer token
+        mock_credentials = Mock(spec=HTTPAuthorizationCredentials)
+        mock_credentials.credentials = "valid-bearer-token"
         
-        mock_credentials = None  # No bearer token
-        
-        result = mock_decode_token(mock_request, mock_credentials)
+        result = mock_decode_token(mock_credentials)
         
         assert result == self.valid_token_payload
+        
+        # Test with no bearer token - should raise exception
+        with pytest.raises(HTTPException) as exc_info:
+            mock_decode_token(None)
+        
+        assert exc_info.value.status_code == 401
+        assert "Bearer token required" in str(exc_info.value.detail)
     
     def test_no_auth_returns_401(self):
         """Test that missing authentication returns 401."""
         
-        def mock_decode_token(request, credentials):
+        def mock_decode_token(credentials):
             token = credentials.credentials if credentials else None
-            if not token:
-                token = request.cookies.get("access_token")
             
             if not token:
-                raise HTTPException(status_code=401, detail="Not authenticated")
+                raise HTTPException(status_code=401, detail="Bearer token required")
             
             return self.valid_token_payload
-        
-        from fastapi import Request
-        
-        mock_request = Mock(spec=Request)
-        mock_request.cookies = {}
         
         mock_credentials = None
         
         with pytest.raises(HTTPException) as exc_info:
-            mock_decode_token(mock_request, mock_credentials)
+            mock_decode_token(mock_credentials)
         
         assert exc_info.value.status_code == 401
-        assert "Not authenticated" in str(exc_info.value.detail)
+        assert "Bearer token required" in str(exc_info.value.detail)
     
     def test_invalid_jwt_returns_401(self):
         """Test that invalid JWT token returns 401."""
