@@ -1,0 +1,1 @@
+# Test infrastructure - Docker configs, fixtures, helpers
