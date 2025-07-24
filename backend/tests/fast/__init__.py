@@ -1,0 +1,1 @@
+# Fast tests (<30s, no external dependencies)
