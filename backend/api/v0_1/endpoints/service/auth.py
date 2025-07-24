@@ -43,18 +43,20 @@ def get_jwks_client():
 
 
 def decode_token(request: Request, credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
-    # Try to get the token from the Authorization header.
+    # Prioritize Authorization header (for React/API clients)
     token = credentials.credentials if credentials else None
-    logger.debug(f"Token from Authorization header: {'Found' if token else 'Not found'}")
+    token_source = "Authorization header" if token else None
     
-    # Fall back to the cookie if not found.
+    # Fall back to cookie (for web UI)
     if not token:
         token = request.cookies.get("access_token")
-        logger.debug(f"Token from cookie: {'Found' if token else 'Not found'}")
+        token_source = "cookie" if token else None
     
     if not token:
         logger.warning("No token found in Authorization header or cookies")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    
+    logger.debug(f"Token source: {token_source}")
 
     client_id = os.getenv("KEYCLOAK_UI_CLIENT_ID")
     keycloak_domain = os.getenv("KEYCLOAK_DOMAIN")
