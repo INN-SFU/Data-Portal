@@ -1,0 +1,1 @@
+# Contract tests - API behavior with mocked services
