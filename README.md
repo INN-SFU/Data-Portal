@@ -1,6 +1,6 @@
 # AMS Data Portal
 
-**Policy-Derived Data Access Management Platform for Heterogeneous Storage Endpoints**
+**Policy-Derived Data Access Management Platform for Heterogeneous Storage Instances**
 
 A FastAPI-based web application that provides policy-driven access control across multiple storage backends including S3, POSIX filesystems, and OpenStack Swift.
 
@@ -213,6 +213,34 @@ Once running, access the API documentation at:
 - Interactive docs: http://localhost:8000/docs
 - OpenAPI spec: http://localhost:8000/openapi.json
 
+### API Endpoints
+
+All service API endpoints use the `/api` prefix:
+
+**Authentication:**
+- `GET /api/auth/validate` - Validate JWT token
+
+**Asset Management:**
+- `PUT /api/asset/upload` - Upload asset
+- `PUT /api/asset/download` - Download asset
+- `GET /api/asset/user-home-data` - Get user home data
+- `GET /api/asset/user-assets-data` - Get user assets data
+
+**Administration:**
+- `GET /api/admin/user/` - Get users
+- `PUT /api/admin/user/` - Add user
+- `DELETE /api/admin/user/` - Remove user
+- `GET /api/admin/policies` - Get policies
+- `PUT /api/admin/policy` - Add policy
+- `DELETE /api/admin/policy` - Remove policy
+- `POST/DELETE /api/admin/endpoints/` - Manage storage instances
+
+**Health & Monitoring:**
+- `GET /api/health/` - Basic health check
+- `GET /api/health/detailed` - Detailed health information
+- `GET /api/health/ready` - Readiness probe
+- `GET /api/health/live` - Liveness probe
+
 ### React Frontend Integration
 
 The API supports bearer token authentication for React frontends:
@@ -226,7 +254,7 @@ The API supports bearer token authentication for React frontends:
 **Example API Call:**
 ```javascript
 // React frontend example
-const response = await fetch('/api/admin/users', {
+const response = await fetch('/api/admin/user/', {
   headers: {
     'Authorization': `Bearer ${accessToken}`,
     'Content-Type': 'application/json'
@@ -368,7 +396,7 @@ AMS/
    - Run: `python scripts/setup.py --generate-secrets`
 
 6. **Storage Endpoint Issues**
-   - Verify endpoint configurations in `core/settings/managers/endpoints/configs/`
+   - Verify instance configurations in `core/settings/managers/instances/configs/`
    - Check network connectivity to storage services
 
 7. **Permission Denied**
