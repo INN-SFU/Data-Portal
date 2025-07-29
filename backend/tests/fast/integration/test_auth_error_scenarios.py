@@ -76,7 +76,7 @@ class TestKeycloakConnectivityErrors:
         mock_requests_get.side_effect = requests.ConnectionError("Connection failed")
         
         headers = {"Authorization": "Bearer some-token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         assert "Could not validate credentials" in response.json()["detail"]
@@ -98,7 +98,7 @@ class TestKeycloakConnectivityErrors:
         mock_requests_get.return_value = mock_response
         
         headers = {"Authorization": "Bearer some-token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         assert "Could not validate credentials" in response.json()["detail"]
@@ -123,7 +123,7 @@ class TestKeycloakConnectivityErrors:
         mock_requests_get.return_value = mock_response
         
         headers = {"Authorization": "Bearer some-token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         assert "Could not validate credentials" in response.json()["detail"]
@@ -162,7 +162,7 @@ class TestMalformedTokenScenarios:
     def test_empty_bearer_token(self, client):
         """Test with empty bearer token."""
         headers = {"Authorization": "Bearer "}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         assert "Bearer token required" in response.json()["detail"]
@@ -170,7 +170,7 @@ class TestMalformedTokenScenarios:
     def test_bearer_token_with_spaces(self, client):
         """Test with bearer token containing only spaces."""
         headers = {"Authorization": "Bearer    "}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         assert "Bearer token required" in response.json()["detail"]
@@ -192,7 +192,7 @@ class TestMalformedTokenScenarios:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer malformed.jwt.token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         assert "Could not validate credentials" in response.json()["detail"]
@@ -216,7 +216,7 @@ class TestMalformedTokenScenarios:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer wrong-issuer-token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         assert "Could not validate credentials" in response.json()["detail"]
@@ -248,7 +248,7 @@ class TestMalformedTokenScenarios:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer minimal-token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         # Should still succeed, just with minimal user info
         assert response.status_code == 200
@@ -316,7 +316,7 @@ class TestTokenEdgeCases:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer different-client-token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         # Should still succeed (current implementation continues on client_id mismatch)
         assert response.status_code == 200
@@ -351,7 +351,7 @@ class TestTokenEdgeCases:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer future-token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         assert "Could not validate credentials" in response.json()["detail"]
@@ -488,7 +488,7 @@ class TestConcurrentAuthenticationRequests:
         # Make multiple requests
         responses = []
         for i in range(5):
-            response = client.get("/auth/validate", headers=headers)
+            response = client.get("/api/auth/validate", headers=headers)
             responses.append(response)
         
         # All should succeed

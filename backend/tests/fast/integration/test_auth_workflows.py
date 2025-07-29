@@ -137,7 +137,7 @@ class TestTokenValidationWorkflow(TestAuthenticationWorkflows):
         
         # Make request with valid token
         headers = {"Authorization": "Bearer valid-jwt-token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         # Verify successful validation
         assert response.status_code == 200
@@ -162,7 +162,7 @@ class TestTokenValidationWorkflow(TestAuthenticationWorkflows):
         1. React app sends request without Authorization header
         2. API returns 401 Unauthorized
         """
-        response = client.get("/auth/validate")
+        response = client.get("/api/auth/validate")
         
         assert response.status_code == 401
         assert "Bearer token required" in response.json()["detail"]
@@ -177,7 +177,7 @@ class TestTokenValidationWorkflow(TestAuthenticationWorkflows):
         """
         # Test with malformed header (no Bearer prefix)
         headers = {"Authorization": "invalid-header-format"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         assert "Bearer token required" in response.json()["detail"]
@@ -201,7 +201,7 @@ class TestTokenValidationWorkflow(TestAuthenticationWorkflows):
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer expired-token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         assert "Could not validate credentials" in response.json()["detail"]
@@ -225,7 +225,7 @@ class TestTokenValidationWorkflow(TestAuthenticationWorkflows):
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer tampered-token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         assert "Could not validate credentials" in response.json()["detail"]
@@ -254,7 +254,7 @@ class TestProtectedEndpointWorkflow(TestAuthenticationWorkflows):
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer valid-token"}
-        response = client.get("/admin/test", headers=headers)
+        response = client.get("/api/admin/test", headers=headers)
         
         # Should succeed (admin/test endpoint just validates token, doesn't check admin role)
         assert response.status_code == 200
@@ -270,7 +270,7 @@ class TestProtectedEndpointWorkflow(TestAuthenticationWorkflows):
         1. React app sends request to protected endpoint without token
         2. API returns 401 Unauthorized
         """
-        response = client.get("/admin/test")
+        response = client.get("/api/admin/test")
         
         assert response.status_code == 401
         assert "Bearer token required" in response.json()["detail"]
@@ -302,7 +302,7 @@ class TestRoleBasedAccessWorkflow(TestAuthenticationWorkflows):
         
         # Test admin endpoint that requires admin role
         # Note: Most admin endpoints check is_user_admin() function
-        response = client.get("/admin/test", headers=headers)
+        response = client.get("/api/admin/test", headers=headers)
         
         assert response.status_code == 200
         response_data = response.json()
@@ -331,7 +331,7 @@ class TestRoleBasedAccessWorkflow(TestAuthenticationWorkflows):
         
         # Try to access admin-only functionality (like adding users)
         # This would require mocking the managers, so let's test the auth logic
-        response = client.get("/admin/test", headers=headers)
+        response = client.get("/api/admin/test", headers=headers)
         
         # This endpoint doesn't check admin role, just validates token
         assert response.status_code == 200

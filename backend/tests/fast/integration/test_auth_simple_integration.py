@@ -20,7 +20,7 @@ Coverage: Authentication logic and API responses
 import pytest
 import jwt as jwt_lib
 from unittest.mock import Mock, patch, MagicMock
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.testclient import TestClient
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timedelta
@@ -84,7 +84,12 @@ def auth_app():
     }):
         # Import auth router after setting environment
         from api.v0_1.endpoints.service.auth import auth_router
-        app.include_router(auth_router)
+        from api.v0_1.endpoints.service.admin import admin_router
+        # Include routers with /api prefix to match main application
+        api_router = APIRouter(prefix="/api")
+        api_router.include_router(auth_router)
+        api_router.include_router(admin_router)
+        app.include_router(api_router)
     
     return app
 
@@ -229,7 +234,7 @@ class TestAuthenticationEndpoints:
         
         client = TestClient(auth_app)
         headers = {"Authorization": "Bearer valid.jwt.token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -240,7 +245,7 @@ class TestAuthenticationEndpoints:
     def test_auth_validate_missing_token(self, auth_app):
         """Test validation without token."""
         client = TestClient(auth_app)
-        response = client.get("/auth/validate")
+        response = client.get("/api/auth/validate")
         
         assert response.status_code == 401
         data = response.json()
@@ -258,7 +263,7 @@ class TestAuthenticationEndpoints:
         
         client = TestClient(auth_app)
         headers = {"Authorization": "Bearer expired.jwt.token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         data = response.json()
@@ -277,7 +282,7 @@ class TestAuthenticationEndpoints:
         
         client = TestClient(auth_app)
         headers = {"Authorization": "Bearer admin.jwt.token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -313,7 +318,7 @@ class TestReactFrontendIntegration:
         # Simulate React sending token from localStorage
         token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.example.token"
         headers = {"Authorization": f"Bearer {token}"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         # Verify React gets expected response format
         assert response.status_code == 200
@@ -363,7 +368,7 @@ class TestReactFrontendIntegration:
         
         client = TestClient(auth_app)
         headers = {"Authorization": "Bearer admin.jwt.token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -390,7 +395,7 @@ class TestReactFrontendIntegration:
         client = TestClient(auth_app)
         
         # Simulate React app with no token
-        response = client.get("/auth/validate")
+        response = client.get("/api/auth/validate")
         
         assert response.status_code == 401
         
@@ -415,7 +420,7 @@ class TestErrorHandlingScenarios:
         
         client = TestClient(auth_app)
         headers = {"Authorization": "Bearer some.token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         
@@ -436,7 +441,7 @@ class TestErrorHandlingScenarios:
         
         client = TestClient(auth_app)
         headers = {"Authorization": "Bearer invalid.signature.token"}
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         
@@ -453,7 +458,7 @@ class TestCORSAndHeaders:
         client = TestClient(auth_app)
         
         # Simulate preflight request from React
-        response = client.options("/auth/validate", headers={
+        response = client.options("/api/auth/validate", headers={
             "Origin": "http://localhost:3000",
             "Access-Control-Request-Method": "GET",
             "Access-Control-Request-Headers": "Authorization"
@@ -477,7 +482,7 @@ class TestCORSAndHeaders:
             "Authorization": "Bearer valid.token",
             "Origin": "http://localhost:3000"
         }
-        response = client.get("/auth/validate", headers=headers)
+        response = client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 200
         # CORS middleware should handle the Origin header appropriately

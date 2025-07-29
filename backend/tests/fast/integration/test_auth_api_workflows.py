@@ -181,7 +181,7 @@ class TestAuthenticationEndpoints:
         
         # React makes request with bearer token
         headers = {"Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.test.token"}
-        response = test_client.get("/auth/validate", headers=headers)
+        response = test_client.get("/api/auth/validate", headers=headers)
         
         # Verify successful response
         assert response.status_code == 200
@@ -218,7 +218,7 @@ class TestAuthenticationEndpoints:
         2. API returns 401 Unauthorized
         3. React redirects to login page
         """
-        response = test_client.get("/auth/validate")
+        response = test_client.get("/api/auth/validate")
         
         assert response.status_code == 401
         data = response.json()
@@ -235,7 +235,7 @@ class TestAuthenticationEndpoints:
         """
         # Test without "Bearer" prefix
         headers = {"Authorization": "InvalidTokenFormat"}
-        response = test_client.get("/auth/validate", headers=headers)
+        response = test_client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         data = response.json()
@@ -259,7 +259,7 @@ class TestAuthenticationEndpoints:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer expired.jwt.token"}
-        response = test_client.get("/auth/validate", headers=headers)
+        response = test_client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         data = response.json()
@@ -283,7 +283,7 @@ class TestAuthenticationEndpoints:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer tampered.jwt.token"}
-        response = test_client.get("/auth/validate", headers=headers)
+        response = test_client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         data = response.json()
@@ -313,7 +313,7 @@ class TestProtectedEndpointAccess:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer valid.jwt.token"}
-        response = test_client.get("/admin/test", headers=headers)
+        response = test_client.get("/api/admin/test", headers=headers)
         
         # Should succeed - admin/test just validates token, doesn't check admin role
         assert response.status_code == 200
@@ -330,7 +330,7 @@ class TestProtectedEndpointAccess:
         2. API returns 401 Unauthorized
         3. React redirects to login page
         """
-        response = test_client.get("/admin/test")
+        response = test_client.get("/api/admin/test")
         
         assert response.status_code == 401
         data = response.json()
@@ -359,7 +359,7 @@ class TestRoleBasedAccess:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer admin.jwt.token"}
-        response = test_client.get("/auth/validate", headers=headers)
+        response = test_client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -392,7 +392,7 @@ class TestRoleBasedAccess:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer user.jwt.token"}
-        response = test_client.get("/auth/validate", headers=headers)
+        response = test_client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -426,7 +426,7 @@ class TestErrorHandlingWorkflows:
         mock_requests_get.side_effect = Exception("Connection failed")
         
         headers = {"Authorization": "Bearer some.jwt.token"}
-        response = test_client.get("/auth/validate", headers=headers)
+        response = test_client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         data = response.json()
@@ -449,7 +449,7 @@ class TestErrorHandlingWorkflows:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer malformed.header.token"}
-        response = test_client.get("/auth/validate", headers=headers)
+        response = test_client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 401
         data = response.json()
@@ -477,7 +477,7 @@ class TestReactFrontendIntegrationPatterns:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer test.jwt.token"}
-        response = test_client.get("/auth/validate", headers=headers)
+        response = test_client.get("/api/auth/validate", headers=headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -520,7 +520,7 @@ class TestReactFrontendIntegrationPatterns:
         - Headers must allow Bearer token authentication
         """
         # Test preflight request
-        response = test_client.options("/auth/validate", headers={
+        response = test_client.options("/api/auth/validate", headers={
             "Origin": "http://localhost:3000",  # React dev server
             "Access-Control-Request-Method": "GET",
             "Access-Control-Request-Headers": "Authorization"
@@ -553,7 +553,7 @@ class TestReactFrontendIntegrationPatterns:
         # Make multiple concurrent requests
         responses = []
         for i in range(5):
-            response = test_client.get("/auth/validate", headers=headers)
+            response = test_client.get("/api/auth/validate", headers=headers)
             responses.append(response)
         
         # All should succeed
