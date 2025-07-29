@@ -1,10 +1,10 @@
-from core.management.endpoints import AbstractEndpointManager
+from core.management.instances import AbstractInstanceManager
 from core.management.users import AbstractUserManager
 from core.management.policies import AbstractPolicyManager
 
 from core.settings.managers import user_manager
 from core.settings.managers import policy_manager
-from core.settings.managers import endpoint_manager
+from core.settings.managers import instance_manager
 
 
 def get_user_manager() -> AbstractUserManager:
@@ -21,8 +21,8 @@ def get_policy_manager() -> AbstractPolicyManager:
     return policy_manager
 
 
-def get_endpoint_manager() -> AbstractEndpointManager:
+def get_instance_manager() -> AbstractInstanceManager:
     """
-    Returns the endpoint manager instance.
+    Returns the instance manager instance.
     """
-    return endpoint_manager
+    return instance_manager
