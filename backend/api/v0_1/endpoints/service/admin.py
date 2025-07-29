@@ -3,19 +3,21 @@ from uuid import uuid5, NAMESPACE_DNS, UUID
 
 from fastapi import Depends, HTTPException, APIRouter, status, Query, Body
 from fastapi.responses import JSONResponse
-from fastapi.templating import Jinja2Templates
 
 from api.v0_1.endpoints.dependencies import get_user_manager
 from api.v0_1.endpoints.dependencies import get_policy_manager
-from api.v0_1.endpoints.dependencies import get_endpoint_manager
-from api.v0_1.endpoints.interface.schemas.storage_endpoints import EndpointCreate
+from api.v0_1.endpoints.dependencies import get_instance_manager
 from api.v0_1.endpoints.service.models import (User, AddUserRequest, AddUserResponse, RemoveUserResponse,
                                                GetPolicyResponse, AddPolicyResponse, AddPolicyRequest,
-                                               RemovePolicyRequest, RemovePolicyResponse)
+                                               RemovePolicyRequest, RemovePolicyResponse, PolicyManagementData,
+                                               UserManagementData, InstanceManagementData, AssetManagementData, 
+                                               InstanceCreate, model_registry)
+from api.v0_1.endpoints.service.utils import convert_file_tree_to_nodes
 
-from core.connectivity.endpoint_factory import endpoint_factory
-from core.management.endpoints.models import Endpoint
-from core.management.endpoints import AbstractEndpointManager
+from core.connectivity.instance_factory import instance_factory
+from core.connectivity.agents import available_flavours
+from core.management.instances.models import Instance
+from core.management.instances import AbstractInstanceManager
 from core.management.policies import AbstractPolicyManager
 from core.management.policies import Policy
 from core.management.users import AbstractUserManager
@@ -25,7 +27,6 @@ from core.management.users.models import UserCreate
 from api.v0_1.endpoints.service.auth import decode_token, is_user_admin
 
 admin_router = APIRouter(prefix='/admin', tags=["Administration"])
-templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
 
 
 @admin_router.get("/test", dependencies=[Depends(decode_token)])
@@ -196,7 +197,7 @@ async def get_policies(policy_filter: Policy = Depends(),
 async def add_policy(new_policy: AddPolicyRequest = Depends(),
                      user_manager: AbstractUserManager = Depends(get_user_manager),
                      policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
-                     endpoint_manager: AbstractEndpointManager = Depends(get_endpoint_manager),
+                     endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager),
                      user: dict = Depends(decode_token)) -> AddPolicyResponse:
     """
     Add a policy.
@@ -240,7 +241,7 @@ async def add_policy(new_policy: AddPolicyRequest = Depends(),
 async def remove_policy(old_policy: RemovePolicyRequest = Depends(),
                         user_manager: AbstractUserManager = Depends(get_user_manager),
                         policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
-                        endpoint_manager: AbstractEndpointManager = Depends(get_endpoint_manager),
+                        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager),
                         user: dict = Depends(decode_token)) -> RemovePolicyResponse:
     """
     Remove a policy.
@@ -273,8 +274,8 @@ async def remove_policy(old_policy: RemovePolicyRequest = Depends(),
 
 @admin_router.post("/endpoints/", dependencies=[Depends(decode_token)])
 async def create_new_endpoint(
-        config: EndpointCreate = Body(...),
-        endpoint_manager: AbstractEndpointManager = Depends(get_endpoint_manager),
+        config: InstanceCreate = Body(...),
+        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager),
         policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
         token_payload: dict = Depends(decode_token)
 ) -> JSONResponse:
@@ -296,10 +297,10 @@ async def create_new_endpoint(
     config_dict['flavour'] = flavour
 
     # Create the storage agent for the endpoint
-    agent = endpoint_factory(config_dict)
+    agent = instance_factory(config_dict)
 
     # Create the endpoint object
-    new_endpoint = Endpoint(
+    new_endpoint = Instance(
         uuid=access_point_uid,
         name=config.access_point_name,
         flavour=flavour,
@@ -336,13 +337,13 @@ async def create_new_endpoint(
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content={"detail": f"Endpoint '{new_endpoint.name}' created successfully."}
+        content={"detail": f"Instance '{new_endpoint.name}' created successfully."}
     )
 
 
 @admin_router.delete("/endpoints/", dependencies=[Depends(decode_token)])
 async def remove_endpoint(endpoint_uid: str = Query(..., description="UID of the endpoint to remove"),
-                          endpoint_manager: AbstractEndpointManager = Depends(get_endpoint_manager),
+                          endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager),
                           policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
                           user: dict = Depends(decode_token)) -> JSONResponse:
     """
@@ -367,7 +368,7 @@ async def remove_endpoint(endpoint_uid: str = Query(..., description="UID of the
                             detail=f"Access point {endpoint_uid} not found.")
 
     # Delete the endpoint from the manager
-    old_endpoint = Endpoint(
+    old_endpoint = Instance(
         uuid=endpoint_uid,
         name=endpoint_manager.get_endpoint_by_uuid(endpoint_uid).name,
         flavour=endpoint_manager.get_endpoint_by_uuid(endpoint_uid).flavour,
@@ -389,4 +390,177 @@ async def remove_endpoint(endpoint_uid: str = Query(..., description="UID of the
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Failed to remove policies for endpoint: {e}")
 
-    return JSONResponse(content={"detail": f"Endpoint '{endpoint_uid}' removed."})
+    return JSONResponse(content={"detail": f"Instance '{endpoint_uid}' removed."})
+
+
+# Dashboard Data Instances
+
+@admin_router.get("/dashboard/policy-management",
+                  response_model=PolicyManagementData,
+                  summary="Get policy management dashboard data",
+                  description="Retrieve file trees and endpoint data for policy management interface.",
+                  dependencies=[Depends(decode_token)])
+async def get_policy_management_data(
+        token_payload: dict = Depends(decode_token),
+        user_manager: AbstractUserManager = Depends(get_user_manager),
+        policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager)
+) -> PolicyManagementData:
+    """
+    Get aggregated data for policy management dashboard.
+    """
+    if not is_user_admin(token_payload):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+
+    username = token_payload.get("preferred_username")
+    uuid = user_manager.get_user_uuid(username)
+
+    policy = Policy(
+        user_uuid=uuid,
+        action='admin'
+    )
+
+    # Get all endpoints the user has 'admin' access to
+    admin_policies = policy_manager.filter_policies(policy)
+    admin_endpoint_uuids = list(set(policy.endpoint_uuid for policy in admin_policies))
+    admin_endpoints = endpoint_manager.get_endpoints_by_uuid(admin_endpoint_uuids)
+
+    assets = {}
+    # Populate the file trees for each endpoint
+    for endpoint in admin_endpoints:
+        # Partition the file type based on the policy
+        file_tree = endpoint.agent.partition_file_tree_by_access(
+            policy_manager, uuid, endpoint.uuid, 'admin'
+        )['admin']
+        assets[endpoint.name] = convert_file_tree_to_nodes(file_tree)
+
+    return PolicyManagementData(assets=assets, endpoints=admin_endpoints)
+
+
+@admin_router.get("/dashboard/user-management",
+                  response_model=UserManagementData,
+                  summary="Get user management dashboard data",
+                  description="Retrieve all users with their file trees for user management interface.",
+                  dependencies=[Depends(decode_token)])
+async def get_user_management_data(
+        token_payload: dict = Depends(decode_token),
+        user_manager: AbstractUserManager = Depends(get_user_manager),
+        policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager)
+) -> UserManagementData:
+    """
+    Get aggregated data for user management dashboard.
+    """
+    if not is_user_admin(token_payload):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+
+    users = user_manager.get_all_users()
+    file_trees = {}
+
+    # Loop through users to build file trees based on access levels
+    for user in users:
+        # Get all storage endpoints the user has access to
+        endpoint_uuids = list(set(policy.endpoint_uuid for policy in policy_manager.get_user_policies(user.uuid)))
+        endpoints = endpoint_manager.get_endpoints_by_uuid(endpoint_uuids)
+
+        user_trees = {}
+
+        # Loop through each storage endpoint and filter its file tree
+        for endpoint in endpoints:
+            f_trees = endpoint.agent.partition_file_tree_by_access(
+                policy_manager, user.uuid, endpoint.uuid, ['read', 'write', 'admin']
+            )
+
+            if f_trees is not None:
+                user_trees[(endpoint.name, str(endpoint.uuid))] = {
+                    access_type: convert_file_tree_to_nodes(tree) 
+                    for access_type, tree in f_trees.items()
+                }
+
+        file_trees[str(user.uuid)] = user_trees
+
+    # Include the required form metadata for the models
+    required_models = [
+        "AddUserRequest",
+        "AddUserResponse", 
+        "RemoveUserResponse"
+    ]
+
+    json_registry = {
+        name: {
+            "endpoint": entry["endpoint"],
+            "schema": entry["model_class"].model_json_schema()
+        }
+        for name, entry in model_registry.items()
+        if name in required_models
+    }
+
+    return UserManagementData(users=users, file_trees=file_trees, models=json_registry)
+
+
+@admin_router.get("/dashboard/endpoint-management",
+                  response_model=InstanceManagementData,
+                  summary="Get endpoint management dashboard data",
+                  description="Retrieve endpoint configurations and available flavours.",
+                  dependencies=[Depends(decode_token)])
+async def get_endpoint_management_data(
+        token_payload: dict = Depends(decode_token),
+        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager)
+) -> InstanceManagementData:
+    """
+    Get aggregated data for endpoint management dashboard.
+    """
+    if not is_user_admin(token_payload):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+
+    # Gather endpoint details
+    endpoints = endpoint_manager.endpoints
+
+    configs = {
+        endpoint.name: (str(endpoint.uuid), endpoint.config(secrets=False))
+        for endpoint in endpoints
+    }
+
+    return InstanceManagementData(endpoints=configs, flavours=available_flavours)
+
+
+@admin_router.get("/dashboard/asset-management",
+                  response_model=AssetManagementData,
+                  summary="Get asset management dashboard data",
+                  description="Retrieve file trees and endpoint mappings for asset management interface.",
+                  dependencies=[Depends(decode_token)])
+async def get_asset_management_data(
+        token_payload: dict = Depends(decode_token),
+        policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager)
+) -> AssetManagementData:
+    """
+    Get aggregated data for asset management dashboard.
+    """
+    if not is_user_admin(token_payload):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+
+    # Retrieve the user's user_uuid from the token payload
+    uuid = token_payload.get("sub")
+
+    # Get all storage access points the user has read access to
+    endpoint_uuids = list(
+        set(policy.endpoint_uuid for policy in policy_manager.get_user_policies(uuid))
+    )
+    endpoints = endpoint_manager.get_endpoints_by_uuid(endpoint_uuids)
+
+    file_trees = {}
+    for endpoint in endpoints:
+        f_trees = endpoint.agent.partition_file_tree_by_access(
+            policy_manager, uuid, endpoint.uuid, ["read", "write"]
+        )
+        if f_trees is not None:
+            file_trees[str(endpoint.uuid)] = {
+                access_type: convert_file_tree_to_nodes(tree)
+                for access_type, tree in f_trees.items()
+            }
+
+    # Convert to simple string → string mapping for JSON encoding
+    endpoint_names = {endpoint.name: str(endpoint.uuid) for endpoint in endpoints}
+
+    return AssetManagementData(assets=file_trees, endpoints=endpoint_names)

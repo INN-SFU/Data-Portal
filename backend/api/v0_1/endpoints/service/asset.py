@@ -1,13 +1,17 @@
 import logging
+from uuid import UUID
+from treelib import node
 
 from fastapi import HTTPException, APIRouter, Depends, status, Query
 from fastapi.responses import JSONResponse
 
 from api.v0_1.endpoints.dependencies import get_policy_manager
-from api.v0_1.endpoints.dependencies.managers import get_endpoint_manager, get_user_manager
+from api.v0_1.endpoints.dependencies.managers import get_instance_manager, get_user_manager
 from api.v0_1.endpoints.service.auth import decode_token
-from api.v0_1.endpoints.service.models import GetAssetRequest, GetAssetResponse, PutAssetRequest, PutAssetResponse
-from core.management.endpoints import AbstractEndpointManager
+from api.v0_1.endpoints.service.models import (GetAssetRequest, GetAssetResponse, PutAssetRequest, PutAssetResponse,
+                                               UserHomeData, UserAssetsData)
+from api.v0_1.endpoints.service.utils import convert_file_tree_to_nodes
+from core.management.instances import AbstractInstanceManager
 from core.management.policies import AbstractPolicyManager, Policy
 from core.management.users import AbstractUserManager
 
@@ -20,25 +24,25 @@ def put_asset(asset: PutAssetRequest = Depends(),
               user: dict = Depends(decode_token),
               user_manager: AbstractUserManager = Depends(get_user_manager),
               policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
-              endpoint_manager: AbstractEndpointManager = Depends(get_endpoint_manager)
+              instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
               ) -> PutAssetResponse:
 
     # Get user UUID from token payload
     user_uuid = user_manager.get_user_uuid(user['preferred_username'])
     access_point = asset.access_point
-    access_point_uuid = endpoint_manager.get_endpoint_uuid(access_point)
+    access_point_uuid = instance_manager.get_instance_uuid(access_point)
     resource = asset.resource
 
     policy = Policy(
         user_uuid=user_uuid,
-        endpoint_uuid=access_point_uuid,
+        instance_uuid=access_point_uuid,
         resource=resource,
         action='write'
     )
 
     if policy_manager.validate_policy(policy):
         try:
-            agent = endpoint_manager.get_endpoint_by_uuid(access_point_uuid).agent
+            agent = instance_manager.get_instance_by_uuid(access_point_uuid).agent
         except KeyError:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Access point {access_point} not found.")
 
@@ -58,7 +62,7 @@ def get_asset(asset: GetAssetRequest = Depends(),
               user: dict = Depends(decode_token),
               user_manager: AbstractUserManager = Depends(get_user_manager),
               policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
-              endpoint_manager: AbstractEndpointManager = Depends(get_endpoint_manager)
+              instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
               ) -> GetAssetResponse:
 
     # Get the user uuid
@@ -66,20 +70,20 @@ def get_asset(asset: GetAssetRequest = Depends(),
 
     #
     try:
-        access_point_uuid = endpoint_manager.get_endpoint_uuid(asset.access_point)
+        access_point_uuid = instance_manager.get_instance_uuid(asset.access_point)
     except KeyError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Access point {asset.access_point} not found.")
 
     # Build the policy
     policy = Policy(
         user_uuid=user_uuid,
-        endpoint_uuid=access_point_uuid,
+        instance_uuid=access_point_uuid,
         resource=asset.resource,
         action=asset.action
     )
 
     if policy_manager.validate_policy(policy):
-        agent = endpoint_manager.get_endpoint_by_uuid(access_point_uuid).agent
+        agent = instance_manager.get_instance_by_uuid(access_point_uuid).agent
         try:
             presigned_urls, file_paths = agent.generate_access_link(policy.resource, policy.action, 600)
         except ValueError as e:
@@ -92,4 +96,76 @@ def get_asset(asset: GetAssetRequest = Depends(),
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="User does not have access to the specified resource")
+
+
+# User Asset Data Endpoints
+
+@asset_router.get("/user-home-data",
+                  response_model=UserHomeData,
+                  summary="Get user home page data", 
+                  description="Retrieve user's accessible file trees and instances for home page.",
+                  dependencies=[Depends(decode_token)])
+async def get_user_home_data(
+        token_payload: dict = Depends(decode_token),
+        policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+        instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
+) -> UserHomeData:
+    """
+    Get aggregated data for user home page.
+    """
+    uid = token_payload.get("preferred_username")
+
+    # Get all storage access points the user has read access to
+    access_points = set([policy[1] for policy in policy_manager.get_user_policies(uid)])
+    user_file_tree = dict.fromkeys(access_points)
+
+    # Loop through each storage instance and filter its file tree
+    storage_instances = instance_manager.get_instances(access_points)
+    for instance in storage_instances.keys():
+        def node_filter(n: node):
+            vals = (uid, instance, n.identifier, 'write')
+            return policy_manager.enforcer.enforce(*vals)
+
+        user_file_tree[instance] = convert_file_tree_to_nodes(
+            storage_instances[instance].filter_file_tree(node_filter)
+        )
+
+    return UserHomeData(assets=user_file_tree, instances=storage_instances)
+
+
+@asset_router.get("/user-assets-data", 
+                  response_model=UserAssetsData,
+                  summary="Get user assets page data",
+                  description="Retrieve user's file trees organized by instance UUID.",
+                  dependencies=[Depends(decode_token)])
+async def get_user_assets_data(
+        token_payload: dict = Depends(decode_token),
+        policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+        instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
+) -> UserAssetsData:
+    """
+    Get aggregated data for user assets page.
+    """
+    # Retrieve the user's user_uuid from the token payload
+    uuid = token_payload.get("sub")
+
+    # Get all storage access points the user has read access to
+    instance_point_uids = set([UUID(policy[1]) for policy in policy_manager.get_user_policies(uuid)])
+    instances = {instance.uuid: instance for instance in instance_manager.get_instances_by_uuid(list(instance_point_uids))}
+
+    file_trees = {}
+
+    # Loop through each storage instance and filter its file tree
+    for uid, agent in instances.items():
+        def node_filter(n: node):
+            vals = (uuid, str(uid), n.identifier, '*')
+            return policy_manager.validate_policy(*vals)
+
+        file_trees[str(uid)] = convert_file_tree_to_nodes(
+            agent.filter_file_tree(node_filter)
+        )
+
+    access_point_names = {instance.access_point_name: str(uid) for uid, instance in instances.items()}
+
+    return UserAssetsData(assets=file_trees, instances=access_point_names)
 
