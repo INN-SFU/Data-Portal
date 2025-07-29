@@ -64,7 +64,7 @@ ENFORCER_MODEL=./core/settings/managers/policies/casbin/model.conf
 ENFORCER_POLICY=./core/settings/managers/policies/casbin/test_policies.csv
 USER_POLICIES=./core/settings/managers/policies/casbin/user_policies
 JINJA_TEMPLATES=./api/v0_1/templates
-ENDPOINT_CONFIGS=./core/settings/managers/endpoints/configs
+INSTANCE_CONFIGS=./core/settings/managers/instances/configs
 STATIC_FILES=./api/v0_1/static
 '''
         
