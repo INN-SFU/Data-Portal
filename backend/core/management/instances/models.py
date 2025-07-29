@@ -6,10 +6,10 @@ from core.connectivity import AbstractStorageAgent
 
 
 # todo incorporate model
-class Endpoint(BaseModel):
+class Instance(BaseModel):
     """
-    Endpoint
-    Class representing an endpoint.
+    Instance
+    Class representing a storage instance.
 
     Attributes:
     - uuid: UUID
@@ -26,7 +26,7 @@ class Endpoint(BaseModel):
 
     def config(self, secrets: bool = False):
         """
-        Returns the configuration of the endpoint.
+        Returns the configuration of the instance.
         This is a placeholder for the actual implementation.
         """
         return {
@@ -38,7 +38,7 @@ class Endpoint(BaseModel):
 
     def close(self):
         """
-        Perform explicit cleanup of resources held by this endpoint.
+        Perform explicit cleanup of resources held by this instance.
         For instance, if the agent holds connections or open files, they
         should be closed here.
         """
@@ -50,20 +50,20 @@ class Endpoint(BaseModel):
         """
         Destructor to try to ensure cleanup.
         Note: __del__ is not guaranteed to be called deterministically,
-        so you should explicitly call close() when you know the Endpoint is no longer needed.
+        so you should explicitly call close() when you know the Instance is no longer needed.
         """
         self.close()
 
     def __str__(self):
         """
-        String representation of the Endpoint.
+        String representation of the Instance.
         """
-        return f"Endpoint(uuid={self.uuid}, name={self.name}, agent={self.agent.__str__()})"
+        return f"Instance(uuid={self.uuid}, name={self.name}, agent={self.agent.__str__()})"
 
     def __eq__(self, other):
         """
         Equality check based on UUID.
         """
-        if isinstance(other, Endpoint):
+        if isinstance(other, Instance):
             return self.uuid == other.uuid
         return False
