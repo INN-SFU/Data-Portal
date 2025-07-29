@@ -54,8 +54,8 @@ def SYS_RESET():
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
     print('Removing all storage endpoints...')
-    for endpoint_file in os.listdir(os.getenv('ENDPOINT_CONFIGS')):
-        os.remove(os.path.join(os.getenv('ENDPOINT_CONFIGS'), endpoint_file))
+    for endpoint_file in os.listdir(os.getenv('INSTANCE_CONFIGS')):
+        os.remove(os.path.join(os.getenv('INSTANCE_CONFIGS'), endpoint_file))
 
 
     _generate_secrets()
