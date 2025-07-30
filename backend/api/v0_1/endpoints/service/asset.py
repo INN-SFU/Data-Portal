@@ -10,7 +10,7 @@ from core.injection.managers import get_instance_manager, get_user_manager
 from api.v0_1.endpoints.service.auth import decode_token
 from api.v0_1.endpoints.service.models import (GetAssetRequest, GetAssetResponse, PutAssetRequest, PutAssetResponse,
                                                UserHomeData, UserAssetsData)
-from api.v0_1.endpoints.service.utils import convert_file_tree_to_nodes
+from .utils import convert_file_tree_to_dict
 from core.management.instances import AbstractInstanceManager
 from core.management.policies import AbstractPolicyManager, Policy
 from core.management.users import AbstractUserManager
@@ -126,7 +126,7 @@ async def get_user_home_data(
             vals = (uid, instance, n.identifier, 'write')
             return policy_manager.enforcer.enforce(*vals)
 
-        user_file_tree[instance] = convert_file_tree_to_nodes(
+        user_file_tree[instance] = convert_file_tree_to_dict(
             storage_instances[instance].filter_file_tree(node_filter)
         )
 
@@ -161,7 +161,7 @@ async def get_user_assets_data(
             vals = (uuid, str(uid), n.identifier, '*')
             return policy_manager.validate_policy(*vals)
 
-        file_trees[str(uid)] = convert_file_tree_to_nodes(
+        file_trees[str(uid)] = convert_file_tree_to_dict(
             agent.filter_file_tree(node_filter)
         )
 

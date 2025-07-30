@@ -12,7 +12,7 @@ from api.v0_1.endpoints.service.models import (User, AddUserRequest, AddUserResp
                                                RemovePolicyRequest, RemovePolicyResponse, PolicyManagementData,
                                                UserManagementData, InstanceManagementData, AssetManagementData, 
                                                InstanceCreate, model_registry)
-from api.v0_1.endpoints.service.utils import convert_file_tree_to_nodes
+from .utils import convert_file_tree_to_dict
 
 from core.connectivity.instance_factory import instance_factory
 from core.connectivity.agents import available_flavours
@@ -430,7 +430,7 @@ async def get_policy_management_data(
     for instance in admin_instances:
         # Partition the file type based on the policy
         file_tree = instance.agent.partition_file_tree_by_access(policy_manager, uuid, instance.uuid, 'admin')['admin']
-        assets[instance.name] = convert_file_tree_to_nodes(file_tree)
+        assets[instance.name] = convert_file_tree_to_dict(file_tree)
 
     return PolicyManagementData(assets=assets, instances=admin_instances)
 
@@ -470,7 +470,7 @@ async def get_user_management_data(
 
             if f_trees is not None:
                 user_trees[(instance.name, str(instance.uuid))] = {
-                    access_type: convert_file_tree_to_nodes(tree) 
+                    access_type: convert_file_tree_to_dict(tree) 
                     for access_type, tree in f_trees.items()
                 }
 
@@ -551,7 +551,7 @@ async def get_asset_management_data(
         f_trees = instance.agent.partition_file_tree_by_access(policy_manager, uuid, instance.uuid, ["read", "write"])
         if f_trees is not None:
             file_trees[str(instance.uuid)] = {
-                access_type: convert_file_tree_to_nodes(tree)
+                access_type: convert_file_tree_to_dict(tree)
                 for access_type, tree in f_trees.items()
             }
 
