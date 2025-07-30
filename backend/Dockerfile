@@ -25,7 +25,7 @@ COPY . .
 # Create necessary directories
 RUN mkdir -p /app/loggers/logs && \
     mkdir -p /app/core/settings/security && \
-    mkdir -p /app/core/settings/managers/endpoints/configs
+    mkdir -p /app/core/settings/managers/instances/configs
 
 # Create non-root user
 RUN adduser --disabled-password --gecos '' --uid 1000 ams && \
