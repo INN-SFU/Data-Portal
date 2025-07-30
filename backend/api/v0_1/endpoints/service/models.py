@@ -82,11 +82,11 @@ class GetPolicyResponse(BaseModel):
 model_registry: Dict[str, Type[BaseModel]] = {}
 
 
-def register_model(model_name: str, model_class: Type[BaseModel], endpoint: str):
+def register_model(model_name: str, model_class: Type[BaseModel], instance: str):
     """Registers a model and its associated endpoint."""
     model_registry[model_name] = {
         "model_class": model_class,
-        "endpoint": endpoint
+        "instance": instance
     }
 
 
@@ -173,7 +173,7 @@ class UserAssetsData(BaseModel):
 class InstanceBase(BaseModel):
     flavour: Literal[tuple(available_flavours.keys())]
     access_point_name: str
-    endpoint_url: str
+    instance_url: str
 
 
 # build per-flavour create models:
