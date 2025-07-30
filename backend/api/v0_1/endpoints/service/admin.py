@@ -197,7 +197,7 @@ async def get_policies(policy_filter: Policy = Depends(),
 async def add_policy(new_policy: AddPolicyRequest = Depends(),
                      user_manager: AbstractUserManager = Depends(get_user_manager),
                      policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
-                     endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager),
+                     instance_manager: AbstractInstanceManager = Depends(get_instance_manager),
                      user: dict = Depends(decode_token)) -> AddPolicyResponse:
     """
     Add a policy.
@@ -207,26 +207,26 @@ async def add_policy(new_policy: AddPolicyRequest = Depends(),
 
     # Unpack the new policy
     username = new_policy.username
-    access_point = new_policy.endpoint_name
+    instance_name = new_policy.instance_name
     resource = new_policy.resource
     action = new_policy.action
 
     # Get the user uuid
     uuid = user_manager.get_user_uuid(username)
     # Convert access point name to uuid
-    access_point_uuid = endpoint_manager.get_endpoint_uuid(access_point)
+    instance_uuid = instance_manager.get_instance_uuid(instance_name)
 
     # Create the new policy
     new_policy = Policy(
         user_uuid=uuid,
-        endpoint_uuid=access_point_uuid,
+        instance_uuid=instance_uuid,
         resource=resource,
         action=action
     )
 
     if user_manager.get_user(new_policy.user_uuid) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    if endpoint_manager.get_endpoint_by_uuid(new_policy.endpoint_uuid) is None:
+    if instance_manager.get_instance_by_uuid(new_policy.instance_uuid) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Access point not found")
 
     try:
@@ -241,7 +241,7 @@ async def add_policy(new_policy: AddPolicyRequest = Depends(),
 async def remove_policy(old_policy: RemovePolicyRequest = Depends(),
                         user_manager: AbstractUserManager = Depends(get_user_manager),
                         policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
-                        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager),
+                        instance_manager: AbstractInstanceManager = Depends(get_instance_manager),
                         user: dict = Depends(decode_token)) -> RemovePolicyResponse:
     """
     Remove a policy.
@@ -252,14 +252,14 @@ async def remove_policy(old_policy: RemovePolicyRequest = Depends(),
 
     # Unpack the old policy
     username = old_policy.username
-    access_point = old_policy.endpoint_name
+    instance_name = old_policy.instance_name
     resource = old_policy.resource
     action = old_policy.action
 
     # Remove the policy
     old_policy = Policy(
         user_uuid=user_manager.get_user_uuid(username),
-        endpoint_uuid=endpoint_manager.get_endpoint_uuid(access_point),
+        instance_uuid=instance_manager.get_instance_uuid(instance_name),
         resource=resource,
         action=action
     )
@@ -272,15 +272,15 @@ async def remove_policy(old_policy: RemovePolicyRequest = Depends(),
     return RemovePolicyResponse(success=True, details=[old_policy])
 
 
-@admin_router.post("/endpoints/", dependencies=[Depends(decode_token)])
-async def create_new_endpoint(
+@admin_router.post("/instances/", dependencies=[Depends(decode_token)])
+async def create_new_instance(
         config: InstanceCreate = Body(...),
-        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager),
+        instance_manager: AbstractInstanceManager = Depends(get_instance_manager),
         policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
         token_payload: dict = Depends(decode_token)
 ) -> JSONResponse:
     """
-    Add a new storage endpoint.
+    Add a new storage instance.
     Accepts JSON payload with a "flavour" field plus required fields for that flavour.
     """
     # Check admin privileges
@@ -288,109 +288,109 @@ async def create_new_endpoint(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
 
     flavour = config.flavour
-    # Generate a stable UUID for the endpoint from its name
-    access_point_uid = uuid5(NAMESPACE_DNS, config.access_point_name)
+    # Generate a stable UUID for the instance from its name
+    instance_uuid = uuid5(NAMESPACE_DNS, config.instance_name)
 
     # Convert the Pydantic model to a dict.
     config_dict = dict()
     config_dict['agent'] = config.dict(exclude={"flavour", 'access_point_name'})
     config_dict['flavour'] = flavour
 
-    # Create the storage agent for the endpoint
+    # Create the storage agent for the instance
     agent = instance_factory(config_dict)
 
-    # Create the endpoint object
-    new_endpoint = Instance(
-        uuid=access_point_uid,
+    # Create the instance object
+    new_instance = Instance(
+        uuid=instance_uuid,
         name=config.access_point_name,
         flavour=flavour,
         agent=agent
     )
 
-    # Register with the endpoint manager
-    endpoint_manager.endpoints.append(new_endpoint)
+    # Register with the instance manager
+    instance_manager.instances.append(new_instance)
 
     # Save the configuration
-    endpoint_manager.save_configuration()
+    instance_manager.save_configuration()
 
-    # Add a policy so the creating user can administer the new endpoint
+    # Add a policy so the creating user can administer the new instance
     user_uuid_str = token_payload.get("sub")
     user_uuid = UUID(user_uuid_str)
     new_admin_policy = Policy(
         user_uuid=user_uuid,
-        endpoint_uuid=access_point_uid,
+        instance_uuid=instance_uuid,
         resource='.*',
         action='admin'
     )
 
-    # Add the admin policy for the endpoint to the policy manager
+    # Add the admin policy for the instance to the policy manager
     try:
         if not policy_manager.add_policy(new_admin_policy):
-            # If the policy manager fails to add the policy, remove the endpoint
-            endpoint_manager.delete_endpoint(endpoint_manager.get_endpoint_by_uuid(access_point_uid))
+            # If the policy manager fails to add the policy, remove the instance
+            instance_manager.delete_instance(instance_manager.get_instance_by_uuid(instance_uuid))
 
             raise HTTPException(status_code=status.HTTP_500_BAD_REQUEST,
-                                detail="Failed to add the administrator policy for the new endpoint.")
+                                detail="Failed to add the administrator policy for the new instance.")
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Failed to add the administrator policy for the new endpoint. {e}")
+                            detail=f"Failed to add the administrator policy for the new instance. {e}")
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content={"detail": f"Instance '{new_endpoint.name}' created successfully."}
+        content={"detail": f"Instance '{new_instance.name}' created successfully."}
     )
 
 
-@admin_router.delete("/endpoints/", dependencies=[Depends(decode_token)])
-async def remove_endpoint(endpoint_uid: str = Query(..., description="UID of the endpoint to remove"),
-                          endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager),
+@admin_router.delete("/instances/", dependencies=[Depends(decode_token)])
+async def remove_instance(instance_uuid: str = Query(..., description="UID of the instance to remove"),
+                          instance_manager: AbstractInstanceManager = Depends(get_instance_manager),
                           policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
                           user: dict = Depends(decode_token)) -> JSONResponse:
     """
-    Remove a storage endpoint.
+    Remove a storage instance.
     """
     # Check admin privileges
     if not is_user_admin(user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="Admin privileges required")
 
-    # Convert endpoint_uid to UUID
+    # Convert instance_uid to UUID
     try:
-        endpoint_uid = UUID(endpoint_uid)
+        instance_uuid = UUID(instance_uuid)
     except ValueError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Invalid endpoint UID format. Must be a valid UUID.")
+                            detail="Invalid instance UID format. Must be a valid UUID.")
 
     try:
-        endpoint_manager.get_endpoint_by_uuid(endpoint_uid)
+        instance_manager.get_instance_by_uuid(instance_uuid)
     except KeyError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Access point {endpoint_uid} not found.")
+                            detail=f"Access point {instance_uuid} not found.")
 
-    # Delete the endpoint from the manager
-    old_endpoint = Instance(
-        uuid=endpoint_uid,
-        name=endpoint_manager.get_endpoint_by_uuid(endpoint_uid).name,
-        flavour=endpoint_manager.get_endpoint_by_uuid(endpoint_uid).flavour,
-        agent=endpoint_manager.get_endpoint_by_uuid(endpoint_uid).agent
+    # Delete the instance from the manager
+    old_instance = Instance(
+        uuid=instance_uuid,
+        name=instance_manager.get_instance_by_uuid(instance_uuid).name,
+        flavour=instance_manager.get_instance_by_uuid(instance_uuid).flavour,
+        agent=instance_manager.get_instance_by_uuid(instance_uuid).agent
     )
 
-    # Delete the endpoint
+    # Delete the instance
     try:
-        endpoint_manager.delete_endpoint(old_endpoint)
+        instance_manager.delete_instance(old_instance)
     except KeyError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail=f"Failed to remove endpoint: {e}")
+                            detail=f"Failed to remove instance: {e}")
 
-    # Delete policies associated with the endpoint
+    # Delete policies associated with the instance
     try:
-        policies = policy_manager.get_endpoint_policies(old_endpoint.uuid)
+        policies = policy_manager.get_instance_policies(old_instance.uuid)
         policy_manager.remove_policies(policies)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Failed to remove policies for endpoint: {e}")
+                            detail=f"Failed to remove policies for instance: {e}")
 
-    return JSONResponse(content={"detail": f"Instance '{endpoint_uid}' removed."})
+    return JSONResponse(content={"detail": f"Instance '{instance_uuid}' removed."})
 
 
 # Dashboard Data Instances
@@ -398,13 +398,13 @@ async def remove_endpoint(endpoint_uid: str = Query(..., description="UID of the
 @admin_router.get("/dashboard/policy-management",
                   response_model=PolicyManagementData,
                   summary="Get policy management dashboard data",
-                  description="Retrieve file trees and endpoint data for policy management interface.",
+                  description="Retrieve file trees and instance data for policy management interface.",
                   dependencies=[Depends(decode_token)])
 async def get_policy_management_data(
         token_payload: dict = Depends(decode_token),
         user_manager: AbstractUserManager = Depends(get_user_manager),
         policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
-        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager)
+        instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
 ) -> PolicyManagementData:
     """
     Get aggregated data for policy management dashboard.
@@ -420,21 +420,19 @@ async def get_policy_management_data(
         action='admin'
     )
 
-    # Get all endpoints the user has 'admin' access to
+    # Get all instances the user has 'admin' access to
     admin_policies = policy_manager.filter_policies(policy)
-    admin_endpoint_uuids = list(set(policy.endpoint_uuid for policy in admin_policies))
-    admin_endpoints = endpoint_manager.get_endpoints_by_uuid(admin_endpoint_uuids)
+    instance_uuids = list(set(policy.instance_uuid for policy in admin_policies))
+    admin_instances = instance_manager.get_instances_by_uuid(instance_uuids)
 
     assets = {}
-    # Populate the file trees for each endpoint
-    for endpoint in admin_endpoints:
+    # Populate the file trees for each instance
+    for instance in admin_instances:
         # Partition the file type based on the policy
-        file_tree = endpoint.agent.partition_file_tree_by_access(
-            policy_manager, uuid, endpoint.uuid, 'admin'
-        )['admin']
-        assets[endpoint.name] = convert_file_tree_to_nodes(file_tree)
+        file_tree = instance.agent.partition_file_tree_by_access(policy_manager, uuid, instance.uuid, 'admin')['admin']
+        assets[instance.name] = convert_file_tree_to_nodes(file_tree)
 
-    return PolicyManagementData(assets=assets, endpoints=admin_endpoints)
+    return PolicyManagementData(assets=assets, instances=admin_instances)
 
 
 @admin_router.get("/dashboard/user-management",
@@ -446,7 +444,7 @@ async def get_user_management_data(
         token_payload: dict = Depends(decode_token),
         user_manager: AbstractUserManager = Depends(get_user_manager),
         policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
-        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager)
+        instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
 ) -> UserManagementData:
     """
     Get aggregated data for user management dashboard.
@@ -459,20 +457,19 @@ async def get_user_management_data(
 
     # Loop through users to build file trees based on access levels
     for user in users:
-        # Get all storage endpoints the user has access to
-        endpoint_uuids = list(set(policy.endpoint_uuid for policy in policy_manager.get_user_policies(user.uuid)))
-        endpoints = endpoint_manager.get_endpoints_by_uuid(endpoint_uuids)
+        # Get all storage instances the user has access to
+        instance_uuids = list(set(policy.endpoint_uuid for policy in policy_manager.get_user_policies(user.uuid)))
+        instances = instance_manager.get_instances_by_uuid(instance_uuids)
 
         user_trees = {}
 
-        # Loop through each storage endpoint and filter its file tree
-        for endpoint in endpoints:
-            f_trees = endpoint.agent.partition_file_tree_by_access(
-                policy_manager, user.uuid, endpoint.uuid, ['read', 'write', 'admin']
-            )
+        # Loop through each storage instance and filter its file tree
+        for instance in instances:
+            f_trees = instance.agent.partition_file_tree_by_access(policy_manager, user.uuid, instance.uuid,
+                                                                   ['read', 'write', 'admin'])
 
             if f_trees is not None:
-                user_trees[(endpoint.name, str(endpoint.uuid))] = {
+                user_trees[(instance.name, str(instance.uuid))] = {
                     access_type: convert_file_tree_to_nodes(tree) 
                     for access_type, tree in f_trees.items()
                 }
@@ -488,7 +485,7 @@ async def get_user_management_data(
 
     json_registry = {
         name: {
-            "endpoint": entry["endpoint"],
+            "instance": entry["instance"],
             "schema": entry["model_class"].model_json_schema()
         }
         for name, entry in model_registry.items()
@@ -498,41 +495,41 @@ async def get_user_management_data(
     return UserManagementData(users=users, file_trees=file_trees, models=json_registry)
 
 
-@admin_router.get("/dashboard/endpoint-management",
+@admin_router.get("/dashboard/instance-management",
                   response_model=InstanceManagementData,
-                  summary="Get endpoint management dashboard data",
-                  description="Retrieve endpoint configurations and available flavours.",
+                  summary="Get instance management dashboard data",
+                  description="Retrieve instance configurations and available flavours.",
                   dependencies=[Depends(decode_token)])
-async def get_endpoint_management_data(
+async def get_instance_management_data(
         token_payload: dict = Depends(decode_token),
-        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager)
+        instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
 ) -> InstanceManagementData:
     """
-    Get aggregated data for endpoint management dashboard.
+    Get aggregated data for instance management dashboard.
     """
     if not is_user_admin(token_payload):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
 
-    # Gather endpoint details
-    endpoints = endpoint_manager.endpoints
+    # Gather instance details
+    instances = instance_manager.instances
 
     configs = {
-        endpoint.name: (str(endpoint.uuid), endpoint.config(secrets=False))
-        for endpoint in endpoints
+        instance.name: (str(instance.uuid), instance.config(secrets=False))
+        for instance in instances
     }
 
-    return InstanceManagementData(endpoints=configs, flavours=available_flavours)
+    return InstanceManagementData(instances=configs, flavours=available_flavours)
 
 
 @admin_router.get("/dashboard/asset-management",
                   response_model=AssetManagementData,
                   summary="Get asset management dashboard data",
-                  description="Retrieve file trees and endpoint mappings for asset management interface.",
+                  description="Retrieve file trees and instance mappings for asset management interface.",
                   dependencies=[Depends(decode_token)])
 async def get_asset_management_data(
         token_payload: dict = Depends(decode_token),
         policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
-        endpoint_manager: AbstractInstanceManager = Depends(get_instance_manager)
+        instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
 ) -> AssetManagementData:
     """
     Get aggregated data for asset management dashboard.
@@ -544,23 +541,21 @@ async def get_asset_management_data(
     uuid = token_payload.get("sub")
 
     # Get all storage access points the user has read access to
-    endpoint_uuids = list(
-        set(policy.endpoint_uuid for policy in policy_manager.get_user_policies(uuid))
+    instance_uuids = list(
+        set(policy.instance_uuid for policy in policy_manager.get_user_policies(uuid))
     )
-    endpoints = endpoint_manager.get_endpoints_by_uuid(endpoint_uuids)
+    instances = instance_manager.get_instances_by_uuid(instance_uuids)
 
     file_trees = {}
-    for endpoint in endpoints:
-        f_trees = endpoint.agent.partition_file_tree_by_access(
-            policy_manager, uuid, endpoint.uuid, ["read", "write"]
-        )
+    for instance in instances:
+        f_trees = instance.agent.partition_file_tree_by_access(policy_manager, uuid, instance.uuid, ["read", "write"])
         if f_trees is not None:
-            file_trees[str(endpoint.uuid)] = {
+            file_trees[str(instance.uuid)] = {
                 access_type: convert_file_tree_to_nodes(tree)
                 for access_type, tree in f_trees.items()
             }
 
     # Convert to simple string → string mapping for JSON encoding
-    endpoint_names = {endpoint.name: str(endpoint.uuid) for endpoint in endpoints}
+    instance_names = {instance.name: str(instance.uuid) for instance in instances}
 
-    return AssetManagementData(assets=file_trees, endpoints=endpoint_names)
+    return AssetManagementData(assets=file_trees, instances=instance_names)

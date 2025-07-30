@@ -376,7 +376,7 @@ class TestAPIRootAndDiscoveryWorkflow(TestAuthenticationWorkflows):
         
         assert response.status_code == 200
         response_data = response.json()
-        assert "test endpoint_url is working" in response_data["message"]
+        assert "test instance_url is working" in response_data["message"]
 
 
 class TestAuthenticationUtilityFunctions:

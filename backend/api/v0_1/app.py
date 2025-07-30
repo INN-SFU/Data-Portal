@@ -53,7 +53,7 @@ class App:
 
         @self.app.get("/test", response_class=JSONResponse)
         async def test_endpoint():
-            return JSONResponse(content={"message": "The test endpoint_url is working."})
+            return JSONResponse(content={"message": "The test instance_url is working."})
 
     def get_app(self):
         return self.app

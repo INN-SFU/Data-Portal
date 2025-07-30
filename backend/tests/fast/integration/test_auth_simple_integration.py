@@ -56,7 +56,7 @@ def minimal_app():
     
     @app.get("/test")
     async def test_endpoint():
-        return {"message": "The test endpoint_url is working."}
+        return {"message": "The test instance_url is working."}
     
     return app
 
@@ -161,7 +161,7 @@ class TestBasicAPIEndpoints:
         
         assert response.status_code == 200
         data = response.json()
-        assert "test endpoint_url is working" in data["message"]
+        assert "test instance_url is working" in data["message"]
 
 
 class TestAuthenticationFunctions:

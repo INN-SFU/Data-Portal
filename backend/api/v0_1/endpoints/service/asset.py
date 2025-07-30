@@ -98,7 +98,7 @@ def get_asset(asset: GetAssetRequest = Depends(),
                             detail="User does not have access to the specified resource")
 
 
-# User Asset Data Endpoints
+# User Asset Data instances
 
 @asset_router.get("/user-home-data",
                   response_model=UserHomeData,

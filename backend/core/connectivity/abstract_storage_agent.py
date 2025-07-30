@@ -28,17 +28,17 @@ class AbstractStorageAgent(ABC):
     CONFIG = None
 
     def __init__(self,
-                 endpoint_url: str,
+                 instance_url: str,
                  separator: str = '/'):
         """
         Initialize a new instance of the class.
 
         :param access_point_name: The slug for the access point.
         :type access_point_name: str
-        :param endpoint_url: The endpoint_url for the access point.
-        :type endpoint_url: str
+        :param instance_url: The instance_url for the access point.
+        :type instance_url: str
         """
-        self.endpoint_url = endpoint_url
+        self.instance_url = instance_url
         self.separator = separator
         # File tree to store the structure of objects im the access point
         self.file_tree: treelib.Tree = None
@@ -112,7 +112,7 @@ class AbstractStorageAgent(ABC):
             self,
             policy_manager: AbstractPolicyManager,
             user_uuid: UUID,
-            access_point_uuid: UUID,
+            instance_uuid: UUID,
             access_types: Union[str, List[str]]
     ) -> Dict[str, treelib.Tree]:
         """
@@ -121,17 +121,13 @@ class AbstractStorageAgent(ABC):
 
         :param policy_manager: An instance responsible for validating policies.
         :param user_uuid: The user UUID.
-        :param access_point_uuid: The identifier for the storage endpoint.
+        :param instance_uuid: The identifier for the storage endpoint.
         :param access_types: A single access type (as a string) or a list of access types (e.g. 'read' or ['read', 'write']).
         :return: A dict mapping each access type to a filtered treelib.Tree.
         """
         # If a single string is passed, convert it to a list.
         if isinstance(access_types, str):
             access_types = [access_types]  # type: List[str]
-
-        # Convert UUIDs to strings.
-        user_uid_str: str = str(user_uuid)
-        access_point_uid_str: str = str(access_point_uuid)
 
         # Alias for a partition dictionary.
         Partition = Dict[str, Any]
@@ -143,7 +139,7 @@ class AbstractStorageAgent(ABC):
             for access in access_types:
                 policy = Policy(
                     user_uuid=user_uuid,
-                    endpoint_uuid=access_point_uuid,
+                    instance_uuid=instance_uuid,
                     resource=node_.identifier,
                     action=access
                 )
@@ -235,7 +231,7 @@ class AbstractStorageAgent(ABC):
         :return: The configuration of the agent.
         """
         config = {
-            'endpoint_url': self.endpoint_url
+            'instance_url': self.instance_url
         }
 
         if secrets:

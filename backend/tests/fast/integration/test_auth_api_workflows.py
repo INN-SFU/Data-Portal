@@ -56,27 +56,27 @@ def mock_dependencies():
     # Mock the managers that require file system access
     with patch('core.settings.managers.user_manager') as mock_user_mgr, \
          patch('core.settings.managers.policy_manager') as mock_policy_mgr, \
-         patch('core.settings.managers.endpoint_manager') as mock_endpoint_mgr:
+         patch('core.settings.managers.instance_manager') as mock_instance_mgr:
         
         # Configure mock managers
         mock_user_mgr.get_user_uuid.return_value = "user-uuid-123"
         mock_user_mgr.get_user.return_value = {"username": "testuser"}
         
         mock_policy_mgr.get_user_policies.return_value = [
-            ("user-uuid-123", "endpoint-uuid-1"),
-            ("user-uuid-123", "endpoint-uuid-2")
+            ("user-uuid-123", "instance-uuid-1"),
+            ("user-uuid-123", "instance-uuid-2")
         ]
         
-        mock_endpoint_mgr.get_endpoint_uuid.return_value = "endpoint-uuid-123"
-        mock_endpoint_mgr.get_endpoints_by_uuid.return_value = [
-            {"name": "Storage1", "uuid": "endpoint-uuid-1"},
-            {"name": "Storage2", "uuid": "endpoint-uuid-2"}
+        mock_instance_mgr.get_instance_uuid.return_value = "instance-uuid-123"
+        mock_instance_mgr.get_instances_by_uuid.return_value = [
+            {"name": "Storage1", "uuid": "instance-uuid-1"},
+            {"name": "Storage2", "uuid": "instance-uuid-2"}
         ]
         
         yield {
             'user_manager': mock_user_mgr,
             'policy_manager': mock_policy_mgr,
-            'endpoint_manager': mock_endpoint_mgr
+            'instance_manager': mock_instance_mgr
         }
 
 
@@ -154,7 +154,7 @@ class TestAPIRootEndpoints:
         
         assert response.status_code == 200
         data = response.json()
-        assert "test endpoint_url is working" in data["message"]
+        assert "test instance_url is working" in data["message"]
 
 
 class TestAuthenticationEndpoints:

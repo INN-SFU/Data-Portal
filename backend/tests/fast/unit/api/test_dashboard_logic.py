@@ -44,25 +44,25 @@ class TestPolicyManagementLogic:
     def test_file_tree_aggregation_pattern(self):
         """Test file tree aggregation logic pattern."""
         
-        def mock_aggregation_logic(endpoints, get_tree_func):
+        def mock_aggregation_logic(instances, get_tree_func):
             assets = {}
-            for endpoint in endpoints:
+            for instance in instances:
                 # Simulate the aggregation pattern
-                tree = get_tree_func(endpoint)
-                assets[endpoint['name']] = tree
+                tree = get_tree_func(instance)
+                assets[instance['name']] = tree
             return assets
         
-        # Mock endpoints
-        endpoints = [
+        # Mock instances
+        instances = [
             {'name': 'storage1', 'uuid': str(uuid4())},
             {'name': 'storage2', 'uuid': str(uuid4())}
         ]
         
         # Mock tree getter
-        def mock_get_tree(endpoint):
-            return [{'id': f"file_{endpoint['name']}", 'text': 'test.txt'}]
+        def mock_get_tree(instance):
+            return [{'id': f"file_{instance['name']}", 'text': 'test.txt'}]
         
-        result = mock_aggregation_logic(endpoints, mock_get_tree)
+        result = mock_aggregation_logic(instances, mock_get_tree)
         
         assert 'storage1' in result
         assert 'storage2' in result
@@ -85,25 +85,25 @@ class TestUserHomeLogic:
         # Mock policy manager
         mock_pm = Mock()
         mock_pm.get_user_policies.return_value = [
-            ('user123', 'endpoint1'),
-            ('user123', 'endpoint2'),
-            ('user123', 'endpoint1')  # Duplicate should be filtered
+            ('user123', 'instance1'),
+            ('user123', 'instance2'),
+            ('user123', 'instance1')  # Duplicate should be filtered
         ]
         
         result = mock_policy_filtering_logic('user123', mock_pm)
         
         assert len(result) == 2  # Set should remove duplicates
-        assert 'endpoint1' in result
-        assert 'endpoint2' in result
+        assert 'instance1' in result
+        assert 'instance2' in result
     
     def test_file_tree_permission_filtering_pattern(self):
         """Test file tree permission filtering pattern."""
         
-        def mock_permission_filtering_logic(user_id, endpoint_id, enforcer):
-            # Simulate the node filtering pattern used in endpoints
+        def mock_permission_filtering_logic(user_id, instance_id, enforcer):
+            # Simulate the node filtering pattern used in instances
             def node_filter(node):
-                # This is the pattern used in the actual endpoints
-                vals = (user_id, endpoint_id, node['identifier'], 'write')
+                # This is the pattern used in the actual instances
+                vals = (user_id, instance_id, node['identifier'], 'write')
                 return enforcer.enforce(*vals)
             
             # Test with sample nodes
@@ -117,13 +117,13 @@ class TestUserHomeLogic:
         
         # Mock enforcer with specific permissions
         mock_enforcer = Mock()
-        def mock_enforce(user, endpoint, identifier, action):
+        def mock_enforce(user, instance, identifier, action):
             # Allow access to 'public' and 'user' files for this test
             return 'public' in identifier or 'user' in identifier
         
         mock_enforcer.enforce.side_effect = mock_enforce
         
-        result = mock_permission_filtering_logic('user123', 'endpoint1', mock_enforcer)
+        result = mock_permission_filtering_logic('user123', 'instance1', mock_enforcer)
         
         assert len(result) == 2  # Should filter out private_file.txt
         identifiers = [node['identifier'] for node in result]
@@ -178,7 +178,7 @@ class TestFileTreeConversionLogic:
         """Test node attribute handling pattern."""
         
         def mock_node_processing_logic(raw_node):
-            # Simulate how actual endpoints process node attributes
+            # Simulate how actual instances process node attributes
             return {
                 "id": raw_node.get('id', 'unknown'),
                 "parent": raw_node.get('parent', '#'),
@@ -206,60 +206,60 @@ class TestFileTreeConversionLogic:
 
 
 class TestDataAggregationPatterns:
-    """Test data aggregation patterns used across endpoints."""
+    """Test data aggregation patterns used across instances."""
     
-    def test_multi_endpoint_aggregation_pattern(self):
-        """Test pattern for aggregating data from multiple endpoints."""
+    def test_multi_instance_aggregation_pattern(self):
+        """Test pattern for aggregating data from multiple instances."""
         
-        def mock_multi_endpoint_logic(user_uuid, policy_manager, endpoint_manager):
+        def mock_multi_instance_logic(user_uuid, policy_manager, instance_manager):
             # This simulates the pattern used in user management endpoint
             file_trees = {}
             
-            # Get endpoints for user (simplified)
+            # Get instances for user (simplified)
             user_policies = policy_manager.get_user_policies(user_uuid)
-            endpoint_uuids = list(set(policy[1] for policy in user_policies))
-            endpoints = endpoint_manager.get_endpoints_by_uuid(endpoint_uuids)
+            instance_uuids = list(set(policy[1] for policy in user_policies))
+            instances = instance_manager.get_instances_by_uuid(instance_uuids)
             
-            for endpoint in endpoints:
-                # Get file trees for this endpoint (simplified)
+            for instance in instances:
+                # Get file trees for this instance (simplified)
                 trees = {'read': ['file1.txt'], 'write': ['file2.txt']}
-                file_trees[endpoint['name']] = trees
+                file_trees[instance['name']] = trees
             
             return file_trees
         
         # Mock managers
         mock_pm = Mock()
         mock_pm.get_user_policies.return_value = [
-            ('user123', 'endpoint1'),
-            ('user123', 'endpoint2')
+            ('user123', 'instance1'),
+            ('user123', 'instance2')
         ]
         
         mock_em = Mock()
-        mock_em.get_endpoints_by_uuid.return_value = [
-            {'name': 'Storage1', 'uuid': 'endpoint1'},
-            {'name': 'Storage2', 'uuid': 'endpoint2'}
+        mock_em.get_instances_by_uuid.return_value = [
+            {'name': 'Storage1', 'uuid': 'instance1'},
+            {'name': 'Storage2', 'uuid': 'instance2'}
         ]
         
-        result = mock_multi_endpoint_logic('user123', mock_pm, mock_em)
+        result = mock_multi_instance_logic('user123', mock_pm, mock_em)
         
         assert 'Storage1' in result
         assert 'Storage2' in result
         assert 'read' in result['Storage1']
         assert 'write' in result['Storage1']
     
-    def test_endpoint_name_mapping_pattern(self):
-        """Test endpoint name to UUID mapping pattern."""
+    def test_instance_name_mapping_pattern(self):
+        """Test instance name to UUID mapping pattern."""
         
-        def mock_endpoint_mapping_logic(endpoints):
-            # Simulate the pattern: {endpoint.name: str(endpoint.uuid)}
-            return {endpoint['name']: str(endpoint['uuid']) for endpoint in endpoints}
+        def mock_instance_mapping_logic(instances):
+            # Simulate the pattern: {instance.name: str(instance.uuid)}
+            return {instance['name']: str(instance['uuid']) for instance in instances}
         
-        test_endpoints = [
+        test_instances = [
             {'name': 'Documents', 'uuid': uuid4()},
             {'name': 'Media Files', 'uuid': uuid4()}
         ]
         
-        result = mock_endpoint_mapping_logic(test_endpoints)
+        result = mock_instance_mapping_logic(test_instances)
         
         assert 'Documents' in result
         assert 'Media Files' in result
