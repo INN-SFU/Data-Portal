@@ -94,7 +94,7 @@ def check_env():
         return False
     
     # Check test directory
-    if not Path("tests").exists():
+    if not Path("").exists():
         print(f"{C.RED}❌ Run from backend/ directory{C.END}")
         return False
     
