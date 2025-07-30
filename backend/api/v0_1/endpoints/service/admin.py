@@ -4,9 +4,9 @@ from uuid import uuid5, NAMESPACE_DNS, UUID
 from fastapi import Depends, HTTPException, APIRouter, status, Query, Body
 from fastapi.responses import JSONResponse
 
-from api.v0_1.endpoints.injection import get_user_manager
-from api.v0_1.endpoints.injection import get_policy_manager
-from api.v0_1.endpoints.injection import get_instance_manager
+from core.injection import get_user_manager
+from core.injection import get_policy_manager
+from core.injection import get_instance_manager
 from api.v0_1.endpoints.service.models import (User, AddUserRequest, AddUserResponse, RemoveUserResponse,
                                                GetPolicyResponse, AddPolicyResponse, AddPolicyRequest,
                                                RemovePolicyRequest, RemovePolicyResponse, PolicyManagementData,

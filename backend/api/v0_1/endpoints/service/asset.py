@@ -5,8 +5,8 @@ from treelib import node
 from fastapi import HTTPException, APIRouter, Depends, status, Query
 from fastapi.responses import JSONResponse
 
-from api.v0_1.endpoints.injection import get_policy_manager
-from api.v0_1.endpoints.injection.managers import get_instance_manager, get_user_manager
+from core.injection import get_policy_manager
+from core.injection.managers import get_instance_manager, get_user_manager
 from api.v0_1.endpoints.service.auth import decode_token
 from api.v0_1.endpoints.service.models import (GetAssetRequest, GetAssetResponse, PutAssetRequest, PutAssetResponse,
                                                UserHomeData, UserAssetsData)
