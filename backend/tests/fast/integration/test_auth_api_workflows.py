@@ -313,7 +313,7 @@ class TestProtectedEndpointAccess:
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer valid.jwt.token"}
-        response = test_client.get("/api/admin/test", headers=headers)
+        response = test_client.get("/api/users/test", headers=headers)
         
         # Should succeed - admin/test just validates token, doesn't check admin role
         assert response.status_code == 200
@@ -330,7 +330,7 @@ class TestProtectedEndpointAccess:
         2. API returns 401 Unauthorized
         3. React redirects to login page
         """
-        response = test_client.get("/api/admin/test")
+        response = test_client.get("/api/users/test")
         
         assert response.status_code == 401
         data = response.json()

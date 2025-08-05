@@ -231,7 +231,7 @@ class TestAuthenticationWorkflows:
         3. API validates token and returns admin-specific data
         """
         headers = {"Authorization": f"Bearer {real_admin_token}"}
-        response = test_client.get("/api/admin/test", headers=headers)
+        response = test_client.get("/api/users/", headers=headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -334,7 +334,7 @@ class TestProtectedEndpointAccess:
         3. Endpoint returns data with admin username
         """
         headers = {"Authorization": f"Bearer {real_admin_token}"}
-        response = test_client.get("/api/admin/test", headers=headers)
+        response = test_client.get("/api/users/", headers=headers)
         
         assert response.status_code == 200
         data = response.json()
@@ -350,7 +350,7 @@ class TestProtectedEndpointAccess:
         2. API returns 401 Unauthorized
         3. React redirects to login
         """
-        response = test_client.get("/api/admin/test")
+        response = test_client.get("/api/users/")
         
         assert response.status_code == 401
         error_data = response.json()

@@ -84,11 +84,11 @@ def auth_app():
     }):
         # Import auth router after setting environment
         from api.v0_1.endpoints.service.auth import auth_router
-        from api.v0_1.endpoints.service.admin import admin_router
+        from api.v0_1.endpoints.service.users import users_router
         # Include routers with /api prefix to match main application
         api_router = APIRouter(prefix="/api")
         api_router.include_router(auth_router)
-        api_router.include_router(admin_router)
+        api_router.include_router(users_router)
         app.include_router(api_router)
     
     return app

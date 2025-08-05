@@ -254,7 +254,7 @@ class TestProtectedEndpointWorkflow(TestAuthenticationWorkflows):
         mock_get_jwks_client.return_value = mock_jwks_client
         
         headers = {"Authorization": "Bearer valid-token"}
-        response = client.get("/api/admin/test", headers=headers)
+        response = client.get("/api/users/test", headers=headers)
         
         # Should succeed (admin/test endpoint just validates token, doesn't check admin role)
         assert response.status_code == 200
@@ -270,7 +270,7 @@ class TestProtectedEndpointWorkflow(TestAuthenticationWorkflows):
         1. React app sends request to protected endpoint without token
         2. API returns 401 Unauthorized
         """
-        response = client.get("/api/admin/test")
+        response = client.get("/api/users/test")
         
         assert response.status_code == 401
         assert "Bearer token required" in response.json()["detail"]
@@ -302,7 +302,7 @@ class TestRoleBasedAccessWorkflow(TestAuthenticationWorkflows):
         
         # Test admin endpoint that requires admin role
         # Note: Most admin endpoints check is_user_admin() function
-        response = client.get("/api/admin/test", headers=headers)
+        response = client.get("/api/users/test", headers=headers)
         
         assert response.status_code == 200
         response_data = response.json()
@@ -331,7 +331,7 @@ class TestRoleBasedAccessWorkflow(TestAuthenticationWorkflows):
         
         # Try to access admin-only functionality (like adding users)
         # This would require mocking the managers, so let's test the auth logic
-        response = client.get("/api/admin/test", headers=headers)
+        response = client.get("/api/users/test", headers=headers)
         
         # This endpoint doesn't check admin role, just validates token
         assert response.status_code == 200
