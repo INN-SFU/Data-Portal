@@ -20,7 +20,7 @@ from .models import (
 )
 from .utils import convert_file_tree_to_dict
 
-policies_router = APIRouter(prefix='/policies', tags=["Policies"])
+policies_router = APIRouter(prefix='/policies', tags=["Policy Management"])
 
 
 @policies_router.get(

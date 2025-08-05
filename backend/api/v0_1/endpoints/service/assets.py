@@ -8,14 +8,15 @@ from fastapi.responses import JSONResponse
 from core.injection import get_policy_manager
 from core.injection.managers import get_instance_manager, get_user_manager
 from api.v0_1.endpoints.service.auth import decode_token
+from ..auth_dependencies import require_admin
 from api.v0_1.endpoints.service.models import (GetAssetRequest, GetAssetResponse, PutAssetRequest, PutAssetResponse,
-                                               UserHomeData, UserAssetsData)
+                                               UserHomeData, UserAssetsData, AssetManagementData)
 from .utils import convert_file_tree_to_dict
 from core.management.instances import AbstractInstanceManager
 from core.management.policies import AbstractPolicyManager, Policy
 from core.management.users import AbstractUserManager
 
-assets_router = APIRouter(prefix='/assets', tags=["Assets"])
+assets_router = APIRouter(prefix='/assets', tags=["Asset Management"])
 logger = logging.getLogger("uvicorn")
 
 
@@ -168,4 +169,55 @@ async def get_user_assets_data(
     access_point_names = {instance.access_point_name: str(uid) for uid, instance in instances.items()}
 
     return UserAssetsData(assets=file_trees, instances=access_point_names)
+
+
+@assets_router.get(
+    "/dashboard",
+    response_model=AssetManagementData,
+    summary="Get asset management dashboard data",
+    description="Admin dashboard with file trees and instance mappings for asset management interface."
+)
+async def get_asset_dashboard(
+    admin_user: dict = Depends(require_admin),
+    policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+    instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
+) -> AssetManagementData:
+    """
+    Get aggregated data for asset management dashboard (admin only).
+    
+    Provides file trees and instance information for administrative
+    asset management interface.
+    
+    Args:
+        admin_user: Current user (must have admin privileges)
+        policy_manager: Policy manager dependency
+        instance_manager: Instance manager dependency
+        
+    Returns:
+        AssetManagementData: Dashboard data with assets and instances
+    """
+    # Retrieve the user's user_uuid from the token payload
+    uuid = admin_user.get("sub")
+
+    # Get all storage access points the user has read access to
+    instance_uuids = list(
+        set(policy.instance_uuid for policy in policy_manager.get_user_policies(uuid))
+    )
+    instances = instance_manager.get_instances_by_uuid(instance_uuids)
+
+    file_trees = {}
+    for instance in instances:
+        f_trees = instance.agent.partition_file_tree_by_access(
+            policy_manager, uuid, instance.uuid, ["read", "write"]
+        )
+        if f_trees is not None:
+            file_trees[str(instance.uuid)] = {
+                access_type: convert_file_tree_to_dict(tree)
+                for access_type, tree in f_trees.items()
+            }
+
+    # Convert to simple string → string mapping for JSON encoding
+    instance_names = {instance.name: str(instance.uuid) for instance in instances}
+
+    return AssetManagementData(assets=file_trees, instances=instance_names)
 

@@ -21,7 +21,7 @@ from .models import (
 )
 from .utils import convert_file_tree_to_dict
 
-users_router = APIRouter(prefix='/users', tags=["Users"])
+users_router = APIRouter(prefix='/users', tags=["User Management"])
 
 
 @users_router.get(

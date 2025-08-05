@@ -19,7 +19,7 @@ from core.management.policies import AbstractPolicyManager, Policy
 from ..auth_dependencies import require_admin
 from .models import InstanceCreate, InstanceManagementData
 
-instances_router = APIRouter(prefix='/instances', tags=["Instances"])
+instances_router = APIRouter(prefix='/instances', tags=["Storage Instance Management"])
 
 
 @instances_router.get(
