@@ -15,11 +15,11 @@ from core.management.instances import AbstractInstanceManager
 from core.management.policies import AbstractPolicyManager, Policy
 from core.management.users import AbstractUserManager
 
-asset_router = APIRouter(prefix='/asset', tags=["Assets"])
+assets_router = APIRouter(prefix='/assets', tags=["Assets"])
 logger = logging.getLogger("uvicorn")
 
 
-@asset_router.put("/upload", dependencies=[Depends(decode_token)])
+@assets_router.put("/upload", dependencies=[Depends(decode_token)])
 def put_asset(asset: PutAssetRequest = Depends(),
               user: dict = Depends(decode_token),
               user_manager: AbstractUserManager = Depends(get_user_manager),
@@ -57,7 +57,7 @@ def put_asset(asset: PutAssetRequest = Depends(),
                             detail="User does not have write access to this resource")
 
 
-@asset_router.put("/download", dependencies=[Depends(decode_token)])
+@assets_router.put("/download", dependencies=[Depends(decode_token)])
 def get_asset(asset: GetAssetRequest = Depends(),
               user: dict = Depends(decode_token),
               user_manager: AbstractUserManager = Depends(get_user_manager),
@@ -100,7 +100,7 @@ def get_asset(asset: GetAssetRequest = Depends(),
 
 # User Asset Data instances
 
-@asset_router.get("/user-home-data",
+@assets_router.get("/user-home-data",
                   response_model=UserHomeData,
                   summary="Get user home page data", 
                   description="Retrieve user's accessible file trees and instances for home page.",
@@ -133,7 +133,7 @@ async def get_user_home_data(
     return UserHomeData(assets=user_file_tree, instances=storage_instances)
 
 
-@asset_router.get("/user-assets-data", 
+@assets_router.get("/user-assets-data", 
                   response_model=UserAssetsData,
                   summary="Get user assets page data",
                   description="Retrieve user's file trees organized by instance UUID.",
