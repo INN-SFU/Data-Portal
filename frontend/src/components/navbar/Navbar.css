@@ -1,14 +1,20 @@
 .navbar {
-    background-color: #f7f9fc;
-    color: #222 ;
-    border-bottom: 1px solid #e0e0e0;
+  position: sticky;        /* stays at the top while scrolling */
+  top: 0;
+  z-index: 3000;           /* safely above the sidebar */
+  height: 55px; /* lock the height */
+  box-sizing: border-box;
 
-    border-radius: 2px;
-    display: flex;
-    justify-content: space-between;
-    padding: 1rem 2rem;
-    font-family: 'Segoe UI', sans-serif;
-  }
+  background-color: #f7f9fc;
+  color: #222;
+  border-bottom: 1px solid #e0e0e0;
+
+  display: flex;
+  align-items: center;     /* vertical centering */
+  justify-content: space-between;
+  padding: 0 2rem;         /* horizontal padding only */
+  font-family: 'Segoe UI', sans-serif;
+}
   
   .navbar-left {
     font-size: 1.25rem;

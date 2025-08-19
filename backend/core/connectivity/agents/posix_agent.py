@@ -19,7 +19,7 @@ class PosixStorageAgent(AbstractStorageAgent):
     Inherits from AbstractStorageAgent.
 
     Attributes:
-        endpoint_url (str): The base URL for serving files.
+        instance_url (str): The base URL for serving files.
         _SSH_CA_KEY (str): The path to the SSH CA private key used for signing certificates.
     """
 
@@ -29,16 +29,16 @@ class PosixStorageAgent(AbstractStorageAgent):
     }
 
     def __init__(self,
-                 endpoint_url: str,
+                 instance_url: str,
                  ssh_ca_key: str):
         """
         Initialize a new instance of the class.
 
-        :param endpoint_url: The base URL for serving files.
-        :type endpoint_url: str
+        :param instance_url: The base URL for serving files.
+        :type instance_url: str
         """
 
-        super().__init__(endpoint_url)
+        super().__init__(instance_url)
 
         # Set the SSH CA key
         self._ssh_ca_key = ssh_ca_key
@@ -54,8 +54,8 @@ class PosixStorageAgent(AbstractStorageAgent):
         """
         self.file_tree = treelib.Tree()
         self.file_tree.create_node("root", "root")
-        for root_dir, dirs, files in os.walk(self.endpoint_url):
-            rel_root = os.path.relpath(root_dir, self.endpoint_url)
+        for root_dir, dirs, files in os.walk(self.instance_url):
+            rel_root = os.path.relpath(root_dir, self.instance_url)
             for file_name in files:
                 if rel_root == '.':
                     path = file_name
@@ -78,7 +78,7 @@ class PosixStorageAgent(AbstractStorageAgent):
         # Encode the certificate (e.g. Base64) to make it URL safe.
         encoded_cert = base64.urlsafe_b64encode(cert_data.encode()).decode()
         # Build the URL with the certificate as a query parameter.
-        tokenized_url = f"{self.endpoint_url}?cert={encoded_cert}"
+        tokenized_url = f"{self.instance_url}?cert={encoded_cert}"
         return tokenized_url
 
     def generate_ssh_certificate(self, resource: str, method: str, ttl: int) -> str:

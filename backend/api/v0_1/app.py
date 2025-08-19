@@ -2,13 +2,10 @@ import os
 from typing import List
 
 from fastapi import Request, FastAPI, Query, HTTPException
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from fastapi.responses import JSONResponse
 
 from api.v0_1.endpoints import application_router
-from api.v0_1.endpoints.service.models import model_registry
 
 
 class App:
@@ -32,9 +29,6 @@ class App:
         # Include routers
         self.app.include_router(application_router)
 
-        # Mount static files
-        self.app.mount("/static", StaticFiles(directory=os.getenv('STATIC_FILES')), name="static")
-
         # Add CORS middleware
         self.app.add_middleware(
             CORSMiddleware,
@@ -44,46 +38,22 @@ class App:
             allow_headers=["*"],
         )
 
-        # Load templates
-        templates = Jinja2Templates(directory=os.getenv('JINJA_TEMPLATES'))
-
-        # Landing
-        @self.app.get("/",
-                      response_class=HTMLResponse)
-        def landing_page(request: Request):
+        # API root endpoint for React frontend
+        @self.app.get("/", response_class=JSONResponse)
+        async def api_root():
             """
-            Root for serving basic landing page with authentication state detection.
-
-            Parameters:
-            - **request** (Request): The request object.
-
-            Returns:
-            - **TemplateResponse**: The HTML response containing the landing page.
+            API root endpoint for React frontend.
+            Returns basic API information.
             """
-            # Check if user is authenticated by validating the access token
-            from api.v0_1.endpoints.service.auth import validate_token_from_cookie
-            
-            token_payload = validate_token_from_cookie(request)
-            is_authenticated = token_payload is not None
-            
-            context = {
-                "request": request,
-                "is_authenticated": is_authenticated
-            }
-            return templates.TemplateResponse("/landing/index.html", context)
+            return JSONResponse(content={
+                "message": "AMS Data Portal API",
+                "version": "v0.1",
+                "documentation": "/docs"
+            })
 
         @self.app.get("/test", response_class=JSONResponse)
         async def test_endpoint():
-            return JSONResponse(content={"message": "The test endpoint_url is working."})
-
-        @self.app.get("/logout")
-        async def root_logout():
-            """
-            Root logout endpoint that redirects to the auth logout handler.
-            This ensures the /logout URL in templates works correctly.
-            """
-            from fastapi.responses import RedirectResponse
-            return RedirectResponse(url="/auth/logout", status_code=302)
+            return JSONResponse(content={"message": "The test instance_url is working."})
 
     def get_app(self):
         return self.app

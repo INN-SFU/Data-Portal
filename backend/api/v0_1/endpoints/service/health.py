@@ -124,7 +124,7 @@ async def detailed_health_check():
         # Environment variables
         required_env_vars = [
             "ROOT_DIRECTORY", "ENFORCER_MODEL", "ENFORCER_POLICY",
-            "JINJA_TEMPLATES", "ENDPOINT_CONFIGS", "STATIC_FILES"
+            "JINJA_TEMPLATES", "INSTANCE_CONFIGS", "STATIC_FILES"
         ]
         
         missing_vars = [var for var in required_env_vars if not os.getenv(var)]
@@ -214,7 +214,7 @@ async def validate_environment():
     - Configuration files exist and are readable
     - Required directories exist with proper permissions
     - Secrets are properly configured
-    - Storage endpoints can be initialized
+    - Storage instances can be initialized
     """
     checks = []
     overall_valid = True
@@ -257,7 +257,7 @@ async def validate_environment():
         directories = [
             ("Templates", os.getenv('JINJA_TEMPLATES')),
             ("Static files", os.getenv('STATIC_FILES')),
-            ("Endpoint configs", os.getenv('ENDPOINT_CONFIGS')),
+            ("instance configs", os.getenv('INSTANCE_CONFIGS')),
             ("Logs", "loggers/logs")
         ]
         
@@ -320,7 +320,7 @@ async def validate_environment():
         # Environment variables
         critical_env_vars = [
             "ROOT_DIRECTORY", "ENFORCER_MODEL", "ENFORCER_POLICY",
-            "JINJA_TEMPLATES", "ENDPOINT_CONFIGS", "STATIC_FILES"
+            "JINJA_TEMPLATES", "INSTANCE_CONFIGS", "STATIC_FILES"
         ]
         
         missing_vars = [var for var in critical_env_vars if not os.getenv(var)]

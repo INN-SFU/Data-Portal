@@ -16,6 +16,8 @@ function AuthenticatedApp({ keycloak }) {
   const roles = keycloak.tokenParsed?.realm_access?.roles || [];
   const token = keycloak.token;
 
+  console.log("This is the token: "+ token)
+
   return roles.includes("admin") ? <AdminPage token={token} /> : <NormalUserPage />;
 }
 
@@ -39,7 +41,7 @@ const AppRouter = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route
-          path="/app"
+          path="/app/*"
           element={keycloak.authenticated ? <AuthenticatedApp keycloak={keycloak} /> : <LandingPage />}
         />
         <Route path="/about" element={<About />} />

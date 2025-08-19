@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+"""
+AMS Data Portal Test Runner - Speed-First Design
+
+Simple, predictable test runner based on speed and dependencies:
+  fast   - <30s, no external deps, always works  
+  slow   - >30s, requires services, comprehensive
+  all    - complete suite for CI
+
+Examples:
+  ./run-tests fast           # Quick feedback for development
+  ./run-tests slow --setup   # Integration tests with service setup
+  ./run-tests all --ci       # Full CI suite
+  ./run-tests auth           # All auth tests (fast + slow)
+"""
+
+import argparse
+import subprocess
+import sys
+import time
+import os
+from pathlib import Path
+
+# Colors for output
+class C:
+    HEADER = '\033[95m\033[1m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    END = '\033[0m'
+    BOLD = '\033[1m'
+
+
+def print_header(text):
+    print(f"\n{C.HEADER}🧪 {text}{C.END}")
+
+
+def run_cmd(cmd, desc, timeout=120):
+    """Run command with simple output."""
+    print(f"{C.BLUE}▶ {desc}{C.END}")
+    print(f"  {' '.join(cmd)}")
+    
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        
+        if result.returncode == 0:
+            # Count passed/failed from pytest output
+            output = result.stdout
+            if "passed" in output:
+                # Extract test summary (e.g., "11 passed in 0.31s")
+                lines = output.strip().split('\n')
+                summary_line = [l for l in lines if " passed" in l and ("failed" not in l or "0 failed" in l)]
+                if summary_line:
+                    print(f"  {C.GREEN}✅ {summary_line[-1].strip()}{C.END}")
+                else:
+                    print(f"  {C.GREEN}✅ Tests passed{C.END}")
+            else:
+                print(f"  {C.GREEN}✅ Completed successfully{C.END}")
+            return True
+        else:
+            # Show failure summary
+            if result.stdout and ("FAILED" in result.stdout or "failed" in result.stdout):
+                lines = result.stdout.strip().split('\n')
+                summary_line = [l for l in lines if " failed" in l or " passed" in l]
+                if summary_line:
+                    print(f"  {C.RED}❌ {summary_line[-1].strip()}{C.END}")
+                else:
+                    print(f"  {C.RED}❌ Tests failed{C.END}")
+            else:
+                print(f"  {C.RED}❌ Failed (exit code {result.returncode}){C.END}")
+            
+            # Show stderr if present
+            if result.stderr:
+                print(f"  {C.YELLOW}Error: {result.stderr.strip()}{C.END}")
+            
+            return False
+            
+    except subprocess.TimeoutExpired:
+        print(f"  {C.YELLOW}⏰ Timed out after {timeout}s{C.END}")
+        return False
+    except Exception as e:
+        print(f"  {C.RED}❌ Error: {e}{C.END}")
+        return False
+
+
+def check_env():
+    """Quick environment check."""
+    # Check virtual environment
+    venv_active = hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix)
+    if not venv_active:
+        print(f"{C.YELLOW}⚠️  No virtual environment detected. Run: source .venv/bin/activate{C.END}")
+        return False
+    
+    # Check test directory
+    if not Path("").exists():
+        print(f"{C.RED}❌ Run from backend/ directory{C.END}")
+        return False
+    
+    print(f"{C.GREEN}✅ Environment OK{C.END}")
+    return True
+
+
+def run_fast_tests():
+    """Run fast tests (<30s, no external deps)."""
+    print_header("Fast Tests (<30s)")
+    results = []
+    
+    # Unit tests
+    success = run_cmd(
+        ["python", "-m", "pytest", "tests/fast/unit/", "-v", "--tb=short"],
+        "Unit tests (pure logic)"
+    )
+    results.append(success)
+    
+    # Contract tests  
+    success = run_cmd(
+        ["python", "-m", "pytest", "tests/fast/contract/", "-v", "--tb=short"],
+        "Contract tests (API behavior)"
+    )
+    results.append(success)
+    
+    # Legacy fast tests
+    if Path("tests/test_auth_functions.py").exists():
+        success = run_cmd(
+            ["python", "-m", "pytest", "tests/test_auth_functions.py", "-v"],
+            "Legacy auth functions"
+        )
+        results.append(success)
+    
+    return results
+
+
+def run_slow_tests(setup_services=False):
+    """Run slow tests (>30s, requires services)."""
+    print_header("Slow Tests (>30s, requires services)")
+    results = []
+    
+    if setup_services:
+        print(f"{C.CYAN}🐳 Setting up test services...{C.END}")
+        # Start Docker services
+        success = run_cmd(
+            ["docker", "compose", "-f", "tests/infra/docker/docker-compose.test.yml", "up", "-d"],
+            "Start test services",
+            timeout=180
+        )
+        if not success:
+            print(f"{C.RED}❌ Failed to start test services{C.END}")
+            return [False]
+        
+        # Wait for services
+        print(f"{C.CYAN}⏳ Waiting for services to be ready...{C.END}")
+        time.sleep(30)
+    
+    # Integration tests
+    success = run_cmd(
+        ["python", "-m", "pytest", "tests/slow/integration/", "-v", "--tb=short"],
+        "Integration tests (real services)"
+    )
+    results.append(success)
+    
+    # Legacy integration tests (non-Docker)
+    legacy_integration = Path("tests/integration/test_simple_api.py")
+    if legacy_integration.exists():
+        success = run_cmd(
+            ["python", "-m", "pytest", str(legacy_integration), "-v"],
+            "Legacy API integration"
+        )
+        results.append(success)
+    
+    if setup_services:
+        print(f"{C.CYAN}🧹 Cleaning up test services...{C.END}")
+        run_cmd(
+            ["docker", "compose", "-f", "tests/infra/docker/docker-compose.test.yml", "down"],
+            "Stop test services"
+        )
+    
+    return results
+
+
+def run_auth_tests():
+    """Run all authentication tests."""
+    print_header("Authentication Tests")
+    results = []
+    
+    # Fast auth tests
+    success = run_cmd(
+        ["python", "-m", "pytest", "tests/fast/unit/auth/", "tests/fast/contract/auth/", "-v"],
+        "Auth tests (fast)"
+    )
+    results.append(success)
+    
+    # Slow auth tests (if Keycloak available)
+    print(f"{C.CYAN}Testing Keycloak availability...{C.END}")
+    try:
+        subprocess.run(["curl", "-s", "http://localhost:8081/health/ready"], 
+                      capture_output=True, timeout=5, check=True)
+        print(f"{C.GREEN}✅ Keycloak available at localhost:8081{C.END}")
+        
+        success = run_cmd(
+            ["python", "-m", "pytest", "tests/slow/integration/auth/", "-v", "-m", "integration"],
+            "Auth tests (with real Keycloak)"
+        )
+        results.append(success)
+    except:
+        print(f"{C.YELLOW}⚠️  Keycloak not available, skipping real service tests{C.END}")
+    
+    return results
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="AMS Data Portal Test Runner",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Speed Levels:
+  fast    <30s, no external deps, always works
+  slow    >30s, requires services, comprehensive  
+  all     complete suite for CI
+  auth    all authentication tests
+
+Examples:
+  ./run-tests fast           # Quick development feedback
+  ./run-tests slow --setup   # Integration tests with Docker
+  ./run-tests all --ci       # Full CI suite
+  ./run-tests auth           # All auth tests
+        """
+    )
+    
+    parser.add_argument('level', choices=['fast', 'slow', 'all', 'auth'], 
+                       help='Test level to run')
+    parser.add_argument('--setup', action='store_true',
+                       help='Setup services for slow tests')
+    parser.add_argument('--ci', action='store_true',
+                       help='CI mode (exit on first failure)')
+    
+    args = parser.parse_args()
+    
+    if not check_env():
+        return False
+    
+    # Run selected test level
+    all_results = []
+    
+    if args.level == 'fast':
+        all_results = run_fast_tests()
+    elif args.level == 'slow':
+        all_results = run_slow_tests(args.setup)
+    elif args.level == 'auth':
+        all_results = run_auth_tests()
+    else:  # 'all'
+        fast_results = run_fast_tests()
+        slow_results = run_slow_tests(args.setup)
+        all_results = fast_results + slow_results
+    
+    # Summary
+    passed = sum(all_results)
+    total = len(all_results)
+    
+    print_header("Summary")
+    if passed == total:
+        print(f"{C.GREEN}🎉 All tests passed ({passed}/{total}){C.END}")
+        return True
+    else:
+        print(f"{C.YELLOW}⚠️  {passed}/{total} test suites passed{C.END}")
+        if args.ci:
+            print(f"{C.RED}❌ CI mode: exiting with failure{C.END}")
+            return False
+        else:
+            print(f"{C.CYAN}💡 Some tests failed, but you can continue development{C.END}")
+            return True
+
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)

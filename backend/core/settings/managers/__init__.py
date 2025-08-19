@@ -1,6 +1,6 @@
 from .users import user_manager
 from .policies import CasbinPolicyManager
-from .endpoints import endpoint_manager
+from .instances import instance_manager
 
 # Lazy initialization of policy manager
 _policy_manager = None
