@@ -38,9 +38,9 @@ class S3StorageAgent(AbstractStorageAgent):
         self._load_file_tree()
 
         # enable CORS the first time any agent is created
-        if not S3StorageAgent._cors_enabled:
-            self._enable_cors()
-            S3StorageAgent._cors_enabled = True
+        # if not S3StorageAgent._cors_enabled:
+        #     self._enable_cors()
+        #     S3StorageAgent._cors_enabled = True
 
     def _load_file_tree(self):
         self.file_tree.create_node('root', 'root')

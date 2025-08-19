@@ -40,7 +40,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 
 # 4. Run FULL automated setup (does everything!)
-python scripts/setup.py --full-setup
+python backend/scripts/setup.py --full-setup
 
 # 5. Start the application (Keycloak is already running!)
 python main.py config.yaml
