@@ -24,7 +24,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Set minimal environment to avoid import issues
-os.environ.setdefault('ENDPOINT_CONFIGS', '/tmp/test_configs')
+os.environ.setdefault('INSTANCE_CONFIGS', '/tmp/test_configs')
 os.environ.setdefault('KEYCLOAK_UI_CLIENT_ID', 'test-client')
 os.environ.setdefault('KEYCLOAK_DOMAIN', 'http://localhost:8080')
 os.environ.setdefault('KEYCLOAK_REALM', 'test-realm')

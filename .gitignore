@@ -33,6 +33,7 @@ ENV/
 /backend/core/settings/.env
 /backend/core/settings/security/.secrets
 /backend/*.policies
+/backend/core/settings/managers/instances/configs/*.json
 
 # Legacy authentication data - now in backend/
 /backend/core/authentication/user_data/
@@ -55,6 +56,7 @@ ENV/
 
 # OS
 .DS_Store
+**/.DS_Store
 Thumbs.db
 
 # Testing

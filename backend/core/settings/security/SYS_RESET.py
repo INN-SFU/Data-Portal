@@ -53,9 +53,9 @@ def SYS_RESET():
             print('Failed to clear logs.')
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
-    print('Removing all storage endpoints...')
-    for endpoint_file in os.listdir(os.getenv('ENDPOINT_CONFIGS')):
-        os.remove(os.path.join(os.getenv('ENDPOINT_CONFIGS'), endpoint_file))
+    print('Removing all storage instances...')
+    for instance_file in os.listdir(os.getenv('INSTANCE_CONFIGS')):
+        os.remove(os.path.join(os.getenv('INSTANCE_CONFIGS'), instance_file))
 
 
     _generate_secrets()
@@ -79,7 +79,7 @@ def SYS_RESET():
     
     dam.add_user(admin_username, admin_user.uuid, 'admin')
 
-    # Provide the admin user with read and write access to all endpoints
+    # Provide the admin user with read and write access to all instances
 
 
     print('Admin user initialized successfully.')

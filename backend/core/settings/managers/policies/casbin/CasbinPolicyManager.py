@@ -62,7 +62,7 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
                 f.write(f"p, {', '.join(policy)}\n")
         f.close()
 
-    def _write_user_policy(self, user_uuid: str, endpoint_uuid: str, resource: str, action: str):
+    def _write_user_policy(self, user_uuid: str, instance_uuid: str, resource: str, action: str):
         """
         Write a user policy to a file.
         """
@@ -70,7 +70,7 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
         user_policy_file = os.path.join(self.user_policies_folder, user_uuid + '.policies')
         # Write the policy
         with open(user_policy_file, 'a') as f:
-            f.write(f"p, {user_uuid}, {endpoint_uuid}, {resource}, {action}\n")
+            f.write(f"p, {user_uuid}, {instance_uuid}, {resource}, {action}\n")
         f.close()
 
     def _write_enforcer_policies(self, enforcer: Enforcer):
@@ -98,28 +98,28 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
         for policy in policies:
             result.append(Policy(
                 user_uuid=UUID(policy[0]),
-                endpoint_uuid=UUID(policy[1]),
+                instance_uuid=UUID(policy[1]),
                 resource=policy[2],
                 action=policy[3]
             ))
         return result
 
-    def get_endpoint_policies(self, endpoint_uuid: UUID) -> list[Policy]:
+    def get_instance_policies(self, instance_uuid: UUID) -> list[Policy]:
         """
         Get the access point policies.
 
         :return: The filtered access point policies.
         :rtype: list[str]
         """
-        endpoint_uuid = endpoint_uuid.__str__()
+        instance_uuid = instance_uuid.__str__()
 
-        policies = self.enforcer.get_filtered_policy(1, endpoint_uuid)
+        policies = self.enforcer.get_filtered_policy(1, instance_uuid)
         result = []
 
         for policy in policies:
             result.append(Policy(
                 user_uuid=UUID(policy[0]),
-                endpoint_uuid=UUID(policy[1]),
+                instance_uuid=UUID(policy[1]),
                 resource=policy[2],
                 action=policy[3]
             ))
@@ -166,13 +166,13 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
         result = []
         for policy in policies:
             user_uuid = UUID(policy[0])
-            endpoint_uuid = UUID(policy[1])
+            instance_uuid = UUID(policy[1])
             resource = policy[2]
             action = policy[3]
 
             result.append(Policy(
                 user_uuid=user_uuid,
-                endpoint_uuid=endpoint_uuid,
+                instance_uuid=instance_uuid,
                 resource=resource,
                 action=action
             ))
@@ -186,17 +186,17 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
         :type policy: Policy
         """
         user_uuid = policy.user_uuid.__str__()
-        endpoint_uuid = policy.endpoint_uuid.__str__()
+        instance_uuid = policy.instance_uuid.__str__()
         resource = policy.resource
         action = policy.action
 
         # Check if the policy already exists
-        if self.enforcer.has_policy(user_uuid, endpoint_uuid, resource, action):
+        if self.enforcer.has_policy(user_uuid, instance_uuid, resource, action):
             raise ValueError("Policy already exists.")
 
-        result = self.enforcer.add_policy(user_uuid, endpoint_uuid, resource, action)
+        result = self.enforcer.add_policy(user_uuid, instance_uuid, resource, action)
         if result:
-            self._write_user_policy(user_uuid, endpoint_uuid, resource, action)
+            self._write_user_policy(user_uuid, instance_uuid, resource, action)
             return True
         else:
             raise ValueError("Failed to add policy.")
@@ -209,11 +209,11 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
         :type policy: Policy
         """
         user_uuid = policy.user_uuid.__str__()
-        endpoint_uid = policy.endpoint_uuid.__str__()
+        instance_uid = policy.instance_uuid.__str__()
         resource = policy.resource
         action = policy.action
 
-        filter_ = (user_uuid, endpoint_uid, resource, action)
+        filter_ = (user_uuid, instance_uid, resource, action)
         result = self.enforcer.remove_filtered_policy(0, *filter_)
         if result:
             self._write_user_policies(user_uuid)
@@ -259,11 +259,11 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
         """
 
         user_uuid = policy.user_uuid.__str__()
-        endpoint_uuid = policy.endpoint_uuid.__str__()
+        instance_uuid = policy.instance_uuid.__str__()
         resource = policy.resource
         action = policy.action
 
-        return self.enforcer.enforce(user_uuid, endpoint_uuid, resource, action)
+        return self.enforcer.enforce(user_uuid, instance_uuid, resource, action)
 
     def create_agreement(self, agreement: Agreement) -> bool:
         """

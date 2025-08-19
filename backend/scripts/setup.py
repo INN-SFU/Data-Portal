@@ -91,7 +91,7 @@ def create_directory_structure():
     # Create other required directories
     required_dirs = [
         'core/settings/security',
-        'core/settings/managers/endpoints/configs',
+        'core/settings/managers/instances/configs',
         'core/settings/managers/policies/casbin',
         'core/settings/managers/policies/user_policies'
     ]
@@ -148,7 +148,7 @@ def validate_environment():
     required_dirs = [
         'loggers/logs',
         'core/settings/security',
-        'core/settings/managers/endpoints/configs',
+        'core/settings/managers/instances/configs',
         'core/settings/managers/policies/casbin'
     ]
     

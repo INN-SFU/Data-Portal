@@ -21,14 +21,14 @@ class S3StorageAgent(AbstractStorageAgent):
     _cors_enabled = False
 
     def __init__(self,
-                 endpoint_url: str,
+                 instance_url: str,
                  aws_access_key_id: str,
                  aws_secret_access_key: str):
-        super().__init__(endpoint_url)
+        super().__init__(instance_url)
 
         self.s3_client = boto3.client(
             's3',
-            endpoint_url=endpoint_url,
+            endpoint_url=instance_url,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key
         )
@@ -38,9 +38,9 @@ class S3StorageAgent(AbstractStorageAgent):
         self._load_file_tree()
 
         # enable CORS the first time any agent is created
-        if not S3StorageAgent._cors_enabled:
-            self._enable_cors()
-            S3StorageAgent._cors_enabled = True
+        # if not S3StorageAgent._cors_enabled:
+        #     self._enable_cors()
+        #     S3StorageAgent._cors_enabled = True
 
     def _load_file_tree(self):
         self.file_tree.create_node('root', 'root')
@@ -143,7 +143,7 @@ class S3StorageAgent(AbstractStorageAgent):
         creds = self.s3_client._request_signer._credentials
         self.s3_client = boto3.client(
             's3',
-            endpoint_url=self.endpoint_url,
+            instance_url=self.instance_url,
             aws_access_key_id=creds.access_key,
             aws_secret_access_key=creds.secret_key
         )
@@ -152,4 +152,4 @@ class S3StorageAgent(AbstractStorageAgent):
         self.s3_client.close()
 
     def __str__(self):
-        return f"S3StorageAgent(endpoint_url={self.endpoint_url})"
+        return f"S3StorageAgent(instance_url={self.instance_url})"

@@ -24,9 +24,9 @@ handlers:
     filename: loggers/logs/user-manager.log
     mode: a
     formatter: component
-  endpoint_manager_file:
+  instance_manager_file:
     class: logging.FileHandler
-    filename: loggers/logs/endpoint-manager.log
+    filename: loggers/logs/instance-manager.log
     mode: a
     formatter: component
   policy_manager_file:
@@ -57,9 +57,9 @@ loggers:
     level: INFO
     handlers: [console, user_manager_file]
     propagate: false
-  endpoint-manager:
+  instance-manager:
     level: INFO
-    handlers: [console, endpoint_manager_file]
+    handlers: [console, instance_manager_file]
     propagate: false
   policy-manager:
     level: INFO

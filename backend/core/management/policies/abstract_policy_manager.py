@@ -17,7 +17,7 @@ class AbstractPolicyManager(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_endpoint_policies(self, endpoint_uuid: UUID):
+    def get_instance_policies(self, instance_uuid: UUID):
         raise NotImplementedError
 
     @abstractmethod
