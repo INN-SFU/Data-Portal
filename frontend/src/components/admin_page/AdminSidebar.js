@@ -11,7 +11,7 @@ export default function AdminSidebar() {
     { path: "/app/user-management", label: "User Management" },
     { path: "/app/policy-management", label: "Policy Management" },
     { path: "/app/asset-management", label: "Asset Management" },
-    { path: "/app/storage-management", label: "Endpoint Management" }
+    { path: "/app/storage-management", label: "Connectionc Management" }
   ];
 
   return (

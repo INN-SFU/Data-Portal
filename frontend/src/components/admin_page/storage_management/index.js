@@ -1,25 +1,30 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
-import { useKeycloak } from '@react-keycloak/web';
-import './StorageManagement.css';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { useKeycloak } from "@react-keycloak/web";
+import "./StorageManagement.css";
 
 const http = axios.create({ baseURL: "http://localhost:8000" });
-const INSTANCES_BASE = '/api/instances';
+const INSTANCES_BASE = "/api/instances";
+const FLAVOURS = ["s3", "posix"];
 
-export default function EndpointManagement() {
+export default function StorageManagement() {
   const { keycloak, initialized } = useKeycloak();
 
-  const [instances, setInstances] = useState([]);     // [{uuid,name,flavour,config}]
-  const [flavours, setFlavours] = useState([]);       // array or object
+  const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState('');
-  const DEFAULT_FLAVOURS = ['s3', 'posix'];
+  const [err, setErr] = useState("");
 
-  // form state (create)
-  const [instanceName, setInstanceName] = useState('my-instance-id');      // used to derive stable UUID
-  const [accessPointName, setAccessPointName] = useState('my-access-point'); // display/name
-  const [flavour, setFlavour] = useState('');
-  const [configText, setConfigText] = useState('');    // extra agent config JSON
+  // form state
+  const [instanceName, setInstanceName] = useState("my-instance-id");
+  const [accessPointName, setAccessPointName] = useState("my-access-point");
+  const [flavour, setFlavour] = useState("");
+  // S3 fields
+  const [s3Url, setS3Url] = useState("http://localhost:9000");
+  const [s3Key, setS3Key] = useState("");
+  const [s3Secret, setS3Secret] = useState("");
+  // POSIX fields
+  const [posixUrl, setPosixUrl] = useState("");
+  const [posixCa, setPosixCa] = useState("");
 
   const authHeaders = async () => {
     if (!initialized) return {};
@@ -33,118 +38,82 @@ export default function EndpointManagement() {
     setInstances(Array.isArray(data?.instances) ? data.instances : []);
   }
 
-  async function loadDashboard() {
-    const headers = await authHeaders();
-    const { data } = await http.get(`${INSTANCES_BASE}/dashboard`, { headers });
-    setFlavours(data?.flavours ?? []);
-  }
-
   useEffect(() => {
     (async () => {
       if (!initialized) return;
       try {
-        await Promise.all([loadInstances(), loadDashboard()]);
+        await loadInstances();
       } catch (e) {
-        setErr(String(e.message || e));
+        setErr(toMsg(e));
       } finally {
         setLoading(false);
       }
     })();
   }, [initialized]);
 
-  // provide a template when flavour changes (only if config is empty)
-  useEffect(() => {
-    if (!flavour || configText.trim()) return;
-    const lower = flavour.toLowerCase();
-    if (lower.includes('s3') || lower.includes('minio')) {
-      setConfigText(JSON.stringify({
-        endpoint_url: "http://localhost:9000",
-        bucket: "my-bucket",
-        region: "us-east-1",
-        access_key: "<key>",
-        secret_key: "<secret>",
-        secure: false
-      }, null, 2));
-    }
-  }, [flavour]); 
-
-  const flavourOptions = useMemo(() => {
-    let backend = [];
-    if (Array.isArray(flavours)) backend = flavours;
-    else if (flavours && typeof flavours === 'object') backend = Object.keys(flavours);
-  
-    const all = [...DEFAULT_FLAVOURS, ...backend].map(String);
-    const seen = new Set();
-    return all.filter(f => {
-      const k = f.toLowerCase();
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-  }, [flavours]);
-
   async function handleCreate(e) {
     e.preventDefault();
-    setErr('');
-  
-    // basic form checks
-    if (!instanceName.trim()) return setErr('Instance name is required.');
-    if (!accessPointName.trim()) return setErr('Access point name is required.');
-    if (!flavour.trim()) return setErr('Flavour is required.');
-  
-    // parse textarea JSON (can be empty -> {})
-    let rawExtra = {};
-    if (configText.trim()) {
-      try {
-        rawExtra = JSON.parse(configText);
-      } catch {
-        return setErr('Config JSON is invalid.');
+    setErr("");
+
+    if (!instanceName.trim()) return setErr("Instance name is required.");
+    if (!accessPointName.trim()) return setErr("Access point name is required.");
+    if (!flavour) return setErr("Flavour is required.");
+
+    let payload;
+    if (flavour === "s3") {
+      if (!s3Url.trim() || !s3Key.trim() || !s3Secret.trim()) {
+        return setErr("For S3, please fill endpoint URL, access key, and secret.");
       }
+      payload = {
+        flavour: "s3",
+        instance_name: instanceName.trim(),
+        access_point_name: accessPointName.trim(),
+        instance_url: s3Url.trim(),
+        aws_access_key_id: s3Key.trim(),
+        aws_secret_access_key: s3Secret.trim(),
+      };
+    } else if (flavour === "posix") {
+      if (!posixUrl.trim() || !posixCa.trim()) {
+        return setErr("For POSIX, please fill instance URL and SSH CA key.");
+      }
+      payload = {
+        flavour: "posix",
+        instance_name: instanceName.trim(),
+        access_point_name: accessPointName.trim(),
+        instance_url: posixUrl.trim(),
+        ssh_ca_key: posixCa.trim(),
+      };
+    } else {
+      return setErr(`Unsupported flavour: ${flavour}`);
     }
-  
-    // normalize keys to what backend expects
-    const extra = normalizeConfig(flavour, rawExtra);
-  
-    // client-side required-field check
-    const missing = requiredKeysForFlavour(flavour).filter(k => !(k in extra));
-    if (missing.length) {
-      return setErr(`Missing required config for ${flavour}: ${missing.join(', ')}`);
-    }
-  
-    const payload = {
-      flavour,
-      instance_name: instanceName.trim(),       
-      access_point_name: accessPointName.trim(),// display/admin name
-      ...extra,
-    };
-  
+
     try {
-      const headers = await authHeaders();
-      await http.post('/api/instances/', payload, { headers });
+      const headers = { ...(await authHeaders()) };
+      await http.post(`${INSTANCES_BASE}/`, payload, { headers });
       await loadInstances();
-      setConfigText(''); // clear config box
-      alert('Instance created.');
-    } catch (err) {
-      setErr(explainFastApiError(err));
-      // console for deeper debugging
+      // light reset of sensitive fields
+      setS3Key(""); setS3Secret(""); setPosixCa("");
+      alert("Instance created.");
+    } catch (e) {
+      setErr(toMsg(e));
     }
   }
 
   async function handleDelete(i) {
     if (!window.confirm(`Delete instance "${i.name}" (${i.uuid})?`)) return;
-    setErr('');
+    setErr("");
     try {
       const headers = await authHeaders();
       await http.delete(`${INSTANCES_BASE}/${encodeURIComponent(i.uuid)}`, { headers });
       setInstances(prev => prev.filter(x => x.uuid !== i.uuid));
-    } catch (e3) {
-      setErr(String(e3.message || e3));
+    } catch (e) {
+      setErr(toMsg(e));
     }
   }
 
   return (
     <div className="im-root">
-      <h1>Endpoint (Instance) Management</h1>
+      <h1>Storage Instances</h1>
 
       <section className="im-card">
         <h3>Create Instance</h3>
@@ -153,12 +122,12 @@ export default function EndpointManagement() {
             <label className="im-field">
               <span>Instance Name *</span>
               <input value={instanceName} onChange={e => setInstanceName(e.target.value)} placeholder="my-instance-id" />
-              <small className="im-muted">Internal ID used to derive a stable UUID (don’t change after creation)</small>
+              <small className="im-muted">Used to derive a stable UUID</small>
             </label>
             <label className="im-field">
               <span>Access Point Name *</span>
               <input value={accessPointName} onChange={e => setAccessPointName(e.target.value)} placeholder="my-access-point" />
-              <small className="im-muted">Displayed name for this connection instance in the dashboard</small>
+              <small className="im-muted">Human-friendly name shown in the UI</small>
             </label>
           </div>
 
@@ -166,18 +135,42 @@ export default function EndpointManagement() {
             <span>Flavour *</span>
             <select value={flavour} onChange={e => setFlavour(e.target.value)}>
               <option value="">— Select flavour —</option>
-              {flavourOptions.map(f => <option key={f} value={f}>{f}</option>)}
+              {FLAVOURS.map(f => <option key={f} value={f}>{f}</option>)}
             </select>
           </label>
 
-          <label className="im-field">
-            <span>Agent Config (JSON)</span>
-            <textarea rows={7} value={configText} onChange={e => setConfigText(e.target.value)}
-              placeholder='{"endpoint_url":"http://localhost:9000","bucket":"my-bucket","region":"us-east-1","access_key":"...","secret_key":"...","secure":false}' />
-          </label>
+          {flavour === "s3" && (
+            <div className="im-row">
+              <label className="im-field">
+                <span>S3 Endpoint URL *</span>
+                <input value={s3Url} onChange={e => setS3Url(e.target.value)} placeholder="http://localhost:9000" />
+              </label>
+              <label className="im-field">
+                <span>Access Key *</span>
+                <input value={s3Key} onChange={e => setS3Key(e.target.value)} />
+              </label>
+              <label className="im-field">
+                <span>Secret Key *</span>
+                <input type="password" value={s3Secret} onChange={e => setS3Secret(e.target.value)} />
+              </label>
+            </div>
+          )}
+
+          {flavour === "posix" && (
+            <div className="im-row">
+              <label className="im-field">
+                <span>Instance URL *</span>
+                <input value={posixUrl} onChange={e => setPosixUrl(e.target.value)} placeholder="/mnt/data" />
+              </label>
+              <label className="im-field">
+                <span>SSH CA Key *</span>
+                <input value={posixCa} onChange={e => setPosixCa(e.target.value)} />
+              </label>
+            </div>
+          )}
 
           <div className="im-actions">
-            <button className="im-btn im-btn-primary" type="submit">Create</button>
+            <button className="im-btn im-btn-primary" type="submit" disabled={!flavour}>Create</button>
             {err && <div className="im-error">{err}</div>}
           </div>
         </form>
@@ -189,7 +182,7 @@ export default function EndpointManagement() {
         ) : instances.length === 0 ? (
           <div className="im-card"><p className="im-muted">No instances found.</p></div>
         ) : (
-          instances.map((i) => (
+          instances.map(i => (
             <div key={i.uuid} className="im-card">
               <div className="im-head">
                 <div className="im-title">
@@ -202,6 +195,9 @@ export default function EndpointManagement() {
               </div>
               <div className="im-meta">
                 <div><span className="im-key">UUID:</span> <code className="im-code">{i.uuid}</code></div>
+                {i.config?.agent?.instance_url && (
+                  <div><span className="im-key">Endpoint:</span> <code className="im-code">{i.config.agent.instance_url}</code></div>
+                )}
               </div>
               {i.config && (
                 <details className="im-details">
@@ -217,53 +213,9 @@ export default function EndpointManagement() {
   );
 }
 
-///////////////////////////////////////////
-// ---- helpers ----
-function explainFastApiError(err) {
+function toMsg(err) {
   const d = err?.response?.data;
   if (!d) return String(err?.message || err);
-  if (Array.isArray(d.detail)) {
-    return d.detail.map(x => `${(x.loc || []).join('.')} → ${x.msg}`).join(' | ');
-  }
+  if (Array.isArray(d.detail)) return d.detail.map(x => `${(x.loc || []).join(".")} → ${x.msg}`).join(" | ");
   return d.detail || JSON.stringify(d);
-}
-
-function normalizeConfig(flavour, cfg) {
-  const f = (flavour || '').toLowerCase();
-
-  // Map common aliases to backend keys
-  if (f === 's3' || f === 'minio') {
-    return {
-      // backend expects these exact names
-      instance_url:          cfg.instance_url          ?? cfg.endpoint_url,
-      bucket_name:           cfg.bucket_name           ?? cfg.bucket,
-      region_name:           cfg.region_name           ?? cfg.region,
-      aws_access_key_id:     cfg.aws_access_key_id     ?? cfg.access_key,
-      aws_secret_access_key: cfg.aws_secret_access_key ?? cfg.secret_key,
-      secure: typeof cfg.secure === 'string'
-        ? ['true', '1', 'yes'].includes(cfg.secure.toLowerCase())
-        : Boolean(cfg.secure),
-    };
-  }
-
-  if (f === 'posix') {
-    return {
-      instance_url: cfg.instance_url ?? cfg.url, 
-      ssh_ca_key:   cfg.ssh_ca_key   ?? cfg.ca_key,
-
-    };
-  }
-
-  return cfg;
-}
-
-function requiredKeysForFlavour(flavour) {
-  const f = (flavour || '').toLowerCase();
-  if (f === 's3' || f === 'minio') {
-    return ['instance_url', 'bucket_name', 'region_name', 'aws_access_key_id', 'aws_secret_access_key', 'secure'];
-  }
-  if (f === 'posix') {
-    return ['instance_url', 'ssh_ca_key'];
-  }
-  return [];
 }

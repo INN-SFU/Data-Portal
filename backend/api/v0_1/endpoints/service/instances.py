@@ -139,16 +139,21 @@ async def create_instance(
         HTTPException: 400 if configuration invalid
         HTTPException: 500 if policy creation fails
     """
+
+    name_value = getattr(config, "instance_name", None) or getattr(config, "name", None) or getattr(config,
+                                                                                                    "access_point_name",
+                                                                                                    None)
+    if not name_value:
+        raise HTTPException(status_code=422,
+                            detail="One of 'instance_name', 'name', or 'access_point_name' is required")
     flavour = config.flavour
     
     # Generate stable UUID for the instance from its name
-    instance_uuid = uuid5(NAMESPACE_DNS, config.instance_name)
+    instance_uuid = uuid5(NAMESPACE_DNS, name_value)
 
     # Convert Pydantic model to dict for instance factory
-    config_dict = {
-        'agent': config.dict(exclude={"flavour", 'access_point_name'}),
-        'flavour': flavour
-    }
+    agent_cfg = config.dict(exclude={"flavour", "access_point_name", "instance_name", "name"})
+    config_dict = {"agent": agent_cfg, "flavour": flavour}
 
     # Create the storage agent for the instance
     try:
