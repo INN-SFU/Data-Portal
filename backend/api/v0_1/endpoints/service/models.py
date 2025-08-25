@@ -60,10 +60,16 @@ class AddPolicyResponse(BaseModel):
     success: bool = Field(..., description="Indicates whether the policies were successfully updated.")
     details: list[Policy] = Field(..., description="The details of the policies that were updated.")
 
+#this is temporary
+# class RemovePolicyRequest(BaseModel):
+#     username: str = Field(..., description="The username of the user.")
+#     instance_name: str = Field(..., description="The name of the instance.")
+#     resource: str = Field(..., description="The resource to be accessed.")
+#     action: str = Field(..., description="The action to be performed on the resource.")
 
 class RemovePolicyRequest(BaseModel):
-    username: str = Field(..., description="The username of the user.")
-    instance_name: str = Field(..., description="The name of the instance.")
+    user_uuid: str = Field(..., description="The username of the user.")
+    instance_uuid: str = Field(..., description="The name of the instance.")
     resource: str = Field(..., description="The resource to be accessed.")
     action: str = Field(..., description="The action to be performed on the resource.")
 
