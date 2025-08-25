@@ -161,12 +161,16 @@ async def delete_policy(
     """
     # Get user and instance UUIDs
     try:
-        user_uuid = user_manager.get_user_uuid(old_policy.username)
+        #This is temporary
+        # user_uuid = user_manager.get_user_uuid(old_policy.username)
+        user_uuid = old_policy.user_uuid
     except KeyError:
         raise HTTPException(status_code=404, detail="User not found")
     
     try:
-        instance_uuid = instance_manager.get_instance_uuid(old_policy.instance_name)
+        # This is temporary
+        # instance_uuid = instance_manager.get_instance_uuid(old_policy.instance_name)
+        instance_uuid = old_policy.instance_uuid
     except KeyError:
         raise HTTPException(status_code=404, detail="Instance not found")
 
