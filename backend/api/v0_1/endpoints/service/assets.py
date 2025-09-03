@@ -48,10 +48,12 @@ def put_asset(asset: PutAssetRequest = Depends(),
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Access point {access_point} not found.")
 
         presigned_urls, file_paths = agent.generate_access_link(str(resource), 'write', 3600)
+        print(presigned_urls)
         return PutAssetResponse(
             presigned_urls=presigned_urls,
             file_paths=file_paths
         )
+
 
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
@@ -180,7 +182,10 @@ async def get_user_assets_data(
 async def get_asset_dashboard(
     admin_user: dict = Depends(require_admin),
     policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
-    instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
+    instance_manager: AbstractInstanceManager = Depends(get_instance_manager),
+        user_manager: AbstractUserManager = Depends(get_user_manager),
+        refresh: bool = Query(True, description="If true, rebuild file trees before responding")
+
 ) -> AssetManagementData:
     """
     Get aggregated data for asset management dashboard (admin only).
@@ -197,16 +202,36 @@ async def get_asset_dashboard(
         AssetManagementData: Dashboard data with assets and instances
     """
     # Retrieve the user's user_uuid from the token payload
-    uuid = admin_user.get("sub")
+    subject_uuid = user_manager.get_user_uuid(admin_user.get("preferred_username"))
 
+    uuid = admin_user.get("sub")
+    print("preferred_username:", admin_user.get("preferred_username"))
+    print("sub (keycloak):", admin_user.get("sub"))
+
+    print("DEBUG internal subject_uuid:", subject_uuid)
+
+    policies = policy_manager.get_user_policies(subject_uuid)
+    print("DEBUG policies_len:", len(policies), "sample:", policies)
     # Get all storage access points the user has read access to
     instance_uuids = list(
         set(policy.instance_uuid for policy in policy_manager.get_user_policies(uuid))
     )
     instances = instance_manager.get_instances_by_uuid(instance_uuids)
 
+    ##########################
+    if refresh:
+        for instance in instances:
+            if hasattr(instance.agent, "refresh_file_tree"):
+                try:
+                    instance.agent.refresh_file_tree()
+                except Exception as e:
+                    # don't fail the whole request on a single agent refresh error
+                    logger.warning(f"Failed to refresh tree for {instance.name}: {e}")
+    ##########################
+
     file_trees = {}
     for instance in instances:
+
         f_trees = instance.agent.partition_file_tree_by_access(
             policy_manager, uuid, instance.uuid, ["read", "write"]
         )

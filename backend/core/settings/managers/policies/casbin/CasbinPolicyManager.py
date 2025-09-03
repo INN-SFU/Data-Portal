@@ -48,7 +48,7 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
 
     @property
     def actions(self):
-        return self.actions
+        return self._actions
 
     def _write_user_policies(self, user_uuid: str):
         """
