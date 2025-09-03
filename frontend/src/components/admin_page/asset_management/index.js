@@ -1,10 +1,112 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { useKeycloak } from "@react-keycloak/web";
+import EndpointCard from "./EndpointCard.js";
 
-export default function AssetManagement() {
+const http = axios.create({ baseURL: "http://localhost:8000" });
+
+function Spinner() {
+  return <div style={{ padding: 16 }}>Loading…</div>;
+}
+
+function ErrorNote({ children }) {
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Asset Management</h1>
-      <p>This is where system assets are managed.</p>
+    <div style={{
+      background: "#fdecea",
+      color: "#611a15",
+      border: "1px solid #f5c6cb",
+      borderRadius: 8,
+      padding: 12,
+      margin: 12,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// Normalize backend payload to { endpoints, assets }
+function normalizeBootstrap(data) {
+  if (!data || typeof data !== "object") return { endpoints: {}, assets: {} };
+  if (data.endpoints) return { endpoints: data.endpoints, assets: data.assets || {} };
+  if (data.instances) return { endpoints: data.instances, assets: data.assets || {} };
+  return { endpoints: {}, assets: {} };
+}
+
+export default function AssetManagement({ bootstrap }) {
+  const { keycloak, initialized } = useKeycloak();
+
+  const [boot, setBoot] = useState(bootstrap ? normalizeBootstrap(bootstrap) : null);
+  const [loading, setLoading] = useState(!bootstrap);
+  const [error, setError] = useState(null);
+  // { [endpointUuid]: { read: Set, write: Set } }
+  const [selected, setSelected] = useState({});
+
+  const getSel = (uuid) => {
+    const ent = selected[uuid];
+    return { read: (ent && ent.read) || new Set(), write: (ent && ent.write) || new Set() };
+  };
+
+  const authHeaders = async () => {
+    if (!initialized) return {};
+    try { await keycloak.updateToken(30); } catch {}
+    return keycloak?.token ? { Authorization: `Bearer ${keycloak.token}` } : {};
+  };
+
+  // Fetch dashboard; set refresh=1 only when we want the backend to rebuild trees
+  const reload = async (forceRefresh = false) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const headers = await authHeaders();
+      const { data } = await http.get("/api/assets/dashboard", {
+        headers,
+        params: { _t: Date.now(), ...(forceRefresh ? { refresh: 1 } : {}) },
+      });
+      setBoot(normalizeBootstrap(data));
+    } catch (e) {
+      setError(e?.response?.data?.detail || e?.message || "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => { if (!boot) reload(false); }, [boot]);
+
+  if (loading) return <Spinner />;
+  if (error) return <ErrorNote>{String(error)}</ErrorNote>;
+  if (!boot) return <ErrorNote>No data.</ErrorNote>;
+
+  const handleSelectedChange = (endpointUuid, access, nextSet) => {
+    setSelected((prev) => ({
+      ...prev,
+      [endpointUuid]: { ...(prev[endpointUuid] || {}), [access]: new Set(nextSet) },
+    }));
+  };
+
+  return (
+    <div style={{ padding: 16, fontFamily: "Inter, system-ui, Arial" }}>
+      <h2 style={{ margin: "0 0 12px" }}>Storage Endpoints</h2>
+
+      {Object.entries(boot.endpoints).length === 0 ? (
+        <ErrorNote>No endpoints available.</ErrorNote>
+      ) : (
+        <div style={{ display: "grid", gap: 16 }}>
+          {Object.entries(boot.endpoints).map(([endpointName, endpointUuid]) => (
+            <EndpointCard
+              key={endpointUuid}
+              endpointName={endpointName}
+              endpointUuid={endpointUuid}
+              treesByAccess={boot.assets[endpointUuid] || {}}
+              selectedByAccess={getSel(endpointUuid)}
+              onSelectedChange={(access, nextSet) => handleSelectedChange(endpointUuid, access, nextSet)}
+              authHeaders={authHeaders}
+              http={http}
+              onMutate={() => reload(true)}   // auto-refresh after upload/delete/policy changes
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
