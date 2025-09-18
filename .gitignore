@@ -100,7 +100,7 @@ docs/_build/
 /frontend/.vscode/
 
 # Environment variables
-/frontend/.env*
+/frontend/.env.development
 
 # Testing
 /frontend/coverage/
