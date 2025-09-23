@@ -83,10 +83,22 @@ if __name__ == "__main__":
 
     # LOG INITIALIZATION
     print("Initializing loggers...")
+
+    # Set up logging environment variables before loading config
+    os.environ.setdefault('LOG_DIR', os.path.join(os.getcwd(), 'data', 'logs'))
+    os.environ.setdefault('LOG_LEVEL', 'INFO')
+
     log_config_path = config.get('log_config', './loggers/log_config.yaml')
     log_config_path = os.path.abspath(log_config_path)
     with open(log_config_path, 'r') as f:
-        log_config = yaml.safe_load(f)
+        log_config_content = f.read()
+
+    # Substitute environment variables in the log config
+    import os
+    log_config_content = log_config_content.replace('${LOG_DIR}', os.environ['LOG_DIR'])
+    log_config_content = log_config_content.replace('${LOG_LEVEL}', os.environ['LOG_LEVEL'])
+
+    log_config = yaml.safe_load(log_config_content)
     logging.config.dictConfig(log_config)
     app_logger = logging.getLogger('app')
 
