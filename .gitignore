@@ -76,6 +76,9 @@ temp/
 
 # Docker
 .dockerignore
+docker-compose.override.yml
+.docker/
+*.dockerignore
 
 # Documentation build
 docs/_build/
