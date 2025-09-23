@@ -35,6 +35,7 @@ class ValidationResult(BaseModel):
 
 
 @router.get("/", response_model=HealthStatus)
+@router.get("", response_model=HealthStatus)
 async def health_check():
     """
     Basic health check endpoint.
@@ -57,9 +58,8 @@ async def health_check():
         # Environment variables check
         required_env_vars = [
             "ROOT_DIRECTORY",
-            "ENFORCER_MODEL", 
-            "ENFORCER_POLICY",
-            "JINJA_TEMPLATES"
+            "ENFORCER_MODEL",
+            "ENFORCER_POLICY"
         ]
         
         missing_vars = [var for var in required_env_vars if not os.getenv(var)]
@@ -124,7 +124,7 @@ async def detailed_health_check():
         # Environment variables
         required_env_vars = [
             "ROOT_DIRECTORY", "ENFORCER_MODEL", "ENFORCER_POLICY",
-            "JINJA_TEMPLATES", "INSTANCE_CONFIGS", "STATIC_FILES"
+            "INSTANCE_CONFIGS"
         ]
         
         missing_vars = [var for var in required_env_vars if not os.getenv(var)]
@@ -255,8 +255,6 @@ async def validate_environment():
         
         # Directory permissions
         directories = [
-            ("Templates", os.getenv('JINJA_TEMPLATES')),
-            ("Static files", os.getenv('STATIC_FILES')),
             ("instance configs", os.getenv('INSTANCE_CONFIGS')),
             ("Logs", "loggers/logs")
         ]
@@ -320,7 +318,7 @@ async def validate_environment():
         # Environment variables
         critical_env_vars = [
             "ROOT_DIRECTORY", "ENFORCER_MODEL", "ENFORCER_POLICY",
-            "JINJA_TEMPLATES", "INSTANCE_CONFIGS", "STATIC_FILES"
+            "INSTANCE_CONFIGS"
         ]
         
         missing_vars = [var for var in critical_env_vars if not os.getenv(var)]
