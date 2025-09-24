@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # Keycloak Service
   keycloak:
-    image: quay.io/keycloak/keycloak:23.0.1
+    image: quay.io/keycloak/keycloak:24.0.3
     container_name: ams-keycloak-dev
     environment:
       KEYCLOAK_ADMIN: admin
@@ -15,7 +15,7 @@ services:
       - "8080:8080"
     command: start-dev --import-realm
     volumes:
-      - ../config/keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
+      - ./config/keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080"]
       interval: 30s
@@ -27,6 +27,7 @@ services:
   backend:
     build: .
     container_name: ams-backend-dev
+    entrypoint: ["/app/entrypoint.sh"]
     environment:
       # Keycloak configuration
       KEYCLOAK_DOMAIN: http://keycloak:8080
