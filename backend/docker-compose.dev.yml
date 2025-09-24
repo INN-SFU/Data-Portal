@@ -34,8 +34,9 @@ services:
       KEYCLOAK_REALM: ams-portal
       KEYCLOAK_UI_CLIENT_ID: ams-portal-ui
       KEYCLOAK_ADMIN_CLIENT_ID: ams-portal-admin
-      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-your-client-secret}
       KEYCLOAK_REDIRECT_URI: http://localhost:3000/auth/callback
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
 
       # Server configuration
       AMS_HOST: 0.0.0.0
