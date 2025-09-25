@@ -37,6 +37,8 @@ services:
       KEYCLOAK_REDIRECT_URI: http://localhost:3000/auth/callback
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
+      # Development: Accept tokens issued from external URL (localhost:8080)
+      KEYCLOAK_TOKEN_ISSUER: http://localhost:8080/realms/ams-portal
 
       # Server configuration
       AMS_HOST: 0.0.0.0

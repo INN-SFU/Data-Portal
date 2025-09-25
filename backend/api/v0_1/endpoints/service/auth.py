@@ -54,8 +54,11 @@ def decode_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_sche
     client_id = os.getenv("KEYCLOAK_UI_CLIENT_ID")
     keycloak_domain = os.getenv("KEYCLOAK_DOMAIN")
     realm = os.getenv("KEYCLOAK_REALM")
-    issuer = f"{keycloak_domain}/realms/{realm}"
-    
+
+    # Allow configurable issuer for different environments (dev/staging/prod)
+    # Defaults to internal domain for container-to-container communication
+    issuer = os.getenv("KEYCLOAK_TOKEN_ISSUER", f"{keycloak_domain}/realms/{realm}")
+
     logger.debug(f"Token validation config - client_id: {client_id}, realm: {realm}, issuer: {issuer}")
 
     jwks_client = get_jwks_client()

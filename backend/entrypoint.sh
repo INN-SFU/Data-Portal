@@ -71,32 +71,15 @@ if [ -z "$KEYCLOAK_ADMIN_CLIENT_SECRET" ]; then
 fi
 
 echo "Admin client secret retrieved successfully: ${KEYCLOAK_ADMIN_CLIENT_SECRET:0:8}..."
+echo "DEBUG: Secret length: ${#KEYCLOAK_ADMIN_CLIENT_SECRET}"
+echo "DEBUG: Secret is set: $([ -n "$KEYCLOAK_ADMIN_CLIENT_SECRET" ] && echo 'YES' || echo 'NO')"
 
-# Generate config.yaml from environment variables (now with the fetched secret)
-cat > "${APP_DIR:-/app}/config.yaml" <<EOL
-system:
-  reset: ${SYSTEM_RESET:-false}
+# Export the secret for the Python application
+export KEYCLOAK_ADMIN_CLIENT_SECRET
 
-uvicorn:
-  host: ${AMS_HOST:-0.0.0.0}
-  port: ${AMS_PORT:-${APP_PORT:-8000}}
-  reload: ${AMS_RELOAD:-false}
-
-keycloak:
-  domain: ${KEYCLOAK_DOMAIN}
-  realm: ${KEYCLOAK_REALM:-ams-portal}
-  ui_client_id: ${KEYCLOAK_UI_CLIENT_ID:-ams-portal-ui}
-  ui_client_secret: ${KEYCLOAK_UI_CLIENT_SECRET:-}
-  admin_client_id: ${KEYCLOAK_ADMIN_CLIENT_ID:-ams-portal-admin}
-  admin_client_secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
-  redirect_uri: ${KEYCLOAK_REDIRECT_URI}
-
-logging:
-  config: ${LOG_CONFIG:-${APP_DIR:-/app}/loggers/log_config_processed.yaml}
-
-app:
-  version: ${API_VERSION:-"0_1"}
-EOL
+echo "Admin client secret exported to environment"
+echo "DEBUG: After export - Secret still set: $([ -n "$KEYCLOAK_ADMIN_CLIENT_SECRET" ] && echo 'YES' || echo 'NO')"
+echo "DEBUG: Current environment KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:0:8}..."
 
 # Process the log config template to substitute environment variables
 if [ -f "${APP_DIR:-/app}/loggers/log_config.yaml" ]; then
@@ -122,5 +105,11 @@ touch "${APP_DIR:-/app}/core/settings/managers/policies/casbin/policy.csv"
 : "${KEYCLOAK_DOMAIN:?KEYCLOAK_DOMAIN environment variable is required}"
 : "${KEYCLOAK_REDIRECT_URI:?KEYCLOAK_REDIRECT_URI environment variable is required}"
 
-# Start the application
-exec python main.py config.yaml
+# Start the application without config file - use environment variables directly
+echo "DEBUG: About to start Python with secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:0:8}..."
+echo "DEBUG: Full env check before Python:"
+env | grep KEYCLOAK || echo "No KEYCLOAK vars found"
+
+# Explicitly pass the secret as an environment variable to ensure it's available
+echo "DEBUG: Starting Python application..."
+exec env KEYCLOAK_ADMIN_CLIENT_SECRET="$KEYCLOAK_ADMIN_CLIENT_SECRET" python main.py

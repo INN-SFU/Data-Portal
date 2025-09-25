@@ -1,34 +1,37 @@
 import logging
 import logging.config
 import os
-import yaml
 import sys
 import uvicorn
-import warnings
+import yaml
 
 from dotenv import load_dotenv
-from envyaml import EnvYAML
 
 
 # APP SPIN UP
 if __name__ == "__main__":
 
-    # Path to configuration file
-    config_file = sys.argv[1]
+    print("Using environment variables directly (no config file)...")
 
-    print("Loading configuration file...")
-    config = EnvYAML(config_file, strict=False)
+    # DEBUG: Check secret availability immediately when Python starts
+    secret = os.getenv('KEYCLOAK_ADMIN_CLIENT_SECRET')
+    print(f"DEBUG: Python startup - Secret available: {'YES' if secret else 'NO'}")
+    if secret:
+        print(f"DEBUG: Python startup - Secret length: {len(secret)}")
+        print(f"DEBUG: Python startup - Secret preview: {secret[:8]}...")
 
-    # Exporting the configuration to environment variables
-    print("Exporting configuration to environment variables...")
-    for key, value in config.export().items():
-        if isinstance(value, dict):
-            for sub_key, sub_value in value.items():
-                env_key = f"{key}_{sub_key}".upper()
-                print(f"\t{env_key}={sub_value}")
-                os.environ[env_key] = str(sub_value)
-        else:
-            os.environ[key.upper()] = str(value)
+    print("DEBUG: All KEYCLOAK environment variables at Python startup:")
+    for key, value in os.environ.items():
+        if 'KEYCLOAK' in key:
+            display_value = value[:8] + '...' if 'SECRET' in key and value else value
+            print(f"DEBUG:   {key}={display_value}")
+
+    # Set defaults for required environment variables if not set
+    os.environ.setdefault('SYSTEM_RESET', 'false')
+    os.environ.setdefault('AMS_HOST', '0.0.0.0')
+    os.environ.setdefault('AMS_PORT', '8000')
+    os.environ.setdefault('AMS_RELOAD', 'false')
+    os.environ.setdefault('API_VERSION', '0_1')
 
     # ENVIRONMENT VARIABLES
     print("Loading environment variables...")
@@ -49,17 +52,8 @@ if __name__ == "__main__":
     ROOT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
     os.environ['ROOT_DIRECTORY'] = ROOT_DIRECTORY
 
-    # Keycloak Configuration (example)
-    # Ensure you have these variables in your .env or config file:
-    # KEYCLOAK_DOMAIN, REALM, CLIENT_ID, and optionally CLIENT_SECRET.
-    print("Initializing Keycloak configuration...")
-    os.environ['KEYCLOAK_DOMAIN'] = str(config['keycloak']['domain'])
-    os.environ['KEYCLOAK_REALM'] = str(config['keycloak']['realm'])
-    os.environ['KEYCLOAK_UI_CLIENT_ID'] = str(config['keycloak']['ui_client_id'])
-    os.environ['KEYCLOAK_UI_CLIENT_SECRET'] = str(config['keycloak']['ui_client_secret'] or '')
-    os.environ['KEYCLOAK_ADMIN_CLIENT_ID'] = str(config['keycloak']['admin_client_id'])
-    os.environ['KEYCLOAK_ADMIN_CLIENT_SECRET'] = str(config['keycloak']['admin_client_secret'])
-    os.environ['KEYCLOAK_REDIRECT_URI'] = str(config['keycloak']['redirect_uri'])
+    # Keycloak Configuration - derived URLs from environment variables
+    print("Setting up Keycloak derived URLs...")
     os.environ[
         'KEYCLOAK_WELL_KNOWN_URL'] = f"{os.getenv('KEYCLOAK_DOMAIN')}/realms/{os.getenv('KEYCLOAK_REALM')}/.well-known/openid-configuration"
     os.environ[
@@ -69,17 +63,11 @@ if __name__ == "__main__":
                                 f"&response_type=code"
 
     # RESET
-    if config['system']['reset']:
+    if os.getenv('SYSTEM_RESET', 'false').lower() == 'true':
         from core.settings.security.SYS_RESET import SYS_RESET
-
+        print("Performing system reset...")
         SYS_RESET()
-
-        # Set reset to False
-        config['system']['reset'] = False
-        # Write the updated configuration to the file
-        with open(config_file, 'w') as f:
-            yaml.dump(config, f)
-        f.close()
+        # Note: In container environment, reset flag is not persisted
 
     # LOG INITIALIZATION
     print("Initializing loggers...")
@@ -88,7 +76,7 @@ if __name__ == "__main__":
     os.environ.setdefault('LOG_DIR', os.path.join(os.getcwd(), 'data', 'logs'))
     os.environ.setdefault('LOG_LEVEL', 'INFO')
 
-    log_config_path = config.get('log_config', './loggers/log_config.yaml')
+    log_config_path = os.getenv('LOG_CONFIG', './loggers/log_config.yaml')
     log_config_path = os.path.abspath(log_config_path)
     with open(log_config_path, 'r') as f:
         log_config_content = f.read()
@@ -107,9 +95,16 @@ if __name__ == "__main__":
     load_dotenv("core/settings/security/.secrets")
 
     app_logger.info("Starting application...")
-    os.environ['APP_HOST'] = config['uvicorn']['host']
-    os.environ['APP_PORT'] = str(config['uvicorn']['port'])
+
+    # Get server configuration from environment
+    host = os.getenv('AMS_HOST', '0.0.0.0')
+    port = int(os.getenv('AMS_PORT', '8000'))
+    reload = os.getenv('AMS_RELOAD', 'false').lower() == 'true'
+
+    os.environ['APP_HOST'] = host
+    os.environ['APP_PORT'] = str(port)
+
     uvicorn.run(app='api.v0_1.app:app',
-                host=config['uvicorn']['host'],
-                port=config['uvicorn']['port'],
-                reload=config['uvicorn']['reload'])
+                host=host,
+                port=port,
+                reload=reload)
