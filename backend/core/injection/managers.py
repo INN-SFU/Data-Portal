@@ -19,19 +19,31 @@ def get_user_manager() -> AbstractUserManager:
         from core.settings.managers.users.keycloak import KeycloakUserManager
 
         # Check if required environment variables are available
+        print("DEBUG: Initializing user manager...")
         admin_secret = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET")
+        print(f"DEBUG: Admin secret available: {'YES' if admin_secret else 'NO'}")
+        print(f"DEBUG: Admin secret length: {len(admin_secret) if admin_secret else 0}")
+        print(f"DEBUG: Admin secret preview: {admin_secret[:8]}..." if admin_secret else "DEBUG: Admin secret is None/empty")
+
+        print(f"DEBUG: KEYCLOAK_REALM: {os.getenv('KEYCLOAK_REALM')}")
+        print(f"DEBUG: KEYCLOAK_ADMIN_CLIENT_ID: {os.getenv('KEYCLOAK_ADMIN_CLIENT_ID')}")
+        print(f"DEBUG: KEYCLOAK_DOMAIN: {os.getenv('KEYCLOAK_DOMAIN')}")
+
         if not admin_secret:
+            print("ERROR: Admin client secret not available during user manager initialization")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Keycloak admin client secret not available. Please wait for application startup to complete."
             )
 
+        print("DEBUG: Creating KeycloakUserManager instance...")
         _user_manager = KeycloakUserManager(
             realm_name=os.getenv("KEYCLOAK_REALM"),
             client_id=os.getenv("KEYCLOAK_ADMIN_CLIENT_ID"),
             client_secret=admin_secret,
             base_url=os.getenv("KEYCLOAK_DOMAIN")
         )
+        print("DEBUG: KeycloakUserManager instance created successfully")
 
     return _user_manager
 

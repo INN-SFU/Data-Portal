@@ -15,6 +15,12 @@ class KeycloakUserManager(AbstractUserManager):
 
     def __init__(self, realm_name: str, client_id: str, client_secret: str, base_url: str):
 
+        print(f"DEBUG: KeycloakUserManager.__init__ called with:")
+        print(f"  realm_name: {realm_name}")
+        print(f"  client_id: {client_id}")
+        print(f"  client_secret: {client_secret[:8] if client_secret else 'None'}... (length: {len(client_secret) if client_secret else 0})")
+        print(f"  base_url: {base_url}")
+
         keycloak_connection = KeycloakOpenIDConnection(
             server_url=base_url,
             realm_name=realm_name,
@@ -24,6 +30,19 @@ class KeycloakUserManager(AbstractUserManager):
         )
 
         self.identity_manager = KeycloakAdmin(connection=keycloak_connection)
+        print("DEBUG: KeycloakAdmin instance created, testing connection...")
+
+        # Test the connection immediately to see if credentials work
+        try:
+            test_users = self.identity_manager.get_users(query={"max": 1})
+            print(f"DEBUG: Connection test successful - got {len(test_users)} user(s)")
+        except Exception as e:
+            print(f"DEBUG: Connection test FAILED: {e}")
+            print(f"DEBUG: Exception type: {type(e)}")
+            if hasattr(e, 'response_code'):
+                print(f"DEBUG: Response code: {e.response_code}")
+            if hasattr(e, 'response_body'):
+                print(f"DEBUG: Response body: {e.response_body}")
 
     def create_user(self, user_details: UserCreate) -> User:
         # Create user in Keycloak
