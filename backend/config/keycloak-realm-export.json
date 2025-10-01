@@ -116,7 +116,7 @@
       }
     } ]
   }, {
-    "id" : "admin-client-id", 
+    "id" : "admin-client-id",
     "clientId" : "ams-portal-admin",
     "name" : "AMS Portal Admin Client",
     "enabled" : true,
@@ -129,7 +129,7 @@
     "authorizationServicesEnabled" : false,
     "attributes" : {
       "saml.assertion.signature" : "false",
-      "saml.force.post.binding" : "false", 
+      "saml.force.post.binding" : "false",
       "saml.multivalued.roles" : "false",
       "saml.encrypt" : "false",
       "saml.server.signature" : "false",
