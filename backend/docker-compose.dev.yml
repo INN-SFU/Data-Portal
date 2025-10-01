@@ -20,7 +20,7 @@ services:
       KC_DB: dev-file
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
-      KC_LOG_LEVEL: INFO
+      KC_LOG_LEVEL: DEBUG
       KC_HOSTNAME: localhost            #
       KC_HOSTNAME_STRICT: "false"
     ports: ["8080:8080"]
@@ -43,11 +43,12 @@ services:
     container_name: ams-backend-dev
     entrypoint: ["bash", "/app/entrypoint.sh"]
     environment:
-      # Shared contract (reused via anchor)
       <<: *kc_shared
+      KEYCLOAK_DOMAIN: http://keycloak:8080
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
 
-      # Backend-only wiring
-      KEYCLOAK_DOMAIN: http://keycloak:8080  # internal DNS for service-to-service
+      # App/runtime config
       AMS_HOST: 0.0.0.0
       AMS_PORT: "8000"
       AMS_RELOAD: "false"
@@ -62,9 +63,11 @@ services:
       USER_POLICIES: /app/data/policies
       INSTANCE_CONFIGS: /app/data/configs
 
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin123
+      # Tell app/tests where the secret lives
+      KEYCLOAK_ADMIN_CLIENT_SECRET_FILE: /run/secrets/kc_admin_client_secret
 
+      # Optional: handy for running pytest from the host
+      BACKEND_BASE_URL: http://localhost:8000
 
     ports: ["8000:8000"]
     depends_on:
@@ -75,6 +78,8 @@ services:
       - ./logs:/app/data/logs
       - ./data/policies:/app/data/policies
       - ./data/configs:/app/data/configs
+    tmpfs:
+      - /run/secrets:rw,noexec,nosuid,nodev
     working_dir: /app
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health/ready"]
