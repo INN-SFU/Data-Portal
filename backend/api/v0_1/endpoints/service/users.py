@@ -160,8 +160,21 @@ async def create_user(
         pass
 
     # Create user
-    user_manager.create_user(user_create)
-    uuid = user_manager.get_user_uuid(user_data.username)
+    try:
+        user_manager.create_user(user_create)
+        uuid = user_manager.get_user_uuid(user_data.username)
+    except Exception as e:
+        # Catch Keycloak validation errors (invalid email, missing fields, etc.)
+        error_msg = str(e)
+        if "error-invalid-email" in error_msg:
+            raise HTTPException(status_code=400, detail="Invalid email format")
+        elif "User name is missing" in error_msg or "username" in error_msg.lower():
+            raise HTTPException(status_code=400, detail="Username is required")
+        elif "already exists" in error_msg.lower():
+            raise HTTPException(status_code=400, detail="User already exists")
+        else:
+            # Log the full error for debugging
+            raise HTTPException(status_code=400, detail=f"Failed to create user: {error_msg}")
 
     # Create policy store (rollback on failure)
     if not policy_manager.create_user_policy_store(uuid):

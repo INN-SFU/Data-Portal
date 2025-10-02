@@ -38,26 +38,31 @@ for i in {1..60}; do
   sleep 1
 done
 
-# --- run smoke tests (if pytest available) ---
-log "Running backend smoke tests…"
-if python -c "import pytest" >/dev/null 2>&1; then
-  export PYTHONPATH="/app:${PYTHONPATH:-}"
-  # Use the dedicated smoke test runner
-  TEST_OUTPUT=$(python tests/run_smoke_tests.py 2>&1)
-  TEST_RC=$?
+# --- run smoke tests (if enabled and pytest available) ---
+RUN_SMOKE_TESTS="${RUN_SMOKE_TESTS:-true}"
+if [ "$RUN_SMOKE_TESTS" = "true" ]; then
+  log "Running backend smoke tests…"
+  if python -c "import pytest" >/dev/null 2>&1; then
+    export PYTHONPATH="/app:${PYTHONPATH:-}"
+    # Use the dedicated smoke test runner
+    TEST_OUTPUT=$(python tests/run_smoke_tests.py 2>&1)
+    TEST_RC=$?
 
-  # Display output (runner handles formatting)
-  echo "$TEST_OUTPUT"
+    # Display output (runner handles formatting)
+    echo "$TEST_OUTPUT"
 
-  if [ $TEST_RC -ne 0 ]; then
-    log "Smoke tests FAILED (exit $TEST_RC)."
-    # Uncomment to fail the container on test failure:
-    # exit $TEST_RC
+    if [ $TEST_RC -ne 0 ]; then
+      log "Smoke tests FAILED (exit $TEST_RC)."
+      # Uncomment to fail the container on test failure:
+      # exit $TEST_RC
+    else
+      log "All smoke tests passed."
+    fi
   else
-    log "All smoke tests passed."
+    log "WARN: pytest not installed or not importable; skipping tests."
   fi
 else
-  log "WARN: pytest not installed or not importable; skipping tests."
+  log "Skipping smoke tests (RUN_SMOKE_TESTS=${RUN_SMOKE_TESTS})."
 fi
 
 # --- keep the app in the foreground ---
