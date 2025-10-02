@@ -86,7 +86,7 @@ loggers:
     handlers: [console, uvicorn_file]
     propagate: false
   uvicorn.access:
-    level: ${LOG_LEVEL}
+    level: INFO
     handlers: [console, uvicorn_file]
     propagate: false
 
