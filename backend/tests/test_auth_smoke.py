@@ -65,6 +65,29 @@ def get_client_credentials_token(timeout=10) -> str:
         pytest.fail(f"No access_token in response: {json.dumps(payload)[:500]}")
     return token
 
+def get_user_password_token(username: str, password: str, timeout=10) -> str:
+    """Obtain token via password grant (direct access grants)."""
+    token_url = f"{kc_base()}/realms/{kc_realm()}/protocol/openid-connect/token"
+    # Use the UI client which has directAccessGrantsEnabled=true
+    ui_client_id = os.getenv("KEYCLOAK_UI_CLIENT_ID", "ams-portal-ui")
+    data = {
+        "grant_type": "password",
+        "client_id": ui_client_id,
+        "username": username,
+        "password": password,
+    }
+    r = requests.post(token_url, data=data, timeout=timeout)
+    try:
+        payload = r.json()
+    except json.JSONDecodeError:
+        pytest.fail(f"Non-JSON response from token endpoint: HTTP {r.status_code}\n{r.text[:500]}")
+    if r.status_code != 200:
+        pytest.fail(f"Password grant failed HTTP {r.status_code}: {json.dumps(payload)[:500]}")
+    token = payload.get("access_token", "")
+    if not token:
+        pytest.fail(f"No access_token in response: {json.dumps(payload)[:500]}")
+    return token
+
 
 # --- Tests -------------------------------------------------------------------
 
@@ -109,3 +132,93 @@ def test_validate_token_with_garbage_token():
     url = f"{backend_base()}/api/auth/validate"
     r = requests.get(url, headers={"Authorization": "Bearer not.a.real.token"}, timeout=5)
     assert r.status_code == 401, f"Expected 401 with garbage token, got {r.status_code}: {r.text[:200]}"
+
+
+# --- Keycloak Integration Tests (User Authentication) -----------------------
+
+def test_user_password_authentication():
+    """Test user authentication with username/password flow."""
+    # Use the admin user from keycloak-realm-export.json
+    token = get_user_password_token("admin", "admin123")
+
+    # Verify we got a valid token
+    assert token, "Should receive a token from password grant"
+    assert len(token) > 50, "Token should be a valid JWT"
+
+    # Verify the token works with our backend
+    url = f"{backend_base()}/api/auth/validate"
+    r = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=10)
+    assert r.status_code == 200, f"Token validation failed: {r.status_code}: {r.text[:500]}"
+
+    data = r.json()
+    assert data.get("valid") is True, f"Token should be valid: {data}"
+
+    user = data.get("user", {})
+    assert user.get("preferred_username") == "admin", f"Username mismatch: {user}"
+
+
+def test_admin_role_detection():
+    """Test that admin role is correctly detected from token."""
+    # Get admin user token
+    admin_token = get_user_password_token("admin", "admin123")
+
+    # Call validate endpoint
+    url = f"{backend_base()}/api/auth/validate"
+    r = requests.get(url, headers={"Authorization": f"Bearer {admin_token}"}, timeout=10)
+    assert r.status_code == 200, f"Token validation failed: {r.status_code}"
+
+    data = r.json()
+    user = data.get("user", {})
+
+    # Check that admin role is present in realm_access
+    realm_access = user.get("realm_access", {})
+    roles = realm_access.get("roles", [])
+    assert "admin" in roles, f"Admin role not found in token. Roles: {roles}"
+
+
+# --- Core API Endpoint Tests ------------------------------------------------
+
+def test_health_live():
+    """Test liveness probe endpoint."""
+    url = f"{backend_base()}/api/health/live"
+    r = requests.get(url, timeout=5)
+    assert r.status_code == 200, f"/api/health/live returned {r.status_code}: {r.text[:200]}"
+    data = r.json()
+    assert data.get("status") == "alive", f"Expected alive status: {data}"
+
+
+def test_protected_endpoint_requires_auth():
+    """Test that protected endpoints reject requests without auth."""
+    # Try to access users list without token
+    url = f"{backend_base()}/api/users/"
+    r = requests.get(url, timeout=5)
+    assert r.status_code == 401, f"Expected 401 without auth, got {r.status_code}: {r.text[:200]}"
+
+
+def test_protected_endpoint_with_valid_token():
+    """Test that protected endpoints accept valid tokens."""
+    # Get a valid admin token
+    token = get_user_password_token("admin", "admin123")
+
+    # Access users list with token (admin-only endpoint)
+    url = f"{backend_base()}/api/users/"
+    r = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=10)
+    assert r.status_code == 200, f"Expected 200 with valid admin token, got {r.status_code}: {r.text[:500]}"
+
+    # Should return a list
+    data = r.json()
+    assert isinstance(data, list), f"Expected list of users, got: {type(data)}"
+
+
+def test_admin_only_endpoint_enforcement():
+    """Test that admin-only endpoints properly enforce admin role requirement."""
+    # This test verifies admin-only enforcement by testing with admin user
+    # (we don't have a non-admin user in the realm export yet)
+    admin_token = get_user_password_token("admin", "admin123")
+
+    # Admin should be able to access admin-only endpoint
+    url = f"{backend_base()}/api/users/"
+    r = requests.get(url, headers={"Authorization": f"Bearer {admin_token}"}, timeout=10)
+    assert r.status_code == 200, f"Admin should access /api/users/, got {r.status_code}: {r.text[:500]}"
+
+    # TODO: Add test with non-admin user when one is configured in realm export
