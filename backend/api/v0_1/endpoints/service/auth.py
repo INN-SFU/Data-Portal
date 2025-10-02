@@ -127,9 +127,6 @@ def decode_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_sche
     return payload
 
 
-
-
-
 def is_user_admin(token_payload: dict) -> bool:
     """
     Checks if the token payload indicates that the user has admin privileges.
