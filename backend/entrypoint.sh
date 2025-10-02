@@ -38,24 +38,23 @@ for i in {1..60}; do
   sleep 1
 done
 
-# --- run auth smoke tests (if pytest available) ---
-log "Running backend auth smoke tests…"
+# --- run smoke tests (if pytest available) ---
+log "Running backend smoke tests…"
 if python -c "import pytest" >/dev/null 2>&1; then
   export PYTHONPATH="/app:${PYTHONPATH:-}"
-  # Run pytest with minimal output, capture result
-  TEST_OUTPUT=$(python -m pytest --tb=line --no-header -v tests/test_auth_smoke.py 2>&1)
+  # Use the dedicated smoke test runner
+  TEST_OUTPUT=$(python tests/run_smoke_tests.py 2>&1)
   TEST_RC=$?
 
-  # Extract and display only test results (PASSED/FAILED lines)
-  echo "$TEST_OUTPUT" | grep -E "PASSED|FAILED" | sed 's/^.*::test_/  ✓ /' | sed 's/ PASSED.*//' | sed 's/ FAILED.*/  ✗/'
+  # Display output (runner handles formatting)
+  echo "$TEST_OUTPUT"
 
   if [ $TEST_RC -ne 0 ]; then
-    log "Auth smoke tests FAILED (exit $TEST_RC)."
-    echo "$TEST_OUTPUT" | grep -A 3 "FAILED"
+    log "Smoke tests FAILED (exit $TEST_RC)."
     # Uncomment to fail the container on test failure:
     # exit $TEST_RC
   else
-    log "Auth smoke tests passed (10/10)."
+    log "All smoke tests passed."
   fi
 else
   log "WARN: pytest not installed or not importable; skipping tests."
