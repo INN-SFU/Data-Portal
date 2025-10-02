@@ -111,6 +111,11 @@ def main():
         help="Run only user CRUD smoke tests"
     )
     parser.add_argument(
+        "--policies",
+        action="store_true",
+        help="Run only policy CRUD smoke tests"
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Show verbose output"
@@ -129,11 +134,14 @@ def main():
         test_files = ["test_auth_smoke.py"]
     elif args.users:
         test_files = ["test_user_crud_smoke.py"]
+    elif args.policies:
+        test_files = ["test_policy_crud_smoke.py"]
     else:
         # Run all smoke tests
         test_files = [
             "test_auth_smoke.py",
             "test_user_crud_smoke.py",
+            "test_policy_crud_smoke.py",
         ]
 
     # Check if pytest is available
