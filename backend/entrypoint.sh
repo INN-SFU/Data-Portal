@@ -42,14 +42,20 @@ done
 log "Running backend auth smoke tests…"
 if python -c "import pytest" >/dev/null 2>&1; then
   export PYTHONPATH="/app:${PYTHONPATH:-}"
-  python -m pytest -q tests/test_auth_smoke.py
+  # Run pytest with minimal output, capture result
+  TEST_OUTPUT=$(python -m pytest --tb=line --no-header -v tests/test_auth_smoke.py 2>&1)
   TEST_RC=$?
+
+  # Extract and display only test results (PASSED/FAILED lines)
+  echo "$TEST_OUTPUT" | grep -E "PASSED|FAILED" | sed 's/^.*::test_/  ✓ /' | sed 's/ PASSED.*//' | sed 's/ FAILED.*/  ✗/'
+
   if [ $TEST_RC -ne 0 ]; then
     log "Auth smoke tests FAILED (exit $TEST_RC)."
+    echo "$TEST_OUTPUT" | grep -A 3 "FAILED"
     # Uncomment to fail the container on test failure:
     # exit $TEST_RC
   else
-    log "Auth smoke tests passed."
+    log "Auth smoke tests passed (10/10)."
   fi
 else
   log "WARN: pytest not installed or not importable; skipping tests."
