@@ -74,7 +74,7 @@ def test_health_ready():
     assert r.status_code == 200, f"/api/health/ready returned {r.status_code}: {r.text[:200]}"
 
 def test_validate_token_unauthorized():
-    url = f"{backend_base()}/auth/validate"
+    url = f"{backend_base()}/api/auth/validate"
     r = requests.get(url, timeout=5)  # no Authorization header
     assert r.status_code == 401, f"Expected 401 without token, got {r.status_code}: {r.text[:200]}"
 
@@ -82,12 +82,12 @@ def test_validate_token_authorized():
     # 1) obtain a client_credentials token for ams-portal-admin
     token = get_client_credentials_token()
 
-    # 2) call backend /auth/validate
-    url = f"{backend_base()}/auth/validate"
+    # 2) call backend /api/auth/validate
+    url = f"{backend_base()}/api/auth/validate"
     r = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=10)
 
     # Helpful logging on failure
-    assert r.status_code == 200, f"/auth/validate returned {r.status_code}: {r.text[:500]}"
+    assert r.status_code == 200, f"/api/auth/validate returned {r.status_code}: {r.text[:500]}"
     data = r.json()
     assert data.get("valid") is True, f"Unexpected payload: {data}"
 
@@ -106,6 +106,6 @@ def test_validate_token_authorized():
 
 
 def test_validate_token_with_garbage_token():
-    url = f"{backend_base()}/auth/validate"
+    url = f"{backend_base()}/api/auth/validate"
     r = requests.get(url, headers={"Authorization": "Bearer not.a.real.token"}, timeout=5)
     assert r.status_code == 401, f"Expected 401 with garbage token, got {r.status_code}: {r.text[:200]}"
