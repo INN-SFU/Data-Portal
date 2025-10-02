@@ -72,7 +72,7 @@ async def get_policies(
     status_code=status.HTTP_201_CREATED
 )
 async def create_policy(
-    new_policy: AddPolicyRequest = Depends(),
+    new_policy: AddPolicyRequest,
     admin_user: dict = Depends(require_admin),
     user_manager: AbstractUserManager = Depends(get_user_manager),
     policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
@@ -136,7 +136,7 @@ async def create_policy(
     description="Remove an existing access policy."
 )
 async def delete_policy(
-    old_policy: RemovePolicyRequest = Depends(),
+    old_policy: RemovePolicyRequest,
     admin_user: dict = Depends(require_admin),
     user_manager: AbstractUserManager = Depends(get_user_manager),
     policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
