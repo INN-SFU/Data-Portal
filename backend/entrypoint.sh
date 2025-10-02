@@ -9,7 +9,6 @@ fetch_admin_token
 get_client_uuid
 get_client_secret
 derive_helper_urls
-
 ensure_service_account_roles
 ensure_scope_mappings_for_admin_client
 ensure_roles_scope_exists
@@ -20,41 +19,34 @@ log "Starting backend app…"
 python -Xfrozen_modules=off main.py &
 APP_PID=$!
 
+# forward signals to child, and reap on exit
+cleanup() {
+  log "Shutting down (signal) …"
+  kill "$APP_PID" 2>/dev/null || true
+  wait "$APP_PID" 2>/dev/null || true
+}
+trap cleanup TERM INT EXIT
+
 # --- wait for /api/health/ready ---
 HEALTH_URL="http://localhost:${AMS_PORT:-8000}/api/health/ready"
 log "Waiting for backend health: ${HEALTH_URL}"
-for i in {1..30}; do
-  if curl -fsS "$HEALTH_URL" >/dev/null; then
-    log "Backend is healthy."
-    break
-  fi
-  sleep 2
-done
-
-# --- Start backend & wait for health, then run pytest if available ---
-log "Starting backend app…"
-# (if you actually start the app here, background it; if the app starts later, leave this as a log only)
-
-log "Waiting for backend health: http://localhost:8000/api/health/ready"
 for i in {1..60}; do
-  if curl -fsS http://localhost:8000/api/health/ready >/dev/null; then
+  if curl -fsS "$HEALTH_URL" >/dev/null; then
     log "Backend is healthy."
     break
   fi
   sleep 1
 done
 
+# --- run auth smoke tests (if pytest available) ---
 log "Running backend auth smoke tests…"
 if python -c "import pytest" >/dev/null 2>&1; then
-  # make sure pytest can import your app code
   export PYTHONPATH="/app:${PYTHONPATH:-}"
-
-  # run only our smoke file, quiet output; adjust -q/-vv as you like
   python -m pytest -q tests/test_auth_smoke.py
   TEST_RC=$?
   if [ $TEST_RC -ne 0 ]; then
     log "Auth smoke tests FAILED (exit $TEST_RC)."
-    # uncomment next line if you want container to fail hard on test failure
+    # Uncomment to fail the container on test failure:
     # exit $TEST_RC
   else
     log "Auth smoke tests passed."
@@ -63,5 +55,5 @@ else
   log "WARN: pytest not installed or not importable; skipping tests."
 fi
 
-# finally, hand off to the app
-exec python -Xfrozen_modules=off main.py
+# --- keep the app in the foreground ---
+wait "$APP_PID"
