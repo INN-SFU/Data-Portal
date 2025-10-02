@@ -15,6 +15,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR ${APP_DIR}
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential \
+      gcc \
+      python3-dev \
+      gcc g++ curl gettext-base jq \
+  && rm -rf /var/lib/apt/lists/*
+
+
 # Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt \
