@@ -6,8 +6,8 @@ services:
     container_name: ams-backend-dev
     entrypoint: ["bash", "/app/entrypoint.backend.sh"]
     environment:
-      # Keycloak connection (external instance)
-      KEYCLOAK_DOMAIN: http://localhost:8080
+      # Keycloak connection (external instance on separate domain)
+      KEYCLOAK_DOMAIN: http://keycloak.local:8080
       KEYCLOAK_REALM: ams-portal
       KEYCLOAK_ADMIN_CLIENT_ID: ams-portal-admin
       KEYCLOAK_ADMIN: admin
@@ -36,7 +36,9 @@ services:
       RUN_SMOKE_TESTS: "true"
 
     ports: ["8000:8000"]
-    network_mode: "host"
+    extra_hosts:
+      - "keycloak.local:host-gateway"
+      - "backend.local:host-gateway"
     volumes:
       - .:/app
       - ./logs:/app/data/logs

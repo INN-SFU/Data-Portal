@@ -13,9 +13,11 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
       KC_LOG_LEVEL: DEBUG
-      KC_HOSTNAME: localhost
+      KC_HOSTNAME: keycloak.local
       KC_HOSTNAME_STRICT: "false"
     ports: ["8080:8080"]
+    extra_hosts:
+      - "keycloak.local:127.0.0.1"
     volumes:
       - ./config/keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
     healthcheck:
