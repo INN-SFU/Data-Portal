@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: ams-keycloak-dev
+    command: start-dev --import-realm
+    environment:
+      # KC bootstrap (owner: keycloak)
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KC_DB: dev-file
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_LOG_LEVEL: DEBUG
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_STRICT: "false"
+    ports: ["8080:8080"]
+    volumes:
+      - ./config/keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          # open tcp socket, send HTTP request to /health/ready, and assert '200' in the response
+          "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && grep -q ' 200' <&3"
+        ]
+      interval: 300s
+      timeout: 5s
+      retries: 50
+      start_period: 60s

@@ -49,5 +49,12 @@ tmp/
 temp/
 .temporary/
 
+# Runtime artifacts
+bin/
+run/
+
+# Backup/old files
+*.old
+
 # Documentation build
 docs/_build/secrets/*

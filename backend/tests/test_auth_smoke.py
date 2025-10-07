@@ -27,7 +27,8 @@ def kc_admin_client_id() -> str:
 
 def kc_issuer() -> str:
     # external issuer (must match token 'iss')
-    return env("KEYCLOAK_TOKEN_ISSUER")     # e.g. http://localhost:8080/realms/ams-portal
+    # Derive from KEYCLOAK_DOMAIN and KEYCLOAK_REALM
+    return f"{kc_base()}/realms/{kc_realm()}"
 
 def backend_base() -> str:
     # when running *inside* the backend container, localhost:8000 hits the app directly

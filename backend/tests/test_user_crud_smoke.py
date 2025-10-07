@@ -108,45 +108,55 @@ def test_list_users_without_auth():
 def test_create_user(auth_headers):
     """Test creating a new user."""
     url = f"{backend_base()}/api/users/"
+    username = "testuser1"
 
     new_user = {
-        "username": "testuser1",
+        "username": username,
         "email": "testuser1@example.com",
         "roles": ["user"]
     }
 
-    r = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
-    assert r.status_code == 201, f"Expected 201 creating user, got {r.status_code}: {r.text[:500]}"
+    try:
+        r = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
+        assert r.status_code == 201, f"Expected 201 creating user, got {r.status_code}: {r.text[:500]}"
 
-    data = r.json()
-    assert data.get("success") is True, f"Expected success=True, got: {data}"
-    assert "details" in data, f"Expected details in response: {data}"
+        data = r.json()
+        assert data.get("success") is True, f"Expected success=True, got: {data}"
+        assert "details" in data, f"Expected details in response: {data}"
 
-    user_details = data["details"]
-    assert user_details["username"] == "testuser1", f"Username mismatch: {user_details}"
-    assert user_details["email"] == "testuser1@example.com", f"Email mismatch: {user_details}"
+        user_details = data["details"]
+        assert user_details["username"] == username, f"Username mismatch: {user_details}"
+        assert user_details["email"] == "testuser1@example.com", f"Email mismatch: {user_details}"
+    finally:
+        # Cleanup: delete the test user
+        requests.delete(f"{url}{username}", headers=auth_headers, timeout=5)
 
 
 def test_create_duplicate_user(auth_headers):
     """Test that creating duplicate user is rejected."""
     url = f"{backend_base()}/api/users/"
+    username = "testuser2"
 
     # Create first user
     new_user = {
-        "username": "testuser2",
+        "username": username,
         "email": "testuser2@example.com",
         "roles": ["user"]
     }
 
-    r1 = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
-    assert r1.status_code == 201, f"First create should succeed: {r1.status_code}: {r1.text[:500]}"
+    try:
+        r1 = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
+        assert r1.status_code == 201, f"First create should succeed: {r1.status_code}: {r1.text[:500]}"
 
-    # Try to create duplicate
-    r2 = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
-    assert r2.status_code == 400, f"Expected 400 for duplicate user, got {r2.status_code}: {r2.text[:500]}"
+        # Try to create duplicate
+        r2 = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
+        assert r2.status_code == 400, f"Expected 400 for duplicate user, got {r2.status_code}: {r2.text[:500]}"
 
-    data = r2.json()
-    assert "already exists" in data.get("detail", "").lower(), f"Expected 'already exists' error: {data}"
+        data = r2.json()
+        assert "already exists" in data.get("detail", "").lower(), f"Expected 'already exists' error: {data}"
+    finally:
+        # Cleanup: delete the test user
+        requests.delete(f"{url}{username}", headers=auth_headers, timeout=5)
 
 
 def test_create_user_without_auth():
@@ -167,24 +177,29 @@ def test_get_user_by_username(auth_headers):
     """Test retrieving user by username."""
     # First create a user
     url = f"{backend_base()}/api/users/"
+    username = "testuser3"
     new_user = {
-        "username": "testuser3",
+        "username": username,
         "email": "testuser3@example.com",
         "roles": ["user"]
     }
 
-    r_create = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
-    assert r_create.status_code == 201, f"User creation failed: {r_create.status_code}"
+    try:
+        r_create = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
+        assert r_create.status_code == 201, f"User creation failed: {r_create.status_code}: {r_create.text[:500]}"
 
-    # Now retrieve the user
-    url_get = f"{backend_base()}/api/users/testuser3"
-    r = requests.get(url_get, headers=auth_headers, timeout=10)
-    assert r.status_code == 200, f"Expected 200 getting user, got {r.status_code}: {r.text[:500]}"
+        # Now retrieve the user
+        url_get = f"{backend_base()}/api/users/{username}"
+        r = requests.get(url_get, headers=auth_headers, timeout=10)
+        assert r.status_code == 200, f"Expected 200 getting user, got {r.status_code}: {r.text[:500]}"
 
-    data = r.json()
-    assert data["username"] == "testuser3", f"Username mismatch: {data}"
-    assert data["email"] == "testuser3@example.com", f"Email mismatch: {data}"
-    assert "uuid" in data, f"Expected uuid in response: {data}"
+        data = r.json()
+        assert data["username"] == username, f"Username mismatch: {data}"
+        assert data["email"] == "testuser3@example.com", f"Email mismatch: {data}"
+        assert "uuid" in data, f"Expected uuid in response: {data}"
+    finally:
+        # Cleanup: delete the test user
+        requests.delete(f"{url}{username}", headers=auth_headers, timeout=5)
 
 
 def test_get_nonexistent_user(auth_headers):
