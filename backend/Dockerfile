@@ -44,6 +44,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:${APP_PORT}/api/health/ready || exit 1
 
 # Use bash (our scripts rely on bash features)
-COPY --chown=${APP_USER}:${APP_USER} entrypoint.sh ${APP_DIR}/entrypoint.sh
-RUN chmod +x ${APP_DIR}/entrypoint.sh
-ENTRYPOINT ["bash", "/app/entrypoint.sh"]
+COPY --chown=${APP_USER}:${APP_USER} entrypoint.backend.sh ${APP_DIR}/entrypoint.backend.sh
+RUN chmod +x ${APP_DIR}/entrypoint.backend.sh
+ENTRYPOINT ["bash", "/app/entrypoint.backend.sh"]
