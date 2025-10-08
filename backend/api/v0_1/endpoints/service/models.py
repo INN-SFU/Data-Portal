@@ -8,7 +8,8 @@ from core.management.users.models import User
 from core.connectivity.agents import (
     available_flavours,
     S3StorageAgent,
-    PosixStorageAgent
+    PosixStorageAgent,
+    DummyStorageAgent
 )
 
 
@@ -197,8 +198,15 @@ PosixInstanceCreate = create_model(
     **{name: (typ, ...) for name, typ in PosixStorageAgent.CONFIG.items()}
 )
 
+DummyInstanceCreate = create_model(
+    "DummyInstanceCreate",
+    __base__=InstanceBase,
+    flavour=(Literal[DummyStorageAgent.FLAVOUR], ...),
+    **{name: (typ, ...) for name, typ in DummyStorageAgent.CONFIG.items()}
+)
+
 # discriminated union:
 InstanceCreate = Annotated[
-    Union[S3InstanceCreate, PosixInstanceCreate],
+    Union[S3InstanceCreate, PosixInstanceCreate, DummyInstanceCreate],
     Field(discriminator="flavour")
 ]

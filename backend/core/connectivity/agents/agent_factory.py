@@ -1,10 +1,12 @@
 from .posix_agent import PosixStorageAgent
 from .s3_agent import S3StorageAgent
+from .dummy_agent import DummyStorageAgent
 from .. import AbstractStorageAgent
 
 available_flavours = {
     PosixStorageAgent.FLAVOUR: PosixStorageAgent,
-    S3StorageAgent.FLAVOUR: S3StorageAgent
+    S3StorageAgent.FLAVOUR: S3StorageAgent,
+    DummyStorageAgent.FLAVOUR: DummyStorageAgent  # For testing only
 }
 
 
