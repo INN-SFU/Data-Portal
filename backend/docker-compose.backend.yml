@@ -9,6 +9,7 @@ services:
       # Keycloak connection (external instance on separate domain)
       KEYCLOAK_DOMAIN: http://keycloak.local:8080
       KEYCLOAK_REALM: ams-portal
+      KEYCLOAK_UI_CLIENT_ID: ams-portal-ui
       KEYCLOAK_ADMIN_CLIENT_ID: ams-portal-admin
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
