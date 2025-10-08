@@ -52,15 +52,19 @@ def get_user_manager() -> AbstractUserManager:
 def get_policy_manager() -> AbstractPolicyManager:
     """
     Returns the policy manager instance, creating it lazily on first access.
-    Policies are loaded on-demand rather than all upfront.
+    Loads all user policies from the policy store on initialization.
     """
     global _policy_manager
     if _policy_manager is None:
         # Lazy import to avoid circular dependencies
         from core.settings.managers.policies.casbin.CasbinPolicyManager import CasbinPolicyManager
 
-        # Initialize with empty UUID list - policies will be loaded on-demand
-        _policy_manager = CasbinPolicyManager(uuids=[])
+        # Get all user UUIDs from the user manager to load their policies
+        user_manager = get_user_manager()
+        user_uuids = user_manager.get_user_uuids()
+
+        # Initialize policy manager with all user UUIDs to load policies from disk
+        _policy_manager = CasbinPolicyManager(uuids=user_uuids)
 
     return _policy_manager
 
