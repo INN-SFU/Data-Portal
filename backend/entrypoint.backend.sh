@@ -14,7 +14,7 @@ get_client_secret
 
 # --- Start backend in background ---
 log "Starting backend app…"
-python -Xfrozen_modules=off main.py &
+python -Xfrozen_modules=off server.py &
 APP_PID=$!
 
 # Forward signals to child, and reap on exit
