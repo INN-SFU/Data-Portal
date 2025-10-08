@@ -1,12 +1,9 @@
-import base64
-import json
-import logging
 import os
-import subprocess
-import tempfile
-
+import re
+import logging
 import treelib
-
+from typing import List, Tuple
+from pathlib import Path
 from core.connectivity import AbstractStorageAgent
 
 logger = logging.getLogger('storage.posix')
@@ -14,162 +11,214 @@ logger = logging.getLogger('storage.posix')
 
 class PosixStorageAgent(AbstractStorageAgent):
     """
-    PosixStorageAgent is a class that represents an agent for interacting with a POSIX filesystem.
+    POSIX Storage Agent for local filesystem access.
 
-    Inherits from AbstractStorageAgent.
+    Phase 1 Implementation: Basic file tree and path handling.
+    Future phases will add presigned URL support via JWT tokens.
 
     Attributes:
-        instance_url (str): The base URL for serving files.
-        _SSH_CA_KEY (str): The path to the SSH CA private key used for signing certificates.
+        FLAVOUR: Storage agent type identifier
+        CONFIG: Required configuration parameters
+        root_path: Absolute path to storage root directory
     """
 
     FLAVOUR: str = 'posix'
     CONFIG: dict = {
-        "ssh_ca_key": str
+        "root_path": str  # Absolute path to storage root
     }
 
-    def __init__(self,
-                 instance_url: str,
-                 ssh_ca_key: str):
+    def __init__(self, instance_url: str, root_path: str):
         """
-        Initialize a new instance of the class.
+        Initialize POSIX storage agent.
 
-        :param instance_url: The base URL for serving files.
-        :type instance_url: str
+        :param instance_url: Base URL for file access (future: gateway service URL)
+        :param root_path: Absolute path to the storage root directory
+        :raises ValueError: If root_path doesn't exist or isn't a directory
         """
-
         super().__init__(instance_url)
 
-        # Set the SSH CA key
-        self._ssh_ca_key = ssh_ca_key
+        # Validate and normalize root path
+        self.root_path = Path(root_path).resolve()
+        if not self.root_path.exists():
+            raise ValueError(f"Root path does not exist: {root_path}")
+        if not self.root_path.is_dir():
+            raise ValueError(f"Root path is not a directory: {root_path}")
 
-        # Initialize the file tree
+        logger.info(f"Initializing POSIX agent with root: {self.root_path}")
+
+        # Build the in-memory file tree
+        self.file_tree = treelib.Tree()
         self._load_file_tree()
 
     def _load_file_tree(self):
         """
-        Load the file tree by creating nodes for files and directories.
-
-        :return: None
+        Load the file tree by walking the POSIX filesystem.
+        Creates nodes for all files and directories under root_path.
+        Paths in the tree are relative to root_path.
         """
+        # Clear existing tree and recreate root
         self.file_tree = treelib.Tree()
-        self.file_tree.create_node("root", "root")
-        for root_dir, dirs, files in os.walk(self.instance_url):
-            rel_root = os.path.relpath(root_dir, self.instance_url)
-            for file_name in files:
-                if rel_root == '.':
-                    path = file_name
-                else:
-                    rel_path = rel_root.replace(os.path.sep, self.separator)
-                    path = rel_path + self.separator + file_name
-                self._add_file_to_tree(path)
+        self.file_tree.create_node('root', 'root')
 
-    def generate_access_link(self, resource: str, method: str, ttl: int):
+        try:
+            # Walk the filesystem starting from root_path
+            for root_dir, dirs, files in os.walk(self.root_path):
+                # Get path relative to storage root
+                rel_root = Path(root_dir).relative_to(self.root_path)
+
+                # Add all files in this directory
+                for file_name in files:
+                    if rel_root == Path('.'):
+                        # Files directly in root
+                        path = file_name
+                    else:
+                        # Files in subdirectories - use forward slash separator
+                        rel_path = str(rel_root).replace(os.path.sep, self.separator)
+                        path = f"{rel_path}{self.separator}{file_name}"
+
+                    self._add_file_to_tree(path)
+
+                # Add directories (even if empty) to the tree
+                for dir_name in dirs:
+                    if rel_root == Path('.'):
+                        path = dir_name
+                    else:
+                        rel_path = str(rel_root).replace(os.path.sep, self.separator)
+                        path = f"{rel_path}{self.separator}{dir_name}"
+
+                    self._add_file_to_tree(path)
+
+            logger.info(f"Loaded {len(self.file_tree.all_nodes()) - 1} items into file tree")
+
+        except Exception as e:
+            logger.error(f"Error loading file tree: {e}")
+            raise
+
+    def _validate_path(self, resource: str) -> Path:
         """
-        Generate a URL with an embedded SSH certificate for accessing a resource.
+        Validate that a resource path is safe and within the storage root.
+        Prevents directory traversal attacks.
 
-        :param resource: The resource identity to embed in the certificate.
-        :param method: The HTTP method to use for accessing the resource.
-        :param ttl: Time-to-live in seconds.
-        :return:
+        :param resource: Relative path to validate
+        :return: Absolute resolved path
+        :raises ValueError: If path is invalid or outside root
         """
-        # First, generate the SSH certificate for this resource.
-        cert_data = self._generate_ssh_certificate(resource, ttl)
-        # Encode the certificate (e.g. Base64) to make it URL safe.
-        encoded_cert = base64.urlsafe_b64encode(cert_data.encode()).decode()
-        # Build the URL with the certificate as a query parameter.
-        tokenized_url = f"{self.instance_url}?cert={encoded_cert}"
-        return tokenized_url
+        # Construct absolute path
+        abs_path = (self.root_path / resource).resolve()
 
-    def generate_ssh_certificate(self, resource: str, method: str, ttl: int) -> str:
+        # Ensure it's within the root (prevents directory traversal)
+        try:
+            abs_path.relative_to(self.root_path)
+        except ValueError:
+            raise ValueError(f"Path outside storage root: {resource}")
+
+        return abs_path
+
+    def generate_access_link(
+        self, resource: str, method: str, ttl: int
+    ) -> Tuple[List[str], List[str]]:
         """
-        Generate an SSH certificate that embeds the metadata in its identity field.
+        Generate access links for POSIX resources.
 
-        Steps:
-          1. Create an ephemeral key pair.
-          2. Sign the public key with the SSH CA key.
-             - The certificate identity is set to a string like:
-                   "resource=folder/file.txt;method=read;ttl=3600"
-          3. The validity interval is set to +{ttl}s.
+        Phase 1: Returns placeholder URLs and matched paths.
+        Future phases will call the Issuer service to generate JWT presigned URLs.
 
-        :param resource: The relative path of the resource.
-        :param method: The operation (e.g., "read" or "write").
-        :param ttl: The time-to-live in seconds.
-        :return: The generated SSH certificate as a string.
+        :param resource: Resource path or regex pattern
+        :param method: Access method ("read" or "write")
+        :param ttl: Time-to-live in seconds for the access link
+        :return: Tuple of (urls, matched_paths)
+        :raises ValueError: If method is unsupported or resource invalid
         """
-        # Create a temporary file for the ephemeral key.
-        with tempfile.NamedTemporaryFile(delete=False) as tmp_key:
-            key_path = tmp_key.name
+        if method not in ["read", "write"]:
+            raise ValueError(f"Unsupported method {method!r}")
 
-        # Generate an ephemeral key pair (RSA, with no passphrase).
-        subprocess.run(["ssh-keygen", "-t", "rsa", "-N", "", "-f", key_path], check=True)
-        pubkey_path = key_path + ".pub"
+        # WRITE: single path
+        if method == "write":
+            # Validate path security
+            try:
+                abs_path = self._validate_path(resource)
+            except ValueError as e:
+                raise ValueError(f"Invalid write path: {e}")
 
-        # Define the validity interval (e.g., "+3600s" for 3600 seconds).
-        validity = f"+{ttl}s"
+            # Phase 1: Return placeholder URL
+            # Phase 4 will call: POST {issuer_url}/v1/presign
+            placeholder_url = f"{self.instance_url}/{resource}?method=write&ttl={ttl}"
+            logger.info(f"generate_access_link (write): placeholder URL for {resource}")
+            return [placeholder_url], [resource]
 
-        # Build the identity string with our metadata.
-        identity = f"resource={resource};method={method};ttl={ttl}"
+        # READ: treat resource as regex pattern, match against file tree
+        try:
+            pattern = re.compile(resource)
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern: {e}")
 
-        # For simplicity, we use the resource as the valid principal.
-        principal = resource
+        # Get all paths from file tree (excluding root)
+        all_paths = [
+            n.identifier
+            for n in self.file_tree.all_nodes()
+            if n.identifier != 'root'
+        ]
 
-        # The generated certificate will be stored in a file with a "-cert.pub" suffix.
-        cert_path = key_path + "-cert.pub"
+        # Match paths using fullmatch (like S3 agent)
+        matched = [p for p in all_paths if pattern.fullmatch(p)]
 
-        # Use ssh-keygen to sign the ephemeral public key to generate a certificate.
-        # -I sets the identity (here with our metadata).
-        # -V sets the validity interval.
-        # -n sets the valid principals.
-        # -z sets a serial number (here we use a fixed value for demonstration).
-        subprocess.run([
-            "ssh-keygen", "-s", self._ssh_ca_key,
-            "-I", identity,
-            "-V", validity,
-            "-n", principal,
-            "-z", "1",
-            "-f", pubkey_path
-        ], check=True)
+        if not matched:
+            logger.info(f"No paths match regex: {resource}")
+            return [], []
 
-        # Read the generated certificate.
-        with open(cert_path, "r") as f:
-            cert_data = f.read().strip()
+        # Validate all matched paths are safe
+        try:
+            for path in matched:
+                self._validate_path(path)
+        except ValueError as e:
+            raise ValueError(f"Matched path validation failed: {e}")
 
-        # Clean up temporary files.
-        os.remove(key_path)
-        os.remove(pubkey_path)
-        os.remove(cert_path)
+        # Phase 1: Generate placeholder URLs
+        # Phase 4 will call: POST {issuer_url}/v1/presign for each path
+        urls = [
+            f"{self.instance_url}/{path}?method=read&ttl={ttl}"
+            for path in matched
+        ]
 
-        return cert_data
+        logger.info(f"generate_access_link (read): matched {len(matched)} for {resource}")
+        return urls, matched
 
-    def config(self):
+    def config(self, secrets: bool = False) -> dict:
         """
-        Get the configuration of the agent.
+        Return agent configuration.
 
-        :return: The configuration of the agent.
+        :param secrets: Whether to include sensitive information
+        :return: Configuration dictionary
         """
-        base_config = super().config()
+        base_config = super().config(secrets)
+        base_config['root_path'] = str(self.root_path)
+        return base_config
 
-        posix_config = {
-            "ssh_ca_key": self._ssh_ca_key
-        }
+    def _secrets(self) -> dict:
+        """
+        Return secrets for this agent.
+        POSIX agent has no credentials in Phase 1.
+        Future phases may include service account tokens.
 
-        posix_config.update(base_config)
-
-        return posix_config
+        :return: Empty dict (no secrets in Phase 1)
+        """
+        return {}
 
     def refresh_connection(self):
         """
         Refresh the agent's connection to the storage backend.
-        This is a placeholder for the actual implementation.
+        For POSIX filesystem, this reloads the file tree.
         """
-        pass
+        logger.info("Refreshing POSIX file tree")
+        self._load_file_tree()
 
     def close(self):
         """
-        Perform explicit cleanup of resources held by this agent.
-        For instance, if the agent holds connections or open files, they
-        should be closed here.
+        Perform cleanup of resources.
+        POSIX agent has no persistent connections to close in Phase 1.
         """
-        # Close any resources if needed.
+        logger.info("Closing POSIX agent")
         pass
+
+    def __str__(self):
+        return f"PosixStorageAgent(root_path={self.root_path}, instance_url={self.instance_url})"
