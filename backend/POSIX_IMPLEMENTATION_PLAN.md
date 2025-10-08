@@ -226,9 +226,11 @@ docker exec ams-backend-dev python -m pytest tests/test_posix_agent.py -v
 
 ---
 
-### Phase 4: Integration & End-to-End Testing
+### Phase 4: Integration & End-to-End Testing (Docker Development)
 
-**Goal**: Connect all components and test the complete flow.
+**Goal**: Connect all components in Docker and test the complete flow.
+
+**Deployment**: All services run in Docker on development machine (Option 1)
 
 **Implementation Tasks**:
 
@@ -311,16 +313,116 @@ docker exec ams-backend-dev python -m pytest tests/test_posix_agent.py -v
 
 ---
 
+### Phase 5: Production Deployment with Service Separation
+
+**Goal**: Enable production deployment with Issuer and Gateway on separate hosts.
+
+**Deployment**: Distributed deployment for security and scalability (Option 2)
+
+**Architecture**:
+```
+Application Server (keycloak.domain.com, backend.domain.com):
+├── Keycloak (OIDC provider)
+├── AMS Backend (API, policy management)
+└── Issuer Service (JWT token generation)
+    ├── Has: Private signing key
+    ├── Connects to: Keycloak, AMS Backend
+    ├── Does NOT have: Filesystem access
+
+Storage Server(s) (storage1.domain.com, storage2.domain.com):
+├── Gateway Service (file streaming)
+│   ├── Has: Public validation key, filesystem access
+│   ├── Connects to: Issuer (for JWKS), Redis (for jti)
+│   ├── Does NOT have: Private signing key
+└── POSIX Storage (/storage/data/)
+```
+
+**Implementation Tasks**:
+
+1. **Network Security**:
+   - Configure TLS for all service-to-service communication
+   - Implement mTLS between Issuer and Gateway (optional)
+   - Firewall rules: Gateway only accepts requests from public internet
+   - Issuer only accepts requests from AMS Backend
+
+2. **Configuration Updates**:
+   - Add environment-based service discovery
+   - Support for multiple Gateway instances (load balancing)
+   - Issuer URL configuration per storage instance
+   - Gateway validates Issuer's JWKS URL
+
+3. **Key Management**:
+   - Secure key generation and rotation for RS256 keys
+   - Store private key in secrets management system (e.g., HashiCorp Vault)
+   - Gateway fetches public key from Issuer's JWKS endpoint
+   - Support for key rotation without downtime
+
+4. **Redis Configuration**:
+   - Shared Redis instance for jti tracking across multiple Gateways
+   - Redis clustering for high availability
+   - Network access from all Gateway instances
+
+5. **Monitoring & Logging**:
+   - Centralized logging for all services
+   - Metrics for token issuance rate, download volume, errors
+   - Alerts for failed auth/authz, suspicious access patterns
+
+6. **PosixStorageAgent Updates**:
+   ```python
+   CONFIG = {
+       "root_path": str,           # Only used by Gateway
+       "issuer_url": str,          # Issuer service URL
+       "gateway_url": str,         # Gateway service URL (different from issuer)
+       "instance_uuid": str,       # For policy validation
+   }
+   ```
+
+7. **Deployment Scripts**:
+   - Ansible/Terraform scripts for multi-host deployment
+   - Health checks for all services
+   - Automated certificate management (Let's Encrypt)
+
+**Security Benefits**:
+- **Isolation**: Compromise of Gateway cannot forge tokens
+- **Least Privilege**: Gateway only has read access to storage
+- **Defense in Depth**: Multiple authentication/authorization layers
+- **Audit Trail**: Centralized logging of all access
+
+**Scalability**:
+- Multiple Gateway instances for horizontal scaling
+- Gateway instances can be added/removed dynamically
+- Load balancing across storage servers
+- Independent scaling of Issuer and Gateway
+
+**Testing Strategy**:
+- Multi-host deployment testing in staging environment
+- Network partition testing (what happens if Issuer unreachable?)
+- Failover testing (Gateway switches to backup Redis)
+- Load testing with multiple concurrent Gateways
+
+**Migration Path from Phase 4**:
+1. Deploy Issuer on application server
+2. Deploy Gateway on storage server with filesystem mount
+3. Update PosixStorageAgent configuration with new URLs
+4. Test end-to-end flow
+5. Migrate DNS/load balancers
+6. Decommission old single-host deployment
+
+---
+
 ## Current Status
 
 **Phase 1**: ✅ Complete (19/19 tests passing)
 
+**Current Phase**: Phase 2 (In Progress - Issuer Service)
+
 **Next Steps**:
-1. Review Phase 1 implementation
-2. Begin Phase 2: Issuer service skeleton
-3. Implement JWT signing and JWKS endpoint
-4. Implement Keycloak authentication
-5. Implement Casbin policy checking
+1. ✅ Create Issuer service directory structure
+2. Implement JWT signing and JWKS endpoint
+3. Implement Keycloak authentication
+4. Implement Casbin policy checking
+5. Implement /v1/presign endpoint
+6. Create Issuer Docker configuration
 
 ---
 
