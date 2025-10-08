@@ -77,12 +77,13 @@ class AbstractInstanceManager(ABC):
 
         :param instance_name: The name of the instance.
         :return: The UUID of the instance.
+        :raises KeyError: If instance with the given name is not found.
         """
         for instance in self.instances:
             if instance.name == instance_name:
                 return instance.uuid
 
-        raise ValueError(f"Instance with name '{instance_name}' not found.")
+        raise KeyError(f"Instance with name '{instance_name}' not found.")
 
     def get_instance_by_uuid(self, uuid: UUID) -> Instance:
         """
