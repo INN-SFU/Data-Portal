@@ -58,3 +58,4 @@ run/
 
 # Documentation build
 docs/_build/secrets/*
+data/
