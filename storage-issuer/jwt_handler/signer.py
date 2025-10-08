@@ -163,11 +163,12 @@ class JWTSigner:
         if instance_uuid:
             claims["iid"] = instance_uuid  # Instance ID
 
-        # Sign token
+        # Sign token with kid in header
         token = jwt.encode(
             claims,
             self.private_key,
-            algorithm=self.ALGORITHM
+            algorithm=self.ALGORITHM,
+            headers={"kid": "default"}
         )
 
         logger.info(f"Signed token: path={path}, op={operation}, sub={subject}, jti={claims['jti']}")
