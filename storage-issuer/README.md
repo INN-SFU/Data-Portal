@@ -1,0 +1,189 @@
+# AMS Storage Issuer Service
+
+Generic JWT token issuer for storage access with presigned URLs.
+
+## Overview
+
+The Storage Issuer is a microservice that generates JWT tokens for secure, time-limited access to storage resources. It works with any storage type that requires JWT-based authentication (POSIX, NFS, WebDAV, etc.).
+
+**Key Features:**
+- RS256 asymmetric JWT signing
+- JWKS endpoint for public key distribution
+- API key authentication for internal services
+- Time-limited, single-use tokens
+- Path and operation locking
+
+## Architecture
+
+```
+AMS Backend (validates user auth & policies)
+    ↓ (calls with API key)
+Storage Issuer (signs JWT tokens)
+    ↓ (returns token)
+User
+    ↓ (presents token)
+Storage Gateway (validates & serves files)
+```
+
+## API Endpoints
+
+### POST /v1/presign
+Generate a presigned token.
+
+**Authentication:** X-API-Key header
+
+**Request:**
+```json
+{
+  "user_uuid": "abc-123",
+  "instance_uuid": "xyz-456",
+  "path": "folder/file.txt",
+  "op": "read",
+  "ttl": 3600,
+  "bundle": "file",
+  "client_ip": "192.168.1.100"
+}
+```
+
+**Response:**
+```json
+{
+  "token": "eyJhbGci...",
+  "expires_at": "2025-10-08T12:34:56Z",
+  "download_url": "http://gateway.local:9000/download?token=eyJhbGci..."
+}
+```
+
+### GET /.well-known/jwks.json
+Get public key for token validation (used by Gateway).
+
+**No authentication required** (public endpoint).
+
+## Configuration
+
+Environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ISSUER_HOST` | `0.0.0.0` | Service bind address |
+| `ISSUER_PORT` | `8001` | Service port |
+| `LOG_LEVEL` | `INFO` | Logging level |
+| `JWT_ISSUER` | `ams-storage-issuer` | JWT issuer claim |
+| `JWT_AUDIENCE` | `ams-storage-gateway` | JWT audience claim |
+| `JWT_PRIVATE_KEY_FILE` | `/run/secrets/jwt_private_key` | Path to RSA private key |
+| `GATEWAY_URL` | `http://gateway.local:9000` | Gateway service URL |
+| `ISSUER_API_KEY` | (required) | API key for authentication |
+
+## Development
+
+### Running Locally
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Set environment variables
+export ISSUER_API_KEY=dev-key
+export GATEWAY_URL=http://localhost:9000
+
+# Run server
+python server.py
+```
+
+### Running with Docker
+
+```bash
+# Build and start
+docker compose up -d --build
+
+# View logs
+docker compose logs -f
+
+# Stop
+docker compose down
+```
+
+### Running Tests
+
+```bash
+pip install pytest
+python -m pytest tests/ -v
+```
+
+## JWT Token Format
+
+**Claims:**
+```json
+{
+  "iss": "ams-storage-issuer",       // Issuer
+  "aud": "ams-storage-gateway",      // Audience
+  "sub": "user-uuid",                 // User UUID
+  "exp": 1728394496,                  // Expiration (Unix timestamp)
+  "iat": 1728390896,                  // Issued at
+  "jti": "unique-id",                 // Token ID (for replay prevention)
+  "path": "folder/file.txt",          // Resource path (locked)
+  "op": "read",                       // Operation (locked)
+  "bundle": "file",                   // Download type
+  "cip": "192.168.1.100",            // Client IP (optional)
+  "iid": "instance-uuid"              // Instance UUID (optional)
+}
+```
+
+## Security
+
+- **RS256 signing**: Asymmetric keys prevent token forgery
+- **Private key**: Never leaves Issuer service
+- **Public key**: Distributed via JWKS endpoint
+- **API key auth**: Only AMS Backend can request tokens
+- **Time-limited**: Tokens expire (default 1 hour)
+- **Single-use**: Gateway enforces via jti tracking in Redis
+- **Path locked**: Token only valid for specific resource
+- **Operation locked**: Separate tokens for read vs write
+
+## Integration with AMS Backend
+
+Backend calls Issuer after validating user authentication and authorization:
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8001/v1/presign",
+    headers={"X-API-Key": api_key},
+    json={
+        "user_uuid": user_uuid,
+        "instance_uuid": instance_uuid,
+        "path": "data/file.txt",
+        "op": "read",
+        "ttl": 3600
+    }
+)
+
+token_data = response.json()
+download_url = token_data["download_url"]
+```
+
+## Deployment
+
+### Development (All Services on One Host)
+```bash
+docker compose -p ams-storage-issuer up -d
+```
+
+### Production (Distributed)
+Deploy alongside AMS Backend (not on storage server):
+- Issuer has signing key (sensitive)
+- Gateway only has public key (less sensitive)
+- If storage compromised, tokens can't be forged
+
+## Health Check
+
+```bash
+curl http://localhost:8001/v1/health
+```
+
+## API Documentation
+
+Interactive API docs available at:
+- Swagger UI: http://localhost:8001/docs
+- ReDoc: http://localhost:8001/redoc
