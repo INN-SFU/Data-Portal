@@ -47,7 +47,7 @@ def put_asset(asset: PutAssetRequest = Depends(),
         except KeyError:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Access point {access_point} not found.")
 
-        presigned_urls, file_paths = agent.generate_access_link(str(resource), 'write', 3600)
+        presigned_urls, file_paths = agent.generate_access_link(str(resource), 'write', 3600, str(user_uuid))
         print(presigned_urls)
         return PutAssetResponse(
             presigned_urls=presigned_urls,
@@ -88,7 +88,7 @@ def get_asset(asset: GetAssetRequest = Depends(),
     if policy_manager.validate_policy(policy):
         agent = instance_manager.get_instance_by_uuid(access_point_uuid).agent
         try:
-            presigned_urls, file_paths = agent.generate_access_link(policy.resource, policy.action, 600)
+            presigned_urls, file_paths = agent.generate_access_link(policy.resource, policy.action, 600, str(user_uuid))
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Unable to generate presigned URL: {str(e)}")

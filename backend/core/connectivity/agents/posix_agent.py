@@ -2,7 +2,8 @@ import os
 import re
 import logging
 import treelib
-from typing import List, Tuple
+import requests
+from typing import List, Tuple, Optional
 from pathlib import Path
 from core.connectivity import AbstractStorageAgent
 
@@ -24,18 +25,35 @@ class PosixStorageAgent(AbstractStorageAgent):
 
     FLAVOUR: str = 'posix'
     CONFIG: dict = {
-        "root_path": str  # Absolute path to storage root
+        "root_path": str,          # Absolute path to storage root
+        "issuer_url": str,          # Storage Issuer service URL
+        "issuer_api_key": str,      # API key for Issuer authentication
+        "instance_uuid": str,       # Instance UUID for policy tracking
     }
 
-    def __init__(self, instance_url: str, root_path: str):
+    def __init__(
+        self,
+        instance_url: str,
+        root_path: str,
+        issuer_url: str,
+        issuer_api_key: str,
+        instance_uuid: str
+    ):
         """
         Initialize POSIX storage agent.
 
-        :param instance_url: Base URL for file access (future: gateway service URL)
+        :param instance_url: Gateway service URL for file downloads
         :param root_path: Absolute path to the storage root directory
+        :param issuer_url: Storage Issuer service URL for JWT generation
+        :param issuer_api_key: API key for Issuer authentication
+        :param instance_uuid: Instance UUID for policy tracking
         :raises ValueError: If root_path doesn't exist or isn't a directory
         """
         super().__init__(instance_url)
+
+        self.issuer_url = issuer_url
+        self.issuer_api_key = issuer_api_key
+        self.instance_uuid = instance_uuid
 
         # Validate and normalize root path
         self.root_path = Path(root_path).resolve()
@@ -114,18 +132,49 @@ class PosixStorageAgent(AbstractStorageAgent):
 
         return abs_path
 
+    def _call_issuer(self, user_uuid: str, path: str, op: str, ttl: int) -> dict:
+        """
+        Call the Storage Issuer service to generate a JWT presigned URL.
+
+        :param user_uuid: User UUID for token generation
+        :param path: Resource path
+        :param op: Operation ("read" or "write")
+        :param ttl: Time-to-live in seconds
+        :return: Response dict with 'token', 'download_url', 'expires_at'
+        :raises requests.RequestException: If API call fails
+        """
+        url = f"{self.issuer_url}/v1/presign"
+        headers = {
+            "X-API-Key": self.issuer_api_key,
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "user_uuid": user_uuid,
+            "instance_uuid": self.instance_uuid,
+            "path": path,
+            "op": op,
+            "ttl": ttl,
+            "bundle": "file"
+        }
+
+        logger.debug(f"Calling Issuer: {url} with path={path}, op={op}")
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        return response.json()
+
     def generate_access_link(
-        self, resource: str, method: str, ttl: int
+        self, resource: str, method: str, ttl: int, user_uuid: str
     ) -> Tuple[List[str], List[str]]:
         """
         Generate access links for POSIX resources.
 
-        Phase 1: Returns placeholder URLs and matched paths.
-        Future phases will call the Issuer service to generate JWT presigned URLs.
+        Calls the Storage Issuer service to generate JWT presigned URLs.
 
         :param resource: Resource path or regex pattern
         :param method: Access method ("read" or "write")
         :param ttl: Time-to-live in seconds for the access link
+        :param user_uuid: User UUID for token generation
         :return: Tuple of (urls, matched_paths)
         :raises ValueError: If method is unsupported or resource invalid
         """
@@ -140,11 +189,20 @@ class PosixStorageAgent(AbstractStorageAgent):
             except ValueError as e:
                 raise ValueError(f"Invalid write path: {e}")
 
-            # Phase 1: Return placeholder URL
-            # Phase 4 will call: POST {issuer_url}/v1/presign
-            placeholder_url = f"{self.instance_url}/{resource}?method=write&ttl={ttl}"
-            logger.info(f"generate_access_link (write): placeholder URL for {resource}")
-            return [placeholder_url], [resource]
+            # Call Issuer to generate JWT token
+            try:
+                token_response = self._call_issuer(
+                    user_uuid=user_uuid,
+                    path=resource,
+                    op="write",
+                    ttl=ttl
+                )
+                download_url = token_response['download_url']
+                logger.info(f"generate_access_link (write): generated JWT for {resource}")
+                return [download_url], [resource]
+            except Exception as e:
+                logger.error(f"Failed to generate write token for {resource}: {e}")
+                raise ValueError(f"Token generation failed: {e}")
 
         # READ: treat resource as regex pattern, match against file tree
         try:
@@ -173,14 +231,22 @@ class PosixStorageAgent(AbstractStorageAgent):
         except ValueError as e:
             raise ValueError(f"Matched path validation failed: {e}")
 
-        # Phase 1: Generate placeholder URLs
-        # Phase 4 will call: POST {issuer_url}/v1/presign for each path
-        urls = [
-            f"{self.instance_url}/{path}?method=read&ttl={ttl}"
-            for path in matched
-        ]
+        # Generate JWT tokens for all matched paths
+        urls = []
+        for path in matched:
+            try:
+                token_response = self._call_issuer(
+                    user_uuid=user_uuid,
+                    path=path,
+                    op="read",
+                    ttl=ttl
+                )
+                urls.append(token_response['download_url'])
+            except Exception as e:
+                logger.error(f"Failed to generate read token for {path}: {e}")
+                raise ValueError(f"Token generation failed for {path}: {e}")
 
-        logger.info(f"generate_access_link (read): matched {len(matched)} for {resource}")
+        logger.info(f"generate_access_link (read): generated {len(urls)} JWTs for {resource}")
         return urls, matched
 
     def config(self, secrets: bool = False) -> dict:
@@ -192,17 +258,19 @@ class PosixStorageAgent(AbstractStorageAgent):
         """
         base_config = super().config(secrets)
         base_config['root_path'] = str(self.root_path)
+        base_config['issuer_url'] = self.issuer_url
+        base_config['instance_uuid'] = self.instance_uuid
         return base_config
 
     def _secrets(self) -> dict:
         """
         Return secrets for this agent.
-        POSIX agent has no credentials in Phase 1.
-        Future phases may include service account tokens.
 
-        :return: Empty dict (no secrets in Phase 1)
+        :return: Dictionary containing issuer_api_key
         """
-        return {}
+        return {
+            'issuer_api_key': self.issuer_api_key
+        }
 
     def refresh_connection(self):
         """
@@ -221,4 +289,5 @@ class PosixStorageAgent(AbstractStorageAgent):
         pass
 
     def __str__(self):
-        return f"PosixStorageAgent(root_path={self.root_path}, instance_url={self.instance_url})"
+        return (f"PosixStorageAgent(root_path={self.root_path}, "
+                f"instance_url={self.instance_url}, issuer_url={self.issuer_url})")
