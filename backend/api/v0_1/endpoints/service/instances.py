@@ -5,6 +5,8 @@ Handles storage instance CRUD operations and instance-related dashboard data.
 All endpoints require admin privileges as instances control system storage access.
 """
 
+import os
+from pathlib import Path
 from uuid import uuid5, NAMESPACE_DNS, UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from fastapi.responses import JSONResponse
@@ -20,6 +22,60 @@ from ..auth_dependencies import require_admin
 from .models import InstanceCreate, InstanceManagementData
 
 instances_router = APIRouter(prefix='/instances', tags=["Storage Instance Management"])
+
+
+def _get_issuer_config():
+    """
+    Load Storage Issuer configuration from environment.
+
+    The Storage Issuer service generates JWT tokens for file access. This function
+    loads the Issuer's URL and API key from backend environment variables, keeping
+    these credentials internal to the backend (not exposed to users).
+
+    Environment Variables:
+        STORAGE_ISSUER_URL: Issuer service URL (e.g., http://storage-issuer:8001)
+        STORAGE_ISSUER_API_KEY_FILE: Path to API key secret file
+        STORAGE_ISSUER_API_KEY: Fallback API key from env var
+
+    Returns:
+        dict: {
+            'issuer_url': str,
+            'issuer_api_key': str
+        }
+
+    Raises:
+        HTTPException: 500 if configuration is missing or invalid
+    """
+    issuer_url = os.getenv("STORAGE_ISSUER_URL")
+    if not issuer_url:
+        raise HTTPException(
+            status_code=500,
+            detail="STORAGE_ISSUER_URL not configured in backend"
+        )
+
+    # Try to load from secret file first, fall back to env var
+    api_key_file = os.getenv("STORAGE_ISSUER_API_KEY_FILE")
+    issuer_api_key = None
+
+    if api_key_file:
+        try:
+            issuer_api_key = Path(api_key_file).read_text().strip()
+        except Exception:
+            pass  # Fall back to env var
+
+    if not issuer_api_key:
+        issuer_api_key = os.getenv("STORAGE_ISSUER_API_KEY")
+
+    if not issuer_api_key:
+        raise HTTPException(
+            status_code=500,
+            detail="STORAGE_ISSUER_API_KEY not configured in backend"
+        )
+
+    return {
+        "issuer_url": issuer_url,
+        "issuer_api_key": issuer_api_key
+    }
 
 
 @instances_router.get(
@@ -156,6 +212,13 @@ async def create_instance(
 
     # Inject the generated instance_uuid into agent config (for agents that need it)
     agent_cfg["instance_uuid"] = str(instance_uuid)
+
+    # For POSIX agents, inject backend-internal issuer configuration
+    # This keeps Storage Issuer credentials private (not user-provided)
+    if flavour == "posix":
+        issuer_config = _get_issuer_config()
+        agent_cfg["issuer_url"] = issuer_config["issuer_url"]
+        agent_cfg["issuer_api_key"] = issuer_config["issuer_api_key"]
 
     config_dict = {"agent": agent_cfg, "flavour": flavour}
 
