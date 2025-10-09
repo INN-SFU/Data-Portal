@@ -315,10 +315,11 @@ class TestAgentMethods:
 
         config = agent.config(secrets=False)
         assert config['instance_url'] == agent_config['instance_url']
-        assert config['issuer_url'] == agent_config['issuer_url']
         assert config['instance_uuid'] == agent_config['instance_uuid']
+        # issuer_url and issuer_api_key are internal backend config, not exposed
+        assert 'issuer_url' not in config
+        assert 'issuer_api_key' not in config
         assert 'root_path' not in config  # Not exposed in config
-        assert 'issuer_api_key' not in config  # Secret not included
 
     def test_config_with_secrets(self, mock_gateway_tree, agent_config):
         """Test config method with secrets enabled."""
@@ -369,4 +370,4 @@ class TestAgentMethods:
         str_repr = str(agent)
         assert "PosixStorageAgent" in str_repr
         assert agent_config['instance_url'] in str_repr
-        assert agent_config['issuer_url'] in str_repr
+        # issuer_url is internal config, not shown in string representation
