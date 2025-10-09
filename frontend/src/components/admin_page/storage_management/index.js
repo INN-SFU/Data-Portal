@@ -23,8 +23,11 @@ export default function StorageManagement() {
   const [s3Key, setS3Key] = useState("");
   const [s3Secret, setS3Secret] = useState("");
   // POSIX fields
-  const [posixUrl, setPosixUrl] = useState("");
-  const [posixCa, setPosixCa] = useState("");
+  const [posixInstanceUrl, setPosixInstanceUrl] = useState("http://gateway.local:9000");
+  const [posixRootPath, setPosixRootPath] = useState("/app/test-storage");
+  const [posixIssuerUrl, setPosixIssuerUrl] = useState("http://issuer.local:8001");
+  const [posixIssuerApiKey, setPosixIssuerApiKey] = useState("");
+  const [posixInstanceUuid, setPosixInstanceUuid] = useState("");
 
   const authHeaders = async () => {
     if (!initialized) return {};
@@ -73,15 +76,19 @@ export default function StorageManagement() {
         aws_secret_access_key: s3Secret.trim(),
       };
     } else if (flavour === "posix") {
-      if (!posixUrl.trim() || !posixCa.trim()) {
-        return setErr("For POSIX, please fill instance URL and SSH CA key.");
+      if (!posixInstanceUrl.trim() || !posixRootPath.trim() || !posixIssuerUrl.trim() ||
+          !posixIssuerApiKey.trim() || !posixInstanceUuid.trim()) {
+        return setErr("For POSIX, please fill all required fields.");
       }
       payload = {
         flavour: "posix",
         instance_name: instanceName.trim(),
         access_point_name: accessPointName.trim(),
-        instance_url: posixUrl.trim(),
-        ssh_ca_key: posixCa.trim(),
+        instance_url: posixInstanceUrl.trim(),
+        root_path: posixRootPath.trim(),
+        issuer_url: posixIssuerUrl.trim(),
+        issuer_api_key: posixIssuerApiKey.trim(),
+        instance_uuid: posixInstanceUuid.trim(),
       };
     } else {
       return setErr(`Unsupported flavour: ${flavour}`);
@@ -92,7 +99,7 @@ export default function StorageManagement() {
       await http.post(`${INSTANCES_BASE}/`, payload, { headers });
       await loadInstances();
       // light reset of sensitive fields
-      setS3Key(""); setS3Secret(""); setPosixCa("");
+      setS3Key(""); setS3Secret(""); setPosixIssuerApiKey("");
       alert("Instance created.");
     } catch (e) {
       setErr(toMsg(e));
@@ -157,16 +164,37 @@ export default function StorageManagement() {
           )}
 
           {flavour === "posix" && (
-            <div className="im-row">
-              <label className="im-field">
-                <span>Instance URL *</span>
-                <input value={posixUrl} onChange={e => setPosixUrl(e.target.value)} placeholder="/mnt/data" />
-              </label>
-              <label className="im-field">
-                <span>SSH CA Key *</span>
-                <input value={posixCa} onChange={e => setPosixCa(e.target.value)} />
-              </label>
-            </div>
+            <>
+              <div className="im-row">
+                <label className="im-field">
+                  <span>Gateway URL *</span>
+                  <input value={posixInstanceUrl} onChange={e => setPosixInstanceUrl(e.target.value)} placeholder="http://gateway.local:9000" />
+                  <small className="im-muted">Storage Gateway service URL for file downloads</small>
+                </label>
+                <label className="im-field">
+                  <span>Root Path *</span>
+                  <input value={posixRootPath} onChange={e => setPosixRootPath(e.target.value)} placeholder="/app/test-storage" />
+                  <small className="im-muted">Absolute path to storage root directory</small>
+                </label>
+              </div>
+              <div className="im-row">
+                <label className="im-field">
+                  <span>Issuer URL *</span>
+                  <input value={posixIssuerUrl} onChange={e => setPosixIssuerUrl(e.target.value)} placeholder="http://issuer.local:8001" />
+                  <small className="im-muted">Storage Issuer service URL for JWT generation</small>
+                </label>
+                <label className="im-field">
+                  <span>Issuer API Key *</span>
+                  <input type="password" value={posixIssuerApiKey} onChange={e => setPosixIssuerApiKey(e.target.value)} />
+                  <small className="im-muted">API key for Issuer authentication</small>
+                </label>
+                <label className="im-field">
+                  <span>Instance UUID *</span>
+                  <input value={posixInstanceUuid} onChange={e => setPosixInstanceUuid(e.target.value)} placeholder="550e8400-e29b-41d4-a716-446655440000" />
+                  <small className="im-muted">Instance UUID for policy tracking</small>
+                </label>
+              </div>
+            </>
           )}
 
           <div className="im-actions">
