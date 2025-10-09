@@ -133,7 +133,7 @@ async def presign(
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=request.ttl)
 
         # Build download URL (points to Gateway on storage server)
-        download_url = f"{_gateway_url}/download?token={token}"
+        download_url = f"{_gateway_url}/api/download?token={token}"
 
         logger.info(
             f"Presigned token issued: user={request.user_uuid}, "
