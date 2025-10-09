@@ -71,11 +71,11 @@ docker exec ams-backend-dev python -m pytest tests/test_posix_agent.py -v
 - ✅ Docker containerization
 - ✅ Comprehensive documentation
 
-**Location**: `storage-issuer/` (root level, separate from backend)
+**Location**: `backend/storage-issuer/` (deployed with backend on application server)
 
 **Documentation**:
-- [storage-issuer/README.md](../../storage-issuer/README.md) - Usage and API reference
-- [storage-issuer/ARCHITECTURE.md](../../storage-issuer/ARCHITECTURE.md) - Design details
+- [backend/storage-issuer/README.md](storage-issuer/README.md) - Usage and API reference
+- [backend/storage-issuer/ARCHITECTURE.md](storage-issuer/ARCHITECTURE.md) - Design details
 
 **Key Endpoints**:
 - `POST /v1/presign` - Generate JWT token (requires API key)
@@ -84,7 +84,7 @@ docker exec ams-backend-dev python -m pytest tests/test_posix_agent.py -v
 
 **Deployment**:
 ```bash
-docker compose -p ams-storage-issuer -f storage-issuer/docker-compose.yml up -d
+docker compose -p ams-storage-issuer -f backend/storage-issuer/docker-compose.yml up -d
 ```
 
 **Testing**:
@@ -101,11 +101,13 @@ curl http://localhost:8001/.well-known/jwks.json
 
 ---
 
-### Phase 3: Storage Gateway Service (In Progress)
+### Phase 3: Storage Gateway Service ✅ **COMPLETE**
+
+**Status**: Implemented, tested, and documented
 
 **Goal**: Create service that validates tokens and streams files from POSIX filesystem.
 
-**Location**: `storage-gateway/` (root level, separate service)
+**Location**: `storage-gateway/` (root level, deployed on storage server separately)
 
 **Key Features**:
 - JWT token validation using Issuer's JWKS
@@ -329,8 +331,8 @@ Storage Server(s) (storage1.domain.com, storage2.domain.com):
 
 **Phase 1**: ✅ Complete (19/19 tests passing)
 **Phase 2**: ✅ Complete (tested and documented)
-**Phase 3**: 🔄 In Progress (Gateway service)
-**Phase 4**: ⏳ Planned (Integration)
+**Phase 3**: ✅ Complete (tested end-to-end with Issuer)
+**Phase 4**: ⏳ Next (Integration with AMS Backend)
 **Phase 5**: ⏳ Planned (Production deployment)
 
 ---
@@ -425,10 +427,9 @@ url = s3_client.generate_presigned_url('get_object', ...)
 ## Documentation
 
 ### Service Documentation
-- [Storage Issuer README](../../storage-issuer/README.md) - Usage and API reference
-- [Storage Issuer ARCHITECTURE](../../storage-issuer/ARCHITECTURE.md) - Design details and decisions
-- Storage Gateway README (Phase 3)
-- Storage Gateway ARCHITECTURE (Phase 3)
+- [Storage Issuer README](storage-issuer/README.md) - Usage and API reference
+- [Storage Issuer ARCHITECTURE](storage-issuer/ARCHITECTURE.md) - Design details and decisions
+- [Storage Gateway README](../storage-gateway/README.md) - Usage and API reference
 
 ### Design Documents
 - System Design PDF: `System Design: Presigned URL Access for POSIX Storage in AMS.pdf`
@@ -436,12 +437,12 @@ url = s3_client.generate_presigned_url('get_object', ...)
 
 ### Code
 - PosixStorageAgent: `backend/core/connectivity/agents/posix_agent.py`
-- Storage Issuer: `storage-issuer/`
-- Storage Gateway: `storage-gateway/` (Phase 3)
+- Storage Issuer: `backend/storage-issuer/` (deployed with backend)
+- Storage Gateway: `storage-gateway/` (deployed on storage server)
 
 ---
 
-## Quick Start (Current State - Phase 2 Complete)
+## Quick Start (Current State - Phase 3 Complete)
 
 ```bash
 # 1. Start Keycloak
@@ -451,9 +452,8 @@ docker compose -p ams-keycloak -f docker-compose.keycloak.yml up -d
 # 2. Start Backend
 docker compose -p ams-backend -f docker-compose.backend.yml up -d
 
-# 3. Start Storage Issuer
-cd ../storage-issuer
-docker compose -p ams-storage-issuer up -d
+# 3. Start Storage Issuer (with backend)
+docker compose -p ams-storage-issuer -f storage-issuer/docker-compose.yml up -d
 
 # 4. Test Storage Issuer
 curl http://localhost:8001/.well-known/jwks.json
@@ -462,5 +462,18 @@ curl -X POST http://localhost:8001/v1/presign \
   -H "Content-Type: application/json" \
   -d '{"user_uuid":"test","instance_uuid":"inst","path":"file.txt","op":"read","ttl":3600}'
 
-# 5. Next: Implement Storage Gateway (Phase 3)
+# 5. Start Storage Gateway (separate - on storage server in production)
+cd ../storage-gateway
+docker compose -p ams-storage-gateway up -d
+
+# 6. Test end-to-end flow (Issuer → Gateway)
+# Generate token from Issuer, download file from Gateway
+TOKEN=$(curl -s -X POST http://localhost:8001/v1/presign \
+  -H "X-API-Key: dev-api-key-change-in-production" \
+  -H "Content-Type: application/json" \
+  -d '{"user_uuid":"test","instance_uuid":"inst","path":"test-file.txt","op":"read","ttl":3600}' \
+  | jq -r '.token')
+curl "http://localhost:9000/api/download?token=$TOKEN"
+
+# 7. Next: Integrate with AMS Backend (Phase 4)
 ```
