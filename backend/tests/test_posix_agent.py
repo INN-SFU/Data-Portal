@@ -49,52 +49,69 @@ def agent_config():
         'issuer_url': 'http://issuer.local:8001',
         'issuer_api_key': 'test-api-key',
         'instance_uuid': 'test-instance-uuid'
+        # Note: root_path is no longer a user-provided config
     }
+
+
+@pytest.fixture
+def mock_gateway_tree():
+    """Mock Gateway /api/tree endpoint with standard test files."""
+    with patch('core.connectivity.agents.posix_agent.requests.get') as mock_get:
+        mock_get.return_value.json.return_value = {
+            'files': [
+                'file1.txt',
+                'file2.dat',
+                'subdir1',
+                'subdir1/file3.txt',
+                'subdir1/file4.dat',
+                'subdir2',
+                'subdir2/nested',
+                'subdir2/nested/file5.txt'
+            ]
+        }
+        mock_get.return_value.raise_for_status = Mock()
+        yield mock_get
 
 
 class TestPosixAgentInitialization:
     """Test agent initialization and configuration."""
 
-    def test_init_with_valid_root(self, temp_storage_root, agent_config):
-        """Test initialization with valid root path."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+    @patch('core.connectivity.agents.posix_agent.requests.get')
+    def test_init_with_valid_gateway(self, mock_get, temp_storage_root, agent_config):
+        """Test initialization with valid Gateway connection."""
+        # Mock Gateway /api/tree endpoint
+        mock_get.return_value.json.return_value = {
+            'files': ['file1.txt', 'file2.dat', 'subdir1/file3.txt']
+        }
+        mock_get.return_value.raise_for_status = Mock()
 
-        assert agent.root_path == temp_storage_root
+        agent = PosixStorageAgent(**agent_config)
+
         assert agent.instance_url == agent_config['instance_url']
         assert agent.issuer_url == agent_config['issuer_url']
         assert agent.instance_uuid == agent_config['instance_uuid']
         assert agent.file_tree is not None
 
-    def test_init_with_nonexistent_root(self, agent_config):
-        """Test initialization fails with nonexistent root."""
-        with pytest.raises(ValueError, match="Root path does not exist"):
-            PosixStorageAgent(
-                root_path="/nonexistent/path",
-                **agent_config
-            )
+        # Verify Gateway was called
+        mock_get.assert_called_once()
+        assert '/api/tree' in mock_get.call_args[0][0]
 
-    def test_init_with_file_as_root(self, temp_storage_root, agent_config):
-        """Test initialization fails when root is a file, not directory."""
-        file_path = temp_storage_root / "file1.txt"
-        with pytest.raises(ValueError, match="Root path is not a directory"):
-            PosixStorageAgent(
-                root_path=str(file_path),
-                **agent_config
-            )
+    @patch('core.connectivity.agents.posix_agent.requests.get')
+    def test_init_gateway_connection_failure(self, mock_get, agent_config):
+        """Test initialization fails if Gateway unreachable."""
+        import requests
+        mock_get.side_effect = requests.RequestException("Connection refused")
+
+        with pytest.raises(ValueError, match="Failed to load file tree from Gateway"):
+            PosixStorageAgent(**agent_config)
 
 
 class TestFileTreeLoading:
     """Test file tree construction."""
 
-    def test_file_tree_contains_all_files(self, temp_storage_root, agent_config):
+    def test_file_tree_contains_all_files(self, mock_gateway_tree, agent_config):
         """Test that file tree contains all files."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         # Get all identifiers (excluding root)
         all_ids = [n.identifier for n in agent.file_tree.all_nodes() if n.identifier != 'root']
@@ -114,12 +131,9 @@ class TestFileTreeLoading:
         for item in expected:
             assert item in all_ids, f"Missing {item} in file tree"
 
-    def test_file_tree_uses_forward_slashes(self, temp_storage_root, agent_config):
+    def test_file_tree_uses_forward_slashes(self, mock_gateway_tree, agent_config):
         """Test that file tree uses forward slashes regardless of OS."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         nested_file_node = agent.file_tree.get_node('subdir2/nested/file5.txt')
         assert nested_file_node is not None
@@ -129,37 +143,27 @@ class TestFileTreeLoading:
 class TestPathValidation:
     """Test path validation and security."""
 
-    def test_validate_safe_path(self, temp_storage_root, agent_config):
+    def test_validate_safe_path(self, mock_gateway_tree, agent_config):
         """Test validation of safe paths."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
-        # Safe paths should validate
-        abs_path = agent._validate_path("subdir1/file3.txt")
-        assert abs_path == temp_storage_root / "subdir1" / "file3.txt"
+        # Safe paths should not raise
+        agent._validate_path("subdir1/file3.txt")  # Should not raise
 
-    def test_validate_directory_traversal_attack(self, temp_storage_root, agent_config):
+    def test_validate_directory_traversal_attack(self, mock_gateway_tree, agent_config):
         """Test that directory traversal is blocked."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         # Directory traversal should be blocked
-        with pytest.raises(ValueError, match="Path outside storage root"):
+        with pytest.raises(ValueError, match="Invalid path"):
             agent._validate_path("../../../etc/passwd")
 
-    def test_validate_absolute_path_escape(self, temp_storage_root, agent_config):
-        """Test that absolute paths outside root are blocked."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+    def test_validate_absolute_path_escape(self, mock_gateway_tree, agent_config):
+        """Test that absolute paths are blocked."""
+        agent = PosixStorageAgent(**agent_config)
 
-        # Absolute path outside root should be blocked
-        with pytest.raises(ValueError, match="Path outside storage root"):
+        # Absolute path should be blocked
+        with pytest.raises(ValueError, match="Invalid path"):
             agent._validate_path("/etc/passwd")
 
 
@@ -167,7 +171,7 @@ class TestGenerateAccessLink:
     """Test access link generation with JWT tokens via Storage Issuer."""
 
     @patch('core.connectivity.agents.posix_agent.requests.post')
-    def test_write_single_file(self, mock_post, temp_storage_root, agent_config):
+    def test_write_single_file(self, mock_post, mock_gateway_tree, agent_config):
         """Test write access link for single file."""
         # Mock Issuer response
         mock_post.return_value.json.return_value = {
@@ -177,10 +181,7 @@ class TestGenerateAccessLink:
         }
         mock_post.return_value.raise_for_status = Mock()
 
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         urls, paths = agent.generate_access_link(
             resource="subdir1/newfile.txt",
@@ -204,7 +205,7 @@ class TestGenerateAccessLink:
         assert call_args[1]['json']['user_uuid'] == "test-user"
 
     @patch('core.connectivity.agents.posix_agent.requests.post')
-    def test_read_regex_match_multiple(self, mock_post, temp_storage_root, agent_config):
+    def test_read_regex_match_multiple(self, mock_post, mock_gateway_tree, agent_config):
         """Test read access links with regex matching multiple files."""
         # Mock Issuer to return different tokens for each file
         def mock_response(*args, **kwargs):
@@ -220,10 +221,7 @@ class TestGenerateAccessLink:
 
         mock_post.side_effect = mock_response
 
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         # Match all .txt files
         urls, paths = agent.generate_access_link(
@@ -245,7 +243,7 @@ class TestGenerateAccessLink:
         assert mock_post.call_count == 3
 
     @patch('core.connectivity.agents.posix_agent.requests.post')
-    def test_read_regex_match_single(self, mock_post, temp_storage_root, agent_config):
+    def test_read_regex_match_single(self, mock_post, mock_gateway_tree, agent_config):
         """Test read access link with regex matching single file."""
         mock_post.return_value.json.return_value = {
             'token': 'eyJhbGc...',
@@ -254,10 +252,7 @@ class TestGenerateAccessLink:
         }
         mock_post.return_value.raise_for_status = Mock()
 
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         # Exact match for one file
         urls, paths = agent.generate_access_link(
@@ -271,12 +266,9 @@ class TestGenerateAccessLink:
         assert paths[0] == "file1.txt"
         assert "token=" in urls[0]
 
-    def test_read_no_matches(self, temp_storage_root, agent_config):
+    def test_read_no_matches(self, mock_gateway_tree, agent_config):
         """Test read access link with no matches."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         # No matches - should not call Issuer
         urls, paths = agent.generate_access_link(
@@ -289,12 +281,9 @@ class TestGenerateAccessLink:
         assert len(urls) == 0
         assert len(paths) == 0
 
-    def test_unsupported_method(self, temp_storage_root, agent_config):
+    def test_unsupported_method(self, mock_gateway_tree, agent_config):
         """Test that unsupported methods are rejected."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         with pytest.raises(ValueError, match="Unsupported method"):
             agent.generate_access_link(
@@ -304,12 +293,9 @@ class TestGenerateAccessLink:
                 user_uuid="test-user"
             )
 
-    def test_invalid_regex(self, temp_storage_root, agent_config):
+    def test_invalid_regex(self, mock_gateway_tree, agent_config):
         """Test that invalid regex patterns are rejected."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         with pytest.raises(ValueError, match="Invalid regex pattern"):
             agent.generate_access_link(
@@ -323,79 +309,64 @@ class TestGenerateAccessLink:
 class TestAgentMethods:
     """Test other agent methods."""
 
-    def test_config(self, temp_storage_root, agent_config):
+    def test_config(self, mock_gateway_tree, agent_config):
         """Test config method."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         config = agent.config(secrets=False)
         assert config['instance_url'] == agent_config['instance_url']
-        assert config['root_path'] == str(temp_storage_root)
         assert config['issuer_url'] == agent_config['issuer_url']
         assert config['instance_uuid'] == agent_config['instance_uuid']
+        assert 'root_path' not in config  # Not exposed in config
         assert 'issuer_api_key' not in config  # Secret not included
 
-    def test_config_with_secrets(self, temp_storage_root, agent_config):
+    def test_config_with_secrets(self, mock_gateway_tree, agent_config):
         """Test config method with secrets enabled."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         config = agent.config(secrets=True)
         assert config['issuer_api_key'] == agent_config['issuer_api_key']
 
-    def test_secrets(self, temp_storage_root, agent_config):
+    def test_secrets(self, mock_gateway_tree, agent_config):
         """Test that secrets contains issuer_api_key."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         secrets = agent._secrets()
         assert 'issuer_api_key' in secrets
         assert secrets['issuer_api_key'] == agent_config['issuer_api_key']
 
-    def test_refresh_connection(self, temp_storage_root, agent_config):
-        """Test connection refresh reloads file tree."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+    @patch('core.connectivity.agents.posix_agent.requests.get')
+    def test_refresh_connection(self, mock_get, mock_gateway_tree, agent_config):
+        """Test connection refresh reloads file tree from Gateway."""
+        agent = PosixStorageAgent(**agent_config)
 
         original_count = len(agent.file_tree.all_nodes())
 
-        # Add a new file
-        (temp_storage_root / "newfile.txt").write_text("new content")
+        # Mock Gateway returning updated tree with new file
+        mock_get.return_value.json.return_value = {
+            'files': ['file1.txt', 'file2.dat', 'newfile.txt']
+        }
+        mock_get.return_value.raise_for_status = Mock()
 
-        # Refresh should reload tree
+        # Refresh should reload tree from Gateway
         agent.refresh_connection()
         new_count = len(agent.file_tree.all_nodes())
 
-        assert new_count == original_count + 1
+        assert new_count == 4  # root + 3 files
         assert agent.file_tree.get_node('newfile.txt') is not None
 
-    def test_close(self, temp_storage_root, agent_config):
+    def test_close(self, mock_gateway_tree, agent_config):
         """Test close method (should not raise)."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         # Should not raise
         agent.close()
 
-    def test_str_representation(self, temp_storage_root, agent_config):
+    def test_str_representation(self, mock_gateway_tree, agent_config):
         """Test string representation."""
-        agent = PosixStorageAgent(
-            root_path=str(temp_storage_root),
-            **agent_config
-        )
+        agent = PosixStorageAgent(**agent_config)
 
         str_repr = str(agent)
         assert "PosixStorageAgent" in str_repr
-        assert str(temp_storage_root) in str_repr
         assert agent_config['instance_url'] in str_repr
         assert agent_config['issuer_url'] in str_repr

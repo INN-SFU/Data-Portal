@@ -21,6 +21,7 @@ from streaming.file_stream import FileStreamer
 from streaming.manifest import ManifestGenerator
 from streaming.zip_stream import ZipStreamer
 from api.download import router as download_router, init_download_endpoint
+from api.tree import router as tree_router, init_tree_endpoint
 
 # Configure logging
 logging.basicConfig(
@@ -99,8 +100,12 @@ def create_app() -> FastAPI:
         zip_streamer=zip_streamer
     )
 
+    # Initialize tree endpoint
+    init_tree_endpoint(root_path=config.STORAGE_ROOT_PATH)
+
     # Register API routes
     app.include_router(download_router)
+    app.include_router(tree_router)
 
     # Root endpoint
     @app.get("/", tags=["info"])
