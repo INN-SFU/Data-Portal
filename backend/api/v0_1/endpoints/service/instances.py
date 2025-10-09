@@ -153,6 +153,10 @@ async def create_instance(
 
     # Convert Pydantic model to dict for instance factory
     agent_cfg = config.dict(exclude={"flavour", "access_point_name", "instance_name", "name"})
+
+    # Inject the generated instance_uuid into agent config (for agents that need it)
+    agent_cfg["instance_uuid"] = str(instance_uuid)
+
     config_dict = {"agent": agent_cfg, "flavour": flavour}
 
     # Create the storage agent for the instance
