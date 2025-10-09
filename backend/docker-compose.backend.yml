@@ -33,13 +33,24 @@ services:
       # Optional: handy for running pytest from the host
       BACKEND_BASE_URL: http://localhost:8000
 
+      # Storage Issuer configuration (internal service for JWT token generation)
+      # Backend uses this to generate presigned URLs for POSIX file downloads
+      # Uses Docker service name for internal network communication
+      STORAGE_ISSUER_URL: http://storage-issuer:8001
+      STORAGE_ISSUER_API_KEY_FILE: /run/secrets/storage_issuer_api_key
+
       # Control smoke test execution on startup (default: true)
       RUN_SMOKE_TESTS: "false"
 
     ports: ["8000:8000"]
+
+    networks:
+      - ams-network  # Shared network for backend, issuer, and gateway
+
     extra_hosts:
+      # Keycloak uses host-gateway as it's external to the AMS network
       - "keycloak.local:host-gateway"
-      - "backend.local:host-gateway"
+
     volumes:
       - .:/app
       - ./logs:/app/data/logs
@@ -54,3 +65,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+networks:
+  ams-network:
+    # Shared network enables Docker DNS-based service discovery
+    # Services can reach each other using service names (e.g., storage-issuer:8001)
+    external: true

@@ -36,6 +36,7 @@ services:
 
     networks:
       - storage-network
+      - ams-network
 
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:9000/api/health"]
@@ -61,7 +62,11 @@ services:
 
 networks:
   storage-network:
+    # Internal network for Gateway and Redis
     driver: bridge
+  ams-network:
+    # Shared network for Backend to fetch file tree
+    external: true
 
 volumes:
   redis-data:
