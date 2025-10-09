@@ -12,6 +12,9 @@ fetch_admin_token
 get_client_uuid
 get_client_secret
 
+# --- Setup Storage Issuer credentials ---
+setup_issuer_credentials
+
 # --- Start backend in background ---
 log "Starting backend app…"
 python -Xfrozen_modules=off server.py &
