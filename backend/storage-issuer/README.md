@@ -142,14 +142,22 @@ python -m pytest tests/ -v
 
 ## Integration with AMS Backend
 
-Backend calls Issuer after validating user authentication and authorization:
+The backend automatically manages issuer credentials and injects them into POSIX storage instances:
 
+**Automatic Credential Management:**
+- Backend generates/loads API key from `/run/secrets/storage_issuer_api_key`
+- Issuer URL configured via `STORAGE_ISSUER_URL` environment variable
+- Credentials automatically injected when creating POSIX instances
+- Users only provide Gateway URL (simplified UX)
+
+**Backend to Issuer Communication:**
 ```python
+# Backend calls Issuer after validating user auth/authz
 import requests
 
 response = requests.post(
-    "http://localhost:8001/v1/presign",
-    headers={"X-API-Key": api_key},
+    f"{issuer_url}/v1/presign",  # http://storage-issuer:8001 (Docker DNS)
+    headers={"X-API-Key": api_key},  # From /run/secrets
     json={
         "user_uuid": user_uuid,
         "instance_uuid": instance_uuid,
@@ -160,21 +168,67 @@ response = requests.post(
 )
 
 token_data = response.json()
-download_url = token_data["download_url"]
+download_url = token_data["download_url"]  # http://storage-gateway:9000/api/download?token=...
 ```
+
+**User Experience:**
+- Users create POSIX instances with only `instance_url` (Gateway URL)
+- Backend handles all issuer configuration internally
+- Improved security (credentials not exposed to users)
 
 ## Deployment
 
-### Development (All Services on One Host)
+### Development (Docker with Shared Network)
+
+**Prerequisites:**
 ```bash
-docker compose -p ams-storage-issuer up -d
+# Create shared network for service discovery
+docker network create ams-network
 ```
 
-### Production (Distributed)
+**Deployment:**
+```bash
+# 1. Start Backend (sets up issuer credentials)
+cd backend
+docker compose -p ams-backend -f docker-compose.backend.yml up -d
+
+# 2. Start Storage Issuer
+cd storage-issuer
+docker compose -p ams-storage-issuer up -d --build
+
+# 3. Start Storage Gateway
+cd ../../storage-gateway
+docker compose -p ams-storage-gateway up -d --build
+```
+
+**Service Communication via Docker DNS:**
+- Backend → Issuer: `http://storage-issuer:8001`
+- Gateway → Issuer JWKS: `http://storage-issuer:8001/.well-known/jwks.json`
+- Users → Gateway: `http://localhost:9000` (or custom Gateway URL)
+
+### Production (Distributed Deployment)
+
 Deploy alongside AMS Backend (not on storage server):
-- Issuer has signing key (sensitive)
-- Gateway only has public key (less sensitive)
+
+**Architecture:**
+```
+Application Server:
+├── AMS Backend (API + business logic)
+└── Storage Issuer (JWT signing)
+    ├── Has: Private signing key (sensitive)
+    ├── Exposes: JWKS endpoint (public key)
+
+Storage Server(s):
+└── Storage Gateway (file streaming)
+    ├── Has: Public key only (via JWKS)
+    ├── Cannot: Forge tokens (no private key)
+```
+
+**Security Benefits:**
+- Issuer has signing key (sensitive) on application server
+- Gateway only has public key (less sensitive) on storage server
 - If storage compromised, tokens can't be forged
+- Principle of least privilege
 
 ## Health Check
 

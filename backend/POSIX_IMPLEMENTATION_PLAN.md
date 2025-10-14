@@ -165,74 +165,80 @@ storage-gateway/
 
 ---
 
-### Phase 4: Integration & End-to-End Testing (Planned)
+### Phase 4: Integration & End-to-End Testing ✅ **COMPLETE**
 
-**Goal**: Connect all components and test complete flow.
+**Status**: Implemented with automatic issuer credential management
 
-**Deployment**: All services run in Docker on development machine
+**What's Done**:
+- ✅ PosixStorageAgent integrated with Storage Issuer
+- ✅ Backend automatically injects issuer credentials
+- ✅ Shared Docker network for service discovery
+- ✅ Simplified user experience (users only provide Gateway URL)
+- ✅ Auto-generated instance_uuid
+- ✅ Complete end-to-end testing
 
-**Implementation Tasks**:
+**Key Implementation Details**:
 
-1. **Update PosixStorageAgent**:
-   - Replace placeholder URL generation
-   - Call Storage Issuer's `/v1/presign` endpoint
-   - Pass user context and approved resource path
+1. **Automatic Issuer Configuration** (commits 8574ea6 - 81b2085):
+   - Backend manages issuer credentials internally
+   - `entrypoint_helpers.sh` generates API key on startup
+   - Stored in `/run/secrets/storage_issuer_api_key`
+   - Users don't see or configure issuer settings
 
+2. **Backend Credential Injection**:
    ```python
-   def generate_access_link(self, resource: str, method: str, ttl: int):
-       # Call Issuer service
-       response = requests.post(
-           f"{self.issuer_url}/v1/presign",
-           headers={"X-API-Key": self.api_key},
-           json={
-               "user_uuid": self.user_uuid,
-               "instance_uuid": self.instance_uuid,
-               "path": resource,
-               "op": method,
-               "ttl": ttl
-           }
-       )
-       data = response.json()
-       return [data["download_url"]], [resource]
+   # backend/api/v0_1/endpoints/service/instances.py
+   def _get_issuer_config():
+       """Load issuer configuration from environment/secrets"""
+       issuer_url = os.getenv("STORAGE_ISSUER_URL", "http://storage-issuer:8001")
+       api_key = _load_secret("STORAGE_ISSUER_API_KEY_FILE")
+       return {"issuer_url": issuer_url, "issuer_api_key": api_key}
+
+   # Automatically inject when creating POSIX instances
+   if instance_config["flavour"] == "posix":
+       issuer_config = _get_issuer_config()
+       instance_config.update(issuer_config)
    ```
 
-2. **Configuration Updates**:
-   - Add Issuer URL to PosixStorageAgent config
-   - Add Issuer API key to environment
-   - Configure Gateway URL for download links
+3. **Simplified User Experience**:
+   - **Before**: Users provided issuer_url, issuer_api_key, gateway_url (3 fields)
+   - **After**: Users only provide gateway_url (1 field)
+   - **Security**: Issuer credentials are backend-internal only
 
-3. **Docker Compose Integration**:
+4. **Docker Network Integration**:
    ```bash
-   # 1. Start Keycloak
-   docker compose -p ams-keycloak -f backend/docker-compose.keycloak.yml up -d
+   # Shared network for service discovery
+   docker network create ams-network
 
-   # 2. Start Backend
-   docker compose -p ams-backend -f backend/docker-compose.backend.yml up -d
-
-   # 3. Start Storage Issuer
-   docker compose -p ams-storage-issuer -f storage-issuer/docker-compose.yml up -d
-
-   # 4. Start Storage Gateway
-   docker compose -p ams-storage-gateway -f storage-gateway/docker-compose.yml up -d
-
-   # 5. Start Frontend
-   docker compose -p ams-frontend -f frontend/docker-compose.frontend.yml up -d
+   # Services communicate via Docker DNS
+   STORAGE_ISSUER_URL=http://storage-issuer:8001
+   JWKS_URL=http://storage-issuer:8001/.well-known/jwks.json
    ```
 
-4. **End-to-End Testing**:
-   - User authenticates via Keycloak
-   - Frontend requests file from Backend
-   - Backend calls PosixStorageAgent.generate_access_link()
-   - Agent calls Storage Issuer to get JWT token
-   - Issuer validates (via Backend's prior policy check) and returns JWT
-   - Frontend uses token to download from Gateway
-   - Gateway validates token and streams file
+5. **End-to-End Flow** (Verified):
+   - User authenticates via Keycloak ✅
+   - Frontend requests file from Backend ✅
+   - Backend calls PosixStorageAgent.generate_access_link() ✅
+   - Agent calls Storage Issuer to get JWT token ✅
+   - Issuer validates and returns JWT with download_url ✅
+   - User downloads from Gateway using token ✅
+   - Gateway validates token and streams file ✅
 
-**Testing Strategy**:
-- Integration tests across all services
-- Performance tests for high-volume downloads
-- Security tests for token validation and replay attacks
-- Stress tests for concurrent downloads
+**Testing**:
+- ✅ Unit tests updated for internalized config (backend/tests/test_posix_agent.py)
+- ✅ Integration tests across all services
+- ✅ Token validation and replay prevention verified
+- ✅ HTTP Range support for file streaming
+
+**Deployment**:
+```bash
+# Complete system deployment
+docker network create ams-network
+docker compose -p ams-keycloak -f backend/docker-compose.keycloak.yml up -d
+docker compose -p ams-backend -f backend/docker-compose.backend.yml up -d
+docker compose -p ams-storage-issuer -f backend/storage-issuer/docker-compose.yml up -d
+docker compose -p ams-storage-gateway -f storage-gateway/docker-compose.yml up -d
+```
 
 ---
 
@@ -329,11 +335,33 @@ Storage Server(s) (storage1.domain.com, storage2.domain.com):
 
 ## Current Status
 
-**Phase 1**: ✅ Complete (19/19 tests passing)
-**Phase 2**: ✅ Complete (tested and documented)
-**Phase 3**: ✅ Complete (tested end-to-end with Issuer)
-**Phase 4**: ⏳ Next (Integration with AMS Backend)
-**Phase 5**: ⏳ Planned (Production deployment)
+**Phase 1**: ✅ Complete - PosixStorageAgent implementation (19/19 tests passing)
+**Phase 2**: ✅ Complete - Storage Issuer service (tested and documented)
+**Phase 3**: ✅ Complete - Storage Gateway service (tested end-to-end with Issuer)
+**Phase 4**: ✅ Complete - Full integration with automatic credential management
+**Phase 5**: ⏳ Planned - Production deployment with distributed services
+
+## Recent Improvements (October 2025)
+
+### Internalized Issuer Configuration
+- **Before**: Users manually configured issuer_url, issuer_api_key, and gateway_url
+- **After**: Backend automatically manages issuer credentials; users only provide gateway_url
+- **Benefits**:
+  - Simplified user experience (67% fewer configuration fields)
+  - Enhanced security (issuer credentials backend-internal only)
+  - Reduced configuration errors
+  - Better separation of concerns
+
+### Shared Docker Network
+- Implemented `ams-network` for service discovery
+- Services use Docker DNS (no hardcoded IPs)
+- More production-like architecture
+- Simplified deployment and configuration
+
+### Auto-Generated UUIDs
+- Backend generates `instance_uuid` automatically
+- Users no longer need to provide UUIDs
+- Eliminates UUID collision risks
 
 ---
 
@@ -442,38 +470,49 @@ url = s3_client.generate_presigned_url('get_object', ...)
 
 ---
 
-## Quick Start (Current State - Phase 3 Complete)
+## Quick Start (Current State - Phase 4 Complete)
 
 ```bash
+# Prerequisites: Create shared network
+docker network create ams-network
+
 # 1. Start Keycloak
 cd backend
 docker compose -p ams-keycloak -f docker-compose.keycloak.yml up -d
 
-# 2. Start Backend
-docker compose -p ams-backend -f docker-compose.backend.yml up -d
+# 2. Start Backend API
+docker compose -p ams-backend -f docker-compose.backend.yml up -d --build
 
-# 3. Start Storage Issuer (with backend)
-docker compose -p ams-storage-issuer -f storage-issuer/docker-compose.yml up -d
+# 3. Configure Keycloak (ONE-TIME)
+docker exec ams-backend-dev bash /app/init_keycloak.sh
+docker restart ams-backend-dev
 
-# 4. Test Storage Issuer
-curl http://localhost:8001/.well-known/jwks.json
-curl -X POST http://localhost:8001/v1/presign \
-  -H "X-API-Key: dev-api-key-change-in-production" \
+# 4. Start Storage Issuer
+cd storage-issuer
+docker compose -p ams-storage-issuer up -d --build
+
+# 5. Start Storage Gateway
+cd ../../storage-gateway
+docker compose -p ams-storage-gateway up -d --build
+
+# 6. Access the system
+# - Backend API: http://backend.local:8000/docs
+# - Keycloak: http://keycloak.local:8080
+# - Storage Issuer: http://localhost:8001/docs (internal)
+# - Storage Gateway: http://localhost:9000/docs (internal)
+
+# 7. Create a POSIX storage instance via API
+# Users only need to provide gateway_url - issuer config is automatic!
+curl -X POST http://backend.local:8000/api/admin/instances/ \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"user_uuid":"test","instance_uuid":"inst","path":"file.txt","op":"read","ttl":3600}'
+  -d '{
+    "flavour": "posix",
+    "instance_url": "http://storage-gateway:9000"
+  }'
 
-# 5. Start Storage Gateway (separate - on storage server in production)
-cd ../storage-gateway
-docker compose -p ams-storage-gateway up -d
-
-# 6. Test end-to-end flow (Issuer → Gateway)
-# Generate token from Issuer, download file from Gateway
-TOKEN=$(curl -s -X POST http://localhost:8001/v1/presign \
-  -H "X-API-Key: dev-api-key-change-in-production" \
-  -H "Content-Type: application/json" \
-  -d '{"user_uuid":"test","instance_uuid":"inst","path":"test-file.txt","op":"read","ttl":3600}' \
-  | jq -r '.token')
-curl "http://localhost:9000/api/download?token=$TOKEN"
-
-# 7. Next: Integrate with AMS Backend (Phase 4)
+# Backend automatically injects:
+# - issuer_url: http://storage-issuer:8001
+# - issuer_api_key: (from /run/secrets/storage_issuer_api_key)
+# - instance_uuid: (auto-generated)
 ```
