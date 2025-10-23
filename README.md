@@ -2,7 +2,7 @@
 
 **Policy-Derived Data Access Management Platform for Heterogeneous Storage Instances**
 
-A FastAPI-based web application that provides policy-driven access control across multiple storage backends including S3, POSIX filesystems, and OpenStack Swift.
+A FastAPI-based web application that provides policy-driven access control across multiple storage backends including S3-compatible storage.
 
 ## Developed By
 
@@ -21,14 +21,14 @@ For detailed information, see the [project wiki](https://github.com/INN-SFU/Data
 
 ## Features
 
-- **Multi-Storage Support**: S3, POSIX (with presigned URLs), OpenStack Swift
-- **Presigned URL Access**: Secure, time-limited file access via JWT tokens for POSIX storage
+- **Multi-Storage Support**: S3-compatible storage with presigned URL support
+- **Presigned URL Access**: Secure, time-limited file access via presigned URLs
 - **Policy-Based Access Control**: Casbin integration for fine-grained permissions
 - **Keycloak Authentication**: Enterprise-grade OIDC/OAuth2 authentication
 - **Bearer Token API**: React-ready JWT authentication with Authorization header support
 - **RESTful API**: FastAPI with automatic OpenAPI documentation
 - **Web Interface**: HTML templates for user-friendly data management
-- **Microservices Architecture**: Modular services (Backend, Storage Issuer, Storage Gateway)
+- **Containerized Architecture**: Modular services (Backend, Keycloak, Frontend)
 - **Docker Networking**: Service discovery via shared Docker network
 - **Speed-First Testing**: <30s feedback loop for rapid development
 - **Containerized Deployment**: Docker and Docker Compose support
@@ -199,45 +199,43 @@ python main.py config.yaml
 
 ### Development with Docker (Full Stack)
 
-For complete system with POSIX storage support:
+For complete containerized system deployment:
 
+**Option 1: One-Command Start (Recommended)**
+```bash
+cd backend
+./start.sh
+```
+
+**Option 2: Manual Start**
 ```bash
 # Prerequisites: Create shared network for service discovery
 docker network create ams-network
 
-# 1. Start Keycloak (authentication service)
+# Start all services with automatic orchestration
 cd backend
-docker compose -p ams-keycloak -f docker-compose.keycloak.yml up -d
-
-# 2. Configure Keycloak (ONE-TIME ONLY - after first Keycloak start)
-docker exec ams-backend-dev bash /app/init_keycloak.sh
-
-# 3. Start Backend API
-docker compose -p ams-backend -f docker-compose.backend.yml up -d --build
-
-# 4. Start Storage Issuer (JWT token generation)
-cd storage-issuer
-docker compose -p ams-storage-issuer up -d --build
-
-# 5. Start Storage Gateway (file streaming)
-cd ../../storage-gateway
-docker compose -p ams-storage-gateway up -d --build
-
-# 6. Start Frontend (optional)
-cd ../frontend
-docker compose -p ams-frontend -f docker-compose.frontend.yml up -d
+docker compose -f docker-compose.dev-all.yml up -d --build
 
 # Access points:
-# - Backend API: http://backend.local:8000/docs
-# - Keycloak: http://keycloak.local:8080
-# - Frontend: http://frontend.local:3000
+# - Backend API: http://localhost:8000/docs
+# - Keycloak Admin: http://keycloak.local:8080/admin
+# - Frontend: http://localhost:3000
 ```
+
+**What's Included:**
+- ✅ Keycloak authentication service
+- ✅ Backend API with automatic smoke tests
+- ✅ Frontend web application
+- ✅ Automatic Keycloak configuration (init container)
+- ✅ Health checks and service dependencies
 
 **Docker Network Architecture:**
 - All services communicate via `ams-network` for service discovery
-- Services use internal DNS names (e.g., `storage-issuer:8001`, `storage-gateway:9000`)
-- No manual host file management needed
+- Services use Docker DNS for internal communication
+- No manual host file management needed for services
 - Production-like architecture with proper service isolation
+
+For detailed deployment instructions, see [backend/DOCKER_SETUP.md](backend/DOCKER_SETUP.md)
 
 ### Production with Docker
 ```bash
@@ -402,45 +400,41 @@ AMS/
 ├── backend/                  # Main backend service
 │   ├── api/v0_1/            # FastAPI application
 │   ├── core/                # Core business logic
-│   │   ├── connectivity/    # Storage adapters (S3, POSIX, etc.)
+│   │   ├── connectivity/    # Storage adapters (S3, etc.)
 │   │   ├── management/      # Policy & user management
 │   │   └── settings/        # Configuration management
-│   ├── storage-issuer/      # JWT token issuer for POSIX storage
 │   ├── config/              # Configuration templates
 │   ├── scripts/             # Setup and utility scripts
 │   └── tests/               # Test suite
-├── storage-gateway/         # File streaming service for POSIX storage
 ├── frontend/                # React frontend application
 └── deployment/              # Docker and deployment files
 ```
 
-## POSIX Storage Architecture
+## Storage Architecture
 
-For POSIX filesystems, the system uses a microservices architecture with presigned URL support:
+The system uses S3-compatible storage with presigned URL support:
 
 ```
 User → AMS Backend (auth + policy check)
          ↓
-      Storage Issuer (generates JWT tokens)
+      S3 Storage Agent (generates presigned URLs)
          ↓
       User receives presigned URL
          ↓
-      Storage Gateway (validates JWT + streams file)
+      Direct S3 download (validates signature)
 ```
 
 **Key Components:**
 
 1. **Backend API** (`backend/`) - Handles authentication, authorization, and coordinates storage access
-2. **Storage Issuer** (`backend/storage-issuer/`) - Generates time-limited JWT tokens for file access
-3. **Storage Gateway** (`storage-gateway/`) - Validates tokens and streams files from POSIX filesystem
+2. **Storage Agents** - Generate presigned URLs for secure, time-limited file access
+3. **S3 Storage** - Validates presigned URLs and streams files directly to users
 
 **User Experience:**
-- Users create POSIX storage instances by providing only the Gateway URL
-- Backend automatically manages issuer credentials (no manual configuration needed)
+- Users create storage instances by providing S3 credentials and bucket information
 - System generates presigned URLs for secure, direct file downloads
-- Tokens are time-limited and single-use for enhanced security
-
-For detailed information, see [backend/POSIX_IMPLEMENTATION_PLAN.md](backend/POSIX_IMPLEMENTATION_PLAN.md)
+- URLs are time-limited and signature-validated for enhanced security
+- No additional microservices needed for S3 storage access
 
 ## Troubleshooting
 

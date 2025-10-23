@@ -1,106 +1,129 @@
-# AMS Backend - Quick Start
+# AMS Backend Service
 
-## Prerequisites
+The backend service is the core API server for the AMS Data Portal, providing authentication, storage management, and policy enforcement.
 
-**1. Create shared Docker network:**
+## Quick Start
+
+### Option 1: Complete System (Recommended)
+
+See [DOCKER_SETUP.md](./DOCKER_SETUP.md) for the simplified one-command deployment that starts all services together.
+
+### Option 2: Backend Development Mode
+
+Start just the backend service for local development:
+
 ```bash
+# Create shared network (first time only)
 docker network create ams-network
-```
 
-**2. Add to `/etc/hosts`:**
-```
-127.0.0.1 keycloak.local
-127.0.0.1 backend.local
-127.0.0.1 frontend.local
+# Start Keycloak
+docker compose -p ams-keycloak -f docker-compose.keycloak.yml up -d
+
+# Configure Keycloak (ONE-TIME ONLY - after first Keycloak start)
+docker exec ams-backend-dev bash /app/init_keycloak.sh
+
+# Start Backend
+docker compose -p ams-backend -f docker-compose.backend.yml up -d --build
+
+# Restart backend to apply Keycloak config
+docker restart ams-backend-dev
 ```
 
 ## Architecture
 
-The AMS system consists of multiple microservices:
-
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      ams-network (Docker)                    │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐  │
-│  │   Backend    │───▶│   Storage    │───▶│   Storage    │  │
-│  │   API:8000   │    │  Issuer:8001 │    │ Gateway:9000 │  │
-│  └──────────────┘    └──────────────┘    └──────────────┘  │
-│         │                                                     │
-│         ▼                                                     │
-│  ┌──────────────┐                                            │
-│  │  Keycloak    │                                            │
-│  │    :8080     │                                            │
-│  └──────────────┘                                            │
-│                                                               │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                  ams-network (Docker)                    │
+├─────────────────────────────────────────────────────────┤
+│                                                           │
+│  ┌──────────────┐         ┌──────────────┐              │
+│  │   Backend    │────────▶│   Keycloak   │              │
+│  │   API:8000   │         │    :8080     │              │
+│  └──────────────┘         └──────────────┘              │
+│         │                                                │
+│         ▼                                                │
+│  ┌──────────────┐                                       │
+│  │  S3 Storage  │                                       │
+│  │   Backends   │                                       │
+│  └──────────────┘                                       │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
 ```
 
 **Service Communication:**
-- Backend API → Storage Issuer: `http://storage-issuer:8001` (JWT token generation)
 - Backend API → Keycloak: `http://keycloak.local:8080` (authentication)
-- Storage Gateway → Storage Issuer: `http://storage-issuer:8001/.well-known/jwks.json` (public key)
-- Users → Storage Gateway: Direct file downloads via presigned URLs
+- Backend API → S3 Storage: Presigned URLs for secure file access
 
-## Startup (Complete System)
+## Project Structure
 
-```bash
-# 1. Start Keycloak (authentication service)
-cd backend
-docker compose -p ams-keycloak -f docker-compose.keycloak.yml up -d
-
-# 2. Start Backend API
-docker compose -p ams-backend -f docker-compose.backend.yml up -d --build
-
-# 3. Configure Keycloak (ONE-TIME ONLY - after first Keycloak start)
-docker exec ams-backend-dev bash /app/init_keycloak.sh
-
-# 4. Restart backend to apply Keycloak config
-docker restart ams-backend-dev
-
-# 5. Start Storage Issuer (for POSIX storage JWT tokens)
-cd storage-issuer
-docker compose -p ams-storage-issuer up -d --build
-
-# 6. Start Storage Gateway (for POSIX file streaming)
-cd ../../storage-gateway
-docker compose -p ams-storage-gateway up -d --build
-
-# 7. Start Frontend (optional)
-cd ../frontend
-docker compose -p ams-frontend -f docker-compose.frontend.yml up -d
+```
+backend/
+├── api/v0_1/              # FastAPI application and endpoints
+│   ├── endpoints/         # API route handlers
+│   └── app.py             # FastAPI app initialization
+├── core/                  # Core business logic
+│   ├── connectivity/      # Storage agent implementations
+│   │   ├── agents/        # S3 and storage agent abstractions
+│   │   └── manager.py     # Storage connectivity manager
+│   ├── management/        # Policy and instance management
+│   │   ├── instances/     # Storage instance management
+│   │   ├── policies/      # Casbin policy enforcement
+│   │   └── users/         # User management via Keycloak
+│   └── settings/          # Configuration and secrets
+├── config/                # Configuration templates and realm exports
+├── tests/                 # Test suite
+├── docker-compose.*.yml   # Docker orchestration files
+├── Dockerfile             # Backend container image
+├── server.py              # Main application entry point
+└── start.sh               # Quick start script
 ```
 
-## Access
+## Access Points
 
-- **Keycloak**: http://keycloak.local:8080/admin (admin/admin123)
-- **Backend API**: http://backend.local:8000/docs
-- **Storage Issuer**: http://localhost:8001/docs (internal service)
-- **Storage Gateway**: http://localhost:9000/docs (internal service)
-- **Frontend**: http://frontend.local:3000
+- **Backend API**: http://localhost:8000/docs (Swagger UI)
+- **Keycloak Admin**: http://keycloak.local:8080/admin (admin/admin123)
 
-## Shutdown
+## Key Features
 
-```bash
-docker compose -p ams-keycloak -f docker-compose.keycloak.yml down
-docker compose -p ams-backend -f docker-compose.backend.yml down
-docker compose -p ams-storage-issuer -f backend/storage-issuer/docker-compose.yml down
-docker compose -p ams-storage-gateway -f storage-gateway/docker-compose.yml down
-docker compose -p ams-frontend -f frontend/docker-compose.frontend.yml down
-```
+### Storage Agent Architecture
+The backend uses an Abstract Factory pattern for storage backends:
+- **S3 Agent**: AWS S3 and S3-compatible storage (presigned URLs)
+- **Dummy Agent**: Testing and development mock storage
+
+### Authentication & Authorization
+- **Keycloak Integration**: OAuth2/OIDC authentication
+- **JWT Bearer Tokens**: React-friendly token-based auth
+- **Casbin RBAC**: Policy-based access control
+
+### API Endpoints
+
+All endpoints use the `/api` prefix:
+
+**Authentication:**
+- `GET /api/auth/validate` - Validate JWT token
+
+**Asset Management:**
+- `PUT /api/asset/upload` - Upload asset
+- `PUT /api/asset/download` - Download asset
+- `GET /api/asset/user-home-data` - Get user home data
+- `GET /api/asset/user-assets-data` - Get user assets
+
+**Administration:**
+- `GET /api/admin/user/` - List users
+- `PUT /api/admin/user/` - Create user
+- `DELETE /api/admin/user/` - Remove user
+- `GET /api/admin/policies` - List policies
+- `PUT /api/admin/policy` - Add policy
+- `DELETE /api/admin/policy` - Remove policy
+- `POST/DELETE /api/admin/endpoints/` - Manage storage instances
+
+**Health & Monitoring:**
+- `GET /api/health/` - Basic health check
+- `GET /api/health/detailed` - Detailed health info
+- `GET /api/health/ready` - Readiness probe
+- `GET /api/health/live` - Liveness probe
 
 ## Configuration
-
-### Storage Issuer Integration
-
-The backend automatically configures Storage Issuer credentials for POSIX storage instances:
-
-- **Issuer URL**: Set via `STORAGE_ISSUER_URL` (default: `http://storage-issuer:8001`)
-- **API Key**: Auto-generated and stored in `/run/secrets/storage_issuer_api_key`
-- **User Experience**: Users only need to provide Gateway URL when creating POSIX instances
-
-This simplifies POSIX storage instance creation - issuer credentials are backend-internal and not user-facing.
 
 ### Environment Variables
 
@@ -108,20 +131,102 @@ Key environment variables in `docker-compose.backend.yml`:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `STORAGE_ISSUER_URL` | Storage Issuer service URL | `http://storage-issuer:8001` |
-| `STORAGE_ISSUER_API_KEY_FILE` | Path to issuer API key | `/run/secrets/storage_issuer_api_key` |
 | `KEYCLOAK_DOMAIN` | Keycloak server URL | `http://keycloak.local:8080` |
+| `KEYCLOAK_REALM` | Keycloak realm name | `ams-portal` |
+| `AMS_HOST` | Backend bind address | `0.0.0.0` |
+| `AMS_PORT` | Backend port | `8000` |
+| `RUN_SMOKE_TESTS` | Run tests on startup | `true` |
 
-## Docker Networking
+### Docker Networking
 
 All services use the `ams-network` for service discovery:
 
-- Services communicate using Docker DNS (service names resolve to container IPs)
-- No manual `/etc/hosts` management needed for service-to-service communication
-- Production-like architecture with proper service isolation
+- Services communicate using Docker DNS names
+- No manual IP configuration needed
+- Production-like isolation and security
 - External access via `host-gateway` for Keycloak
 
-**Benefits:**
-- Closer to production Kubernetes/network setup
-- Simpler configuration (no hardcoded IPs)
-- Better security (isolated network)
+## Development
+
+### Running Tests
+
+```bash
+# All tests
+python -m pytest tests/ -v
+
+# Specific test suite
+python -m pytest tests/unit/ -v
+python -m pytest tests/integration/ -v
+
+# With coverage
+python -m pytest tests/ --cov=. --cov-report=html
+```
+
+### Local Development (No Docker)
+
+```bash
+# Ensure virtual environment is activated
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements-dev.txt
+
+# Start Keycloak in Docker (required)
+docker compose -p ams-keycloak -f docker-compose.keycloak.yml up -d
+
+# Run backend locally
+cd backend
+python server.py
+```
+
+### Code Quality
+
+```bash
+# Format code
+black .
+isort .
+
+# Lint
+flake8 .
+mypy .
+
+# Security scan
+bandit -r .
+```
+
+## Stopping Services
+
+```bash
+# Stop backend
+docker compose -p ams-backend -f docker-compose.backend.yml down
+
+# Stop Keycloak
+docker compose -p ams-keycloak -f docker-compose.keycloak.yml down
+
+# Stop everything and remove volumes
+docker compose -p ams-backend -f docker-compose.backend.yml down -v
+docker compose -p ams-keycloak -f docker-compose.keycloak.yml down -v
+```
+
+## Troubleshooting
+
+### Backend won't start
+- Check Keycloak is running: `docker ps | grep keycloak`
+- Check logs: `docker compose -p ams-backend logs backend`
+- Verify network exists: `docker network ls | grep ams-network`
+
+### Authentication failing
+- Verify Keycloak configuration ran: `docker logs ams-backend-dev | grep "Keycloak"`
+- Check client secret is configured
+- Try restarting backend: `docker restart ams-backend-dev`
+
+### Storage operations failing
+- Check storage instance configuration in `/app/core/settings/managers/instances/configs/`
+- Verify S3 credentials are valid
+- Check Casbin policies for user permissions
+
+## Additional Documentation
+
+- **[Complete System Setup](./DOCKER_SETUP.md)** - One-command deployment guide
+- **[Architecture Diagrams](../docs/diagrams/)** - Visual system documentation
+- **[Main README](../README.md)** - Project overview and features
