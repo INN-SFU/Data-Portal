@@ -33,60 +33,42 @@ For detailed information, see the [project wiki](https://github.com/INN-SFU/Data
 
 ## Quick Start
 
-### Option 1: Docker Deployment (Recommended)
+**Prerequisites:**
+- Docker & Docker Compose V2
+- Git
 
-**One-command start for complete system:**
+**One-command start:**
 
 ```bash
-cd backend
+# Clone repository
+git clone <repository-url>
+cd AMS/backend
+
+# Start all services
 ./start.sh
 ```
 
-This starts all services (Backend, Keycloak, Frontend) with automatic configuration.
+This starts the complete system (Backend, Keycloak, Frontend) with automatic configuration.
 
 **Access:**
-- Backend API: http://localhost:8000/docs
-- Frontend: http://localhost:3000
-- Keycloak Admin: http://keycloak.local:8080/admin
+- **Backend API:** http://localhost:8000/docs
+- **Frontend:** http://localhost:3000
+- **Keycloak Admin:** http://keycloak.local:8080/admin
 
 **Default Credentials:**
 - Username: `admin`
 - Password: `admin123`
 
-**What's included:**
+**What's Running:**
 - ✅ Automated Keycloak realm import and configuration
 - ✅ Backend API with automatic smoke tests
 - ✅ Frontend web application
 - ✅ Service health checks and dependencies
 - ✅ Docker network with service discovery
 
-For detailed Docker deployment instructions, see [backend/DOCKER_SETUP.md](backend/DOCKER_SETUP.md).
-
-### Option 2: Local Development (Python)
-
-For backend development without Docker:
-
-```bash
-# 1. Clone and setup
-git clone <repository-url>
-cd AMS
-
-# 2. Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# 3. Install dependencies
-pip install -r requirements-dev.txt
-
-# 4. Start Keycloak (required for authentication)
-cd backend
-docker compose -p ams-keycloak -f docker-compose.keycloak.yml up -d
-
-# 5. Run backend locally
-python server.py
-```
-
-**Note:** You'll need to manually configure Keycloak for local development. See [backend/README.md](backend/README.md) for details.
+**Next Steps:**
+- See [backend/DOCKER_SETUP.md](backend/DOCKER_SETUP.md) for detailed deployment options
+- See [backend/README.md](backend/README.md) for backend development guide
 
 ## Architecture
 
