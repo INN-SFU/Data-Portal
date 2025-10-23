@@ -1,8 +1,8 @@
 # AMS Data Portal
 
-**Policy-Derived Data Access Management Platform for Heterogeneous Storage Instances**
+**Policy-Driven Data Access Management Platform for Heterogeneous Storage Instances**
 
-A FastAPI-based web application that provides policy-driven access control across multiple storage backends including S3-compatible storage.
+A FastAPI-based web application providing policy-driven access control across multiple storage backends with enterprise authentication and fine-grained authorization.
 
 ## Developed By
 
@@ -21,478 +21,310 @@ For detailed information, see the [project wiki](https://github.com/INN-SFU/Data
 
 ## Features
 
-- **Multi-Storage Support**: S3-compatible storage with presigned URL support
-- **Presigned URL Access**: Secure, time-limited file access via presigned URLs
-- **Policy-Based Access Control**: Casbin integration for fine-grained permissions
+- **S3-Compatible Storage**: Presigned URL support for secure, time-limited file access
+- **Policy-Based Access Control**: Casbin RBAC for fine-grained permissions
 - **Keycloak Authentication**: Enterprise-grade OIDC/OAuth2 authentication
-- **Bearer Token API**: React-ready JWT authentication with Authorization header support
 - **RESTful API**: FastAPI with automatic OpenAPI documentation
-- **Web Interface**: HTML templates for user-friendly data management
-- **Containerized Architecture**: Modular services (Backend, Keycloak, Frontend)
-- **Docker Networking**: Service discovery via shared Docker network
-- **Speed-First Testing**: <30s feedback loop for rapid development
-- **Containerized Deployment**: Docker and Docker Compose support
+- **Bearer Token Support**: React-ready JWT authentication
+- **Containerized Deployment**: Docker Compose orchestration with automatic setup
+- **Service Discovery**: Docker networking for seamless inter-service communication
+- **Health Checks**: Readiness and liveness probes for all services
+- **Automated Testing**: Speed-first testing framework with <30s feedback loop
 
 ## Quick Start
 
-**🚀 FULLY AUTOMATED SETUP (Recommended for New Developers)**
+### Option 1: Docker Deployment (Recommended)
 
-```bash
-# 1. Clone the repository
-git clone <repository-url>
-cd AMS
+**One-command start for complete system:**
 
-# 2. Create and activate Python virtual environment
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-
-# 3. Install Python dependencies
-pip install -r requirements-dev.txt
-
-# 4. Run FULL automated setup (does everything!)
-python backend/scripts/setup.py --full-setup
-
-# 5. Start the application (Keycloak is already running!)
-python main.py config.yaml
-
-# 6. Login and start developing!
-#    - Main app: http://localhost:8000
-#    - Use the admin credentials printed by setup script
-#    - Default: admin / admin123
-```
-
-**What `--full-setup` does automatically:**
-- ✅ Creates all required directories
-- ✅ Generates configuration files from templates  
-- ✅ Generates cryptographic secrets
-- ✅ Starts Keycloak service and waits for readiness
-- ✅ **Imports Keycloak realm and extracts client secret**
-- ✅ **Updates config.yaml with the actual client secret**
-- ✅ **Imports realm with pre-configured admin user (admin/admin123)**
-- ✅ Validates the entire setup
-- ✅ Runs tests to ensure everything works
-
-**✅ Fully Automated:** No manual Keycloak configuration needed! Just start the application and login.
-
-## Admin User Access
-
-The setup script automatically configures TWO different admin users:
-
-### 1. App Admin User (for AMS Data Portal Application)
-**Purpose:** Login to the AMS Data Portal application at http://localhost:8000  
-**Realm:** `ams-portal`  
-**Credentials:**
-- Username: `admin`
-- Password: `admin123`
-- Roles: `admin`, `user`
-
-**To Login to Application:**
-1. Start the application: `python main.py config.yaml`
-2. Open: http://localhost:8000
-3. Login with the app admin credentials above
-
-### 2. Keycloak Admin User (for Keycloak Management)
-**Purpose:** Access Keycloak Admin Console for realm/user management  
-**Realm:** `master`  
-**Credentials:**
-- Username: `admin`
-- Password: `admin123`
-
-**To Access Keycloak Admin Console:**
-- URL: http://localhost:8080
-- Login: admin / admin123
-
-**Manual Setup (Legacy)**
-```bash
-# If you prefer step-by-step control:
-python scripts/setup.py --create-dirs
-python scripts/setup.py --generate-secrets  
-python scripts/setup.py --start-keycloak
-python scripts/setup.py --create-admin  # Shows instructions only
-python scripts/setup.py --validate
-```
-
-**🎯 Development Credentials (Pre-configured by setup script):**
-
-**App Admin (for application login at :8000):**
-- Username: `admin`
-- Password: `admin123`  
-- Email: `admin@localhost`
-- Roles: `admin`, `user`
-
-**Keycloak Admin (for Keycloak console at :8080):**
-- Username: `admin`
-- Password: `admin123`
-
-**💡 Virtual Environment Notes:**
-- The repository does **not** include a virtual environment (this was cleaned up for repo size)
-- You **must** create your own virtual environment as shown above
-- Always activate your virtual environment before running scripts: `source .venv/bin/activate`
-- To deactivate: `deactivate`
-
-**Local Development Setup:**
-If you're developing locally (not using Docker):
-```bash
-# Ensure virtual environment is activated
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# Install development dependencies
-pip install -r requirements-dev.txt
-```
-
-## Detailed Setup
-
-### Prerequisites
-
-- Python 3.12+
-- Docker & Docker Compose V2 (for containerized deployment)
-- Keycloak server (included in Docker setup)
-
-**Note:** If you have Docker Compose V1, use `docker-compose` (with hyphen) instead of `docker compose`.
-
-### 1. Automated Setup (Recommended)
-
-The setup script provides full automation for new developers:
-
-```bash
-# Full automated setup (recommended)
-python scripts/setup.py --full-setup
-
-# Full setup for production environment
-python scripts/setup.py --full-setup --environment production
-```
-
-**Individual setup commands (if needed):**
-```bash
-# Create required directories only
-python scripts/setup.py --create-dirs
-
-# Generate new secrets only
-python scripts/setup.py --generate-secrets
-
-# Start Keycloak service
-python scripts/setup.py --start-keycloak
-
-# Configure Keycloak realm and get client secret
-python scripts/setup.py --configure-keycloak
-
-# Verify app admin user (created during realm import)
-python scripts/setup.py --create-admin
-
-# Run validation tests
-python scripts/setup.py --run-tests
-
-# Validate configuration
-python scripts/setup.py --validate
-```
-
-## Deployment
-
-### Development (Local Python)
-```bash
-# Local development server (backend only)
-python main.py config.yaml
-
-# With auto-reload
-# Set uvicorn.reload: true in config.yaml
-```
-
-### Development with Docker (Full Stack)
-
-For complete containerized system deployment:
-
-**Option 1: One-Command Start (Recommended)**
 ```bash
 cd backend
 ./start.sh
 ```
 
-**Option 2: Manual Start**
-```bash
-# Prerequisites: Create shared network for service discovery
-docker network create ams-network
+This starts all services (Backend, Keycloak, Frontend) with automatic configuration.
 
-# Start all services with automatic orchestration
-cd backend
-docker compose -f docker-compose.dev-all.yml up -d --build
+**Access:**
+- Backend API: http://localhost:8000/docs
+- Frontend: http://localhost:3000
+- Keycloak Admin: http://keycloak.local:8080/admin
 
-# Access points:
-# - Backend API: http://localhost:8000/docs
-# - Keycloak Admin: http://keycloak.local:8080/admin
-# - Frontend: http://localhost:3000
-```
+**Default Credentials:**
+- Username: `admin`
+- Password: `admin123`
 
-**What's Included:**
-- ✅ Keycloak authentication service
+**What's included:**
+- ✅ Automated Keycloak realm import and configuration
 - ✅ Backend API with automatic smoke tests
 - ✅ Frontend web application
-- ✅ Automatic Keycloak configuration (init container)
-- ✅ Health checks and service dependencies
+- ✅ Service health checks and dependencies
+- ✅ Docker network with service discovery
 
-**Docker Network Architecture:**
-- All services communicate via `ams-network` for service discovery
-- Services use Docker DNS for internal communication
-- No manual host file management needed for services
-- Production-like architecture with proper service isolation
+For detailed Docker deployment instructions, see [backend/DOCKER_SETUP.md](backend/DOCKER_SETUP.md).
 
-For detailed deployment instructions, see [backend/DOCKER_SETUP.md](backend/DOCKER_SETUP.md)
+### Option 2: Local Development (Python)
 
-### Production with Docker
+For backend development without Docker:
+
 ```bash
-# Production deployment
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# 1. Clone and setup
+git clone <repository-url>
+cd AMS
 
-# With PostgreSQL and Nginx
-docker-compose --profile production --profile nginx up -d
+# 2. Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 3. Install dependencies
+pip install -r requirements-dev.txt
+
+# 4. Start Keycloak (required for authentication)
+cd backend
+docker compose -p ams-keycloak -f docker-compose.keycloak.yml up -d
+
+# 5. Run backend locally
+python server.py
 ```
 
-### Environment Variables
+**Note:** You'll need to manually configure Keycloak for local development. See [backend/README.md](backend/README.md) for details.
 
-Key environment variables (can override config.yaml):
+## Architecture
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AMS_HOST` | Server bind address | `0.0.0.0` |
-| `AMS_PORT` | Server port | `8000` |
-| `KEYCLOAK_DOMAIN` | Keycloak server URL | `http://localhost:8080` |
-| `KEYCLOAK_REALM` | Keycloak realm name | `ams-portal` |
+### System Components
 
-## API Documentation
+```
+┌─────────────────────────────────────────────────┐
+│         AMS Data Portal Architecture             │
+├─────────────────────────────────────────────────┤
+│                                                   │
+│  ┌──────────┐      ┌──────────┐      ┌────────┐│
+│  │ Frontend │─────▶│ Backend  │─────▶│Keycloak││
+│  │  :3000   │      │  API     │      │ :8080  ││
+│  └──────────┘      │  :8000   │      └────────┘│
+│                    └─────┬────┘                 │
+│                          │                      │
+│                          ▼                      │
+│                    ┌──────────┐                │
+│                    │ S3 Store │                │
+│                    │ (presign)│                │
+│                    └──────────┘                │
+│                                                  │
+└──────────────────────────────────────────────────┘
+```
 
-Once running, access the API documentation at:
-- Interactive docs: http://localhost:8000/docs
-- OpenAPI spec: http://localhost:8000/openapi.json
+**Flow:**
+1. User authenticates via Keycloak (OAuth2/OIDC)
+2. Backend validates JWT tokens and enforces Casbin policies
+3. Storage agents generate presigned URLs for authorized access
+4. Users download files directly from S3 via time-limited URLs
 
-### API Endpoints
+### Project Structure
 
-All service API endpoints use the `/api` prefix:
+```
+AMS/
+├── backend/             # Main backend service
+│   ├── api/v0_1/       # FastAPI application
+│   ├── core/           # Business logic
+│   │   ├── connectivity/   # Storage agents
+│   │   ├── management/     # Policies & users
+│   │   └── settings/       # Configuration
+│   ├── config/         # Templates and realm exports
+│   ├── tests/          # Test suite
+│   ├── server.py       # Entry point
+│   └── start.sh        # Docker startup script
+├── frontend/           # React application
+├── deployment/         # Production configs
+└── docs/              # Documentation
+    └── diagrams/      # Architecture diagrams
+```
+
+## API Reference
+
+### Endpoints
+
+All endpoints use the `/api` prefix.
 
 **Authentication:**
 - `GET /api/auth/validate` - Validate JWT token
 
 **Asset Management:**
-- `PUT /api/asset/upload` - Upload asset
-- `PUT /api/asset/download` - Download asset
-- `GET /api/asset/user-home-data` - Get user home data
-- `GET /api/asset/user-assets-data` - Get user assets data
+- `PUT /api/asset/upload` - Upload file
+- `PUT /api/asset/download` - Download file
+- `GET /api/asset/user-home-data` - User home directory
+- `GET /api/asset/user-assets-data` - User assets list
 
 **Administration:**
-- `GET /api/admin/user/` - Get users
-- `PUT /api/admin/user/` - Add user
-- `DELETE /api/admin/user/` - Remove user
-- `GET /api/admin/policies` - Get policies
+- `GET /api/admin/user/` - List users
+- `PUT /api/admin/user/` - Create user
+- `DELETE /api/admin/user/` - Delete user
+- `GET /api/admin/policies` - List policies
 - `PUT /api/admin/policy` - Add policy
 - `DELETE /api/admin/policy` - Remove policy
-- `POST/DELETE /api/admin/endpoints/` - Manage storage instances
+- `POST /api/admin/endpoints/` - Create storage instance
+- `DELETE /api/admin/endpoints/` - Delete storage instance
 
-**Health & Monitoring:**
-- `GET /api/health/` - Basic health check
-- `GET /api/health/detailed` - Detailed health information
+**Health Monitoring:**
+- `GET /api/health/` - Basic health
+- `GET /api/health/detailed` - Detailed status
 - `GET /api/health/ready` - Readiness probe
 - `GET /api/health/live` - Liveness probe
 
-### React Frontend Integration
+### Authentication Flow
 
-The API supports bearer token authentication for React frontends:
+**React Frontend Integration:**
 
-**Authentication Flow:**
-1. React frontend authenticates with Keycloak
-2. Keycloak returns JWT access token
-3. React sends `Authorization: Bearer <token>` header
-4. API validates JWT and extracts user info
-
-**Example API Call:**
 ```javascript
-// React frontend example
+// 1. Authenticate with Keycloak
+const token = await keycloak.getToken();
+
+// 2. Call API with Bearer token
 const response = await fetch('/api/admin/user/', {
   headers: {
-    'Authorization': `Bearer ${accessToken}`,
+    'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
   }
 });
 ```
 
-**User Info Available:**
+**Token Claims Available:**
 - `preferred_username` - Username
 - `sub` - User UUID
 - `email` - Email address
 - `realm_access.roles` - User roles
-- `exp`, `iat` - Token timing
-
-The API automatically prioritizes Authorization headers over cookies, making it seamless for both React frontends and traditional web UI.
+- `exp`, `iat` - Token expiration
 
 ## Development
 
-### Installing Development Dependencies
+### Running Tests
+
 ```bash
-pip install -r requirements-dev.txt
+# Fast unit tests (<30s)
+cd backend
+python -m pytest tests/unit/ -v
+
+# Integration tests (requires Docker services)
+python -m pytest tests/integration/ -v
+
+# All tests with coverage
+python -m pytest tests/ --cov=. --cov-report=html
 ```
 
-### Code Quality Tools
+### Code Quality
+
 ```bash
 # Format code
 black .
 isort .
 
-# Lint code
+# Lint
 flake8 .
 mypy .
 
 # Security scan
-bandit -r .
-safety check
+bandit -r backend/
 ```
 
-### Testing
+### Environment Variables
 
-The project uses a **speed-first testing framework** designed for rapid development feedback and reliable CI.
+Key configuration variables:
 
-**Quick Testing:**
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AMS_HOST` | Backend bind address | `0.0.0.0` |
+| `AMS_PORT` | Backend port | `8000` |
+| `KEYCLOAK_DOMAIN` | Keycloak URL | `http://localhost:8080` |
+| `KEYCLOAK_REALM` | Realm name | `ams-portal` |
+
+## Deployment
+
+### Docker Compose (Development)
+
 ```bash
-# Fast development feedback (<30s)
-./run-tests fast
+# Start all services
+cd backend
+docker compose -f docker-compose.dev-all.yml up -d
 
-# Authentication tests (unit + integration)
-./run-tests auth  
+# View logs
+docker compose -f docker-compose.dev-all.yml logs -f
 
-# Integration tests with Docker services
-./run-tests slow --setup
-
-# Full CI suite
-./run-tests all --ci
+# Stop services
+docker compose -f docker-compose.dev-all.yml down
 ```
 
-**Test Structure:**
-```
-backend/tests/
-├── fast/                    # <30s, no external deps
-│   ├── unit/               # Pure logic tests (mocked)
-│   └── contract/           # API behavior tests (mocked services)
-├── slow/                   # >30s, requires services
-│   ├── integration/        # Real service integration
-│   └── system/            # Full system tests
-├── infra/                  # Test infrastructure
-│   └── docker/            # Docker test services
-└── legacy/                 # Existing tests (gradually migrating)
-```
+### Production
 
-**Development Workflow:**
-```bash
-# Daily development
-./run-tests fast           # Quick validation (20 tests, 30s)
+See `deployment/` directory for production configurations:
+- `docker-compose.yml` - Production orchestration
+- `docker-compose.prod.yml` - Production overrides
 
-# Before commits
-./run-tests auth           # Auth-specific validation
-
-# Before merge
-./run-tests slow --setup   # Full integration testing
-```
-
-**Key Benefits:**
-- **🚀 Fast Feedback**: 30-second development loop
-- **🔧 Zero Setup**: Fast tests work immediately
-- **🎯 Focused Testing**: Run specific test categories
-- **📊 Clear Results**: Simple pass/fail with counts
-
-### Project Structure
-```
-AMS/
-├── backend/                  # Main backend service
-│   ├── api/v0_1/            # FastAPI application
-│   ├── core/                # Core business logic
-│   │   ├── connectivity/    # Storage adapters (S3, etc.)
-│   │   ├── management/      # Policy & user management
-│   │   └── settings/        # Configuration management
-│   ├── config/              # Configuration templates
-│   ├── scripts/             # Setup and utility scripts
-│   └── tests/               # Test suite
-├── frontend/                # React frontend application
-└── deployment/              # Docker and deployment files
-```
-
-## Storage Architecture
-
-The system uses S3-compatible storage with presigned URL support:
-
-```
-User → AMS Backend (auth + policy check)
-         ↓
-      S3 Storage Agent (generates presigned URLs)
-         ↓
-      User receives presigned URL
-         ↓
-      Direct S3 download (validates signature)
-```
-
-**Key Components:**
-
-1. **Backend API** (`backend/`) - Handles authentication, authorization, and coordinates storage access
-2. **Storage Agents** - Generate presigned URLs for secure, time-limited file access
-3. **S3 Storage** - Validates presigned URLs and streams files directly to users
-
-**User Experience:**
-- Users create storage instances by providing S3 credentials and bucket information
-- System generates presigned URLs for secure, direct file downloads
-- URLs are time-limited and signature-validated for enhanced security
-- No additional microservices needed for S3 storage access
+**Production checklist:**
+- [ ] Configure HTTPS/SSL certificates
+- [ ] Set secure passwords (not default `admin123`)
+- [ ] Configure external PostgreSQL for Keycloak
+- [ ] Set up log aggregation
+- [ ] Configure backup strategy for policies and user data
+- [ ] Enable container security scanning
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Virtual Environment Issues**
-   - Error: `ModuleNotFoundError: No module named 'xyz'`
-   - Solution: Ensure virtual environment is activated: `source .venv/bin/activate`
-   - Reinstall dependencies: `pip install -r requirements-dev.txt`
-   - If still having issues, delete `.venv` and recreate: `rm -rf .venv && python3 -m venv .venv`
+**Backend won't start**
+```bash
+# Check Keycloak is running
+docker ps | grep keycloak
 
-2. **Python Command Not Found**
-   - Error: `command not found: python`
-   - Solution: Use `python3` instead of `python` on most systems
-   - Or ensure Python is properly installed and in your PATH
+# View backend logs
+docker logs ams-backend
 
-3. **Keycloak Connection Failed**
-   - Verify `KEYCLOAK_DOMAIN` is accessible
-   - Check client configuration in Keycloak admin console
+# Verify network exists
+docker network ls | grep ams-network
+```
 
-4. **Environment Variables Not Found**
-   - Error: `TypeError: expected str, bytes or os.PathLike object, not NoneType`
-   - Solution: Copy `.env.template` to `core/settings/.env`
-   - Run: `cp config/.env.template core/settings/.env`
+**Authentication failing**
+```bash
+# Check Keycloak initialization
+docker logs ams-backend | grep "Keycloak configured"
 
-5. **Secrets Generation Failed**  
-   - Ensure `core/settings/security/` directory exists
-   - Run: `python scripts/setup.py --generate-secrets`
+# Restart backend
+docker restart ams-backend
+```
 
-6. **Storage Endpoint Issues**
-   - Verify instance configurations in `core/settings/managers/instances/configs/`
-   - Check network connectivity to storage services
+**Storage access denied**
+- Verify user has appropriate Casbin policies
+- Check storage instance configuration
+- Confirm S3 credentials are valid
 
-7. **Permission Denied**
-   - Review Casbin policies in `core/settings/managers/policies/casbin/`
-   - Check user assignments and roles
+**Docker issues**
+```bash
+# Clean restart
+docker compose -f backend/docker-compose.dev-all.yml down -v
+docker network create ams-network
+cd backend && ./start.sh
+```
 
 ### Logs
 
-Application logs are available in:
-- Development: `loggers/logs/`
-- Docker: `docker-compose logs ams-portal`
+- **Docker**: `docker compose -f backend/docker-compose.dev-all.yml logs -f`
+- **Local**: `backend/logs/`
 
-## Security Considerations
+## Security
 
-- **Secrets Management**: All secrets are base64 encoded and stored separately
-- **Authentication**: Keycloak integration with OIDC/OAuth2
-- **Authorization**: Casbin RBAC policy enforcement  
-- **HTTPS**: Configure reverse proxy with SSL certificates for production
-- **Container Security**: Non-root user in Docker containers
+- **Secrets Management**: Base64-encoded secrets stored separately
+- **Authentication**: OAuth2/OIDC via Keycloak
+- **Authorization**: RBAC with Casbin policy engine
+- **Presigned URLs**: Time-limited, signature-validated storage access
+- **Container Security**: Non-root users, minimal base images
+- **Network Isolation**: Docker networking for service isolation
 
 ## Contributing
 
-1. Follow the development setup instructions
-2. Create feature branches from `main`  
-3. Run code quality checks before committing
-4. Submit pull requests with clear descriptions
+1. Create feature branch from `main`
+2. Follow code quality guidelines (Black, isort, Flake8)
+3. Write tests for new features
+4. Ensure all tests pass
+5. Submit pull request with clear description
 
 ## License
 
-Apache 2.0 License - see LICENSE file for details.
+Apache 2.0 License - see [LICENSE](LICENSE) file for details.
