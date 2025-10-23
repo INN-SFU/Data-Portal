@@ -9,8 +9,6 @@
 This will start **all AMS services**:
 - ✅ Keycloak (authentication) + automatic configuration
 - ✅ Backend API + smoke tests
-- ✅ Storage Issuer (JWT tokens)
-- ✅ Storage Gateway (file streaming)
 - ✅ Frontend (React UI)
 
 ## Manual Start
@@ -32,8 +30,6 @@ Once started (takes ~60-90 seconds):
 | Frontend | http://localhost:3000 | - |
 | Backend API | http://localhost:8000/docs | - |
 | Keycloak Admin | http://keycloak.local:8080/admin | admin/admin123 |
-| Storage Issuer | http://localhost:8001/docs | Internal |
-| Storage Gateway | http://localhost:9000/docs | Internal |
 
 ## Architecture
 
@@ -47,16 +43,10 @@ Once started (takes ~60-90 seconds):
 │  │    :3000     │  │                                         │
 │  └──────────────┘  │                                         │
 │                    ▼                                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Backend    │─▶│   Storage    │─▶│   Storage    │      │
-│  │   API:8000   │  │  Issuer:8001 │  │ Gateway:9000 │      │
-│  └──────────────┘  └──────────────┘  └──────────────┘      │
-│         │                                      │             │
-│         ▼                                      ▼             │
-│  ┌──────────────┐                      ┌──────────────┐    │
-│  │  Keycloak    │                      │    Redis     │    │
-│  │    :8080     │                      │    :6379     │    │
-│  └──────────────┘                      └──────────────┘    │
+│  ┌──────────────┐  ┌──────────────┐                         │
+│  │   Backend    │─▶│   Keycloak   │                         │
+│  │   API:8000   │  │    :8080     │                         │
+│  └──────────────┘  └──────────────┘                         │
 │         ▲                                                    │
 │         │                                                    │
 │  ┌──────────────┐                                           │
@@ -95,7 +85,6 @@ docker compose -f docker-compose.dev-all.yml logs -f
 # Specific service
 docker compose -f docker-compose.dev-all.yml logs -f backend
 docker compose -f docker-compose.dev-all.yml logs -f keycloak
-docker compose -f docker-compose.dev-all.yml logs -f storage-gateway
 ```
 
 ## Stopping Services

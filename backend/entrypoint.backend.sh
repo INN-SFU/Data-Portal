@@ -12,8 +12,7 @@ fetch_admin_token
 get_client_uuid
 get_client_secret
 
-# --- Setup Storage Issuer credentials ---
-setup_issuer_credentials
+# --- Additional setup steps can be added here ---
 
 # --- Start backend in background ---
 log "Starting backend app…"

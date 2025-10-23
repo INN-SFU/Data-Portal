@@ -119,25 +119,7 @@ PY
   fi
 }
 
-setup_issuer_credentials() {
-  # Setup Storage Issuer credentials for POSIX file access
-  # The Storage Issuer generates JWT tokens for authorized file downloads
-  # These credentials are backend-internal and not exposed to users
-  log "Setting up Storage Issuer credentials…"
-
-  # Default API key for development (should be overridden in production via env)
-  local issuer_api_key="${STORAGE_ISSUER_API_KEY:-dev-api-key-change-in-production}"
-
-  # Write to secret file for app to read
-  if [ -d /run/secrets ] && [ -w /run/secrets ]; then
-    echo -n "$issuer_api_key" > /run/secrets/storage_issuer_api_key
-    log "Wrote Storage Issuer API key to /run/secrets/storage_issuer_api_key"
-  else
-    log "WARN: /run/secrets not writable; skipping file write"
-  fi
-
-  export STORAGE_ISSUER_API_KEY="$issuer_api_key"
-}
+# Placeholder for future storage credential setup if needed
 
 ensure_service_account_roles() {
   require_env KEYCLOAK_ADMIN_CLIENT_ID
