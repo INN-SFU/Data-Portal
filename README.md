@@ -12,6 +12,13 @@ A FastAPI-based web application that provides policy-driven access control acros
 
 For detailed information, see the [project wiki](https://github.com/INN-SFU/Data-Portal/wiki).
 
+## Documentation
+
+📐 **[Architecture Diagrams](./docs/diagrams/)** - Visual system documentation
+- [Component Architecture](./docs/diagrams/component-architecture.md) - System structure and relationships
+- [Authentication Sequences](./docs/diagrams/sequence-authentication.md) - Login, token validation, admin operations
+- [Storage Access Sequences](./docs/diagrams/sequence-storage-access.md) - File operations and access control
+
 ## Features
 
 - **Multi-Storage Support**: S3, POSIX (with presigned URLs), OpenStack Swift
