@@ -40,7 +40,7 @@ services:
       STORAGE_ISSUER_API_KEY_FILE: /run/secrets/storage_issuer_api_key
 
       # Control smoke test execution on startup (default: true)
-      RUN_SMOKE_TESTS: "false"
+      RUN_SMOKE_TESTS: "true"
 
     ports: ["8000:8000"]
 

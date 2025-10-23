@@ -244,7 +244,8 @@ class PosixStorageAgent(AbstractStorageAgent):
         """
         base_config = super().config(secrets)
         base_config['instance_uuid'] = self.instance_uuid
-        # Note: issuer_url and issuer_api_key are internal backend config, not exposed
+        base_config['issuer_url'] = self.issuer_url
+        # Note: issuer_url and issuer_api_key are internal backend config, not exposed to users
         # Note: root_path is not exposed - it's configured on Gateway side
         return base_config
 

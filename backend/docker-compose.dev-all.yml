@@ -1,0 +1,255 @@
+version: "3.8"
+
+# Complete AMS System - Development Environment (All Services)
+# This compose file orchestrates ALL AMS services with proper dependencies
+# Includes: Keycloak, Backend API, Storage Issuer, Storage Gateway, Frontend
+#
+# Usage: docker compose -f docker-compose.dev-all.yml up -d
+
+services:
+  # 1. Keycloak - Authentication Service
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.3
+    container_name: ams-keycloak
+    command: start-dev --import-realm
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KC_DB: dev-file
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_LOG_LEVEL: INFO
+      KC_HOSTNAME: keycloak.local
+      KC_HOSTNAME_STRICT: "false"
+    ports:
+      - "8080:8080"
+    extra_hosts:
+      - "keycloak.local:127.0.0.1"
+    volumes:
+      - ./config/keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
+    networks:
+      - ams-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && grep -q ' 200' <&3"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # 2. Keycloak Configurator - One-time initialization
+  keycloak-init:
+    build: .
+    container_name: ams-keycloak-init
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_DOMAIN: http://keycloak.local:8080
+      KEYCLOAK_REALM: ams-portal
+      KEYCLOAK_ADMIN_CLIENT_ID: ams-portal-admin
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+    extra_hosts:
+      - "keycloak.local:172.17.0.1"  # Docker host IP
+    entrypoint: ["bash", "/app/init_keycloak.sh"]  # Override entrypoint to run init script
+    networks:
+      - ams-network
+    restart: "no"  # Run once and exit
+
+  # 3. Storage Issuer - JWT Token Generation for POSIX storage
+  storage-issuer:
+    build: ./storage-issuer
+    container_name: ams-storage-issuer
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      ISSUER_HOST: 0.0.0.0
+      ISSUER_PORT: "8001"
+      LOG_LEVEL: INFO
+      JWT_ISSUER: ams-storage-issuer
+      JWT_AUDIENCE: ams-storage-gateway
+      JWT_PRIVATE_KEY_FILE: /run/secrets/jwt_private_key
+      GATEWAY_URL: http://localhost:9000
+      ISSUER_API_KEY: ${ISSUER_API_KEY:-dev-api-key-change-in-production}
+    ports:
+      - "8001:8001"
+    extra_hosts:
+      - "backend.local:172.17.0.1"
+      - "gateway.local:172.17.0.1"
+    tmpfs:
+      - /run/secrets:rw,noexec,nosuid,nodev
+    networks:
+      - ams-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8001/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # 4. Backend API - Main Application
+  backend:
+    build: .
+    container_name: ams-backend
+    depends_on:
+      keycloak-init:
+        condition: service_completed_successfully
+      storage-issuer:
+        condition: service_healthy
+    entrypoint: ["bash", "/app/entrypoint.backend.sh"]
+    environment:
+      # Keycloak connection
+      KEYCLOAK_DOMAIN: http://keycloak.local:8080
+      KEYCLOAK_REALM: ams-portal
+      KEYCLOAK_UI_CLIENT_ID: ams-portal-ui
+      KEYCLOAK_ADMIN_CLIENT_ID: ams-portal-admin
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KEYCLOAK_ADMIN_CLIENT_SECRET_FILE: /run/secrets/kc_admin_client_secret
+
+      # App/runtime config
+      AMS_HOST: 0.0.0.0
+      AMS_PORT: "8000"
+      AMS_RELOAD: "false"
+      SYSTEM_RESET: "false"
+      LOG_LEVEL: INFO
+      LOG_DIR: /app/data/logs
+      API_VERSION: "0_1"
+
+      # Casbin/data paths
+      ENFORCER_MODEL: /app/core/settings/managers/policies/casbin/model.conf
+      ENFORCER_POLICY: /app/core/settings/managers/policies/casbin/policy.csv
+      USER_POLICIES: /app/data/policies
+      INSTANCE_CONFIGS: /app/data/configs
+
+      # Backend base URL
+      BACKEND_BASE_URL: http://localhost:8000
+
+      # Storage Issuer configuration
+      STORAGE_ISSUER_URL: http://storage-issuer:8001
+      STORAGE_ISSUER_API_KEY_FILE: /run/secrets/storage_issuer_api_key
+
+      # Enable smoke tests
+      RUN_SMOKE_TESTS: "true"
+
+    ports:
+      - "8000:8000"
+    networks:
+      - ams-network
+    extra_hosts:
+      - "keycloak.local:172.17.0.1"  # Docker host IP
+    volumes:
+      - .:/app
+      - ./logs:/app/data/logs
+      - ./data/policies:/app/data/policies
+      - ./data/configs:/app/data/configs
+    tmpfs:
+      - /run/secrets:rw,noexec,nosuid,nodev
+    working_dir: /app
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 5. Redis - Session storage for Storage Gateway
+  redis:
+    image: redis:7-alpine
+    container_name: ams-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - ams-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # 6. Storage Gateway - File streaming service for POSIX storage
+  storage-gateway:
+    build:
+      context: ../storage-gateway
+      dockerfile: Dockerfile
+    container_name: ams-storage-gateway
+    depends_on:
+      redis:
+        condition: service_healthy
+      storage-issuer:
+        condition: service_healthy
+    environment:
+      # Server settings
+      GATEWAY_HOST: "0.0.0.0"
+      GATEWAY_PORT: "9000"
+      LOG_LEVEL: "INFO"
+
+      # Storage settings
+      STORAGE_ROOT_PATH: "/storage"
+
+      # JWT validation settings (must match Storage Issuer)
+      JWKS_URL: "http://storage-issuer:8001/.well-known/jwks.json"
+      JWT_ISSUER: "ams-storage-issuer"
+      JWT_AUDIENCE: "ams-storage-gateway"
+      JWKS_CACHE_TTL: "3600"
+
+      # Redis settings (for jti tracking)
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      REDIS_DB: "0"
+
+    ports:
+      - "9000:9000"
+    volumes:
+      # Mount storage directory (replace with actual path or use test-storage)
+      - ../storage-gateway/test-storage:/storage:ro
+    networks:
+      - ams-network
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # 7. Frontend - Web UI
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_KEYCLOAK_URL: http://localhost:8080
+        REACT_APP_KEYCLOAK_REALM: ams-portal
+        REACT_APP_KEYCLOAK_CLIENT_ID: ams-portal-ui
+    container_name: ams-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+      REACT_APP_KEYCLOAK_URL: http://keycloak.local:8080
+      REACT_APP_KEYCLOAK_REALM: ams-portal
+      REACT_APP_KEYCLOAK_CLIENT_ID: ams-portal-ui
+      API_GATEWAY: http://backend:8000
+      SERVER_NAME: localhost
+    ports:
+      - "3000:80"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    networks:
+      - ams-network
+
+networks:
+  ams-network:
+    driver: bridge
+
+volumes:
+  redis-data:
