@@ -7,8 +7,9 @@ A FastAPI-based web application providing policy-driven access control across mu
 ## Developed By
 
 **Institute for Neuroscience and Neurotechnology (INN) & Research Computing Group (RCG)**
-- Principal Architect: [pmahon@sfu.ca](mailto:pmahon@sfu.ca)
 - Consultation: [jpeltier@sfu.ca](mailto:jpeltier@sfu.ca), [kshen@sfu.ca](mailto:kshen@sfu.ca)
+- Deployment Engineer: [aensan@sfu.ca](mailto:aensan@sfu.ca)
+- Principal Architect: [pmahon@sfu.ca](mailto:pmahon@sfu.ca)
 
 For detailed information, see the [project wiki](https://github.com/INN-SFU/Data-Portal/wiki).
 
