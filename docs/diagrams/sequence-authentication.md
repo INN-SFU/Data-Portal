@@ -167,41 +167,6 @@ sequenceDiagram
     end
 ```
 
-## Service Account Flow (Backend to Keycloak)
-
-How the backend uses its own service account to manage Keycloak.
-
-```mermaid
-sequenceDiagram
-    participant BackendInit
-    participant Keycloak
-
-    Note over BackendInit: Backend Startup<br/>entrypoint.backend.sh
-
-    BackendInit->>Keycloak: POST /token<br/>grant_type=password<br/>client_id=admin-cli<br/>username=admin<br/>password=admin123
-
-    Keycloak->>Keycloak: Validate Admin Credentials
-    Keycloak->>BackendInit: Admin Access Token
-
-    BackendInit->>BackendInit: Store Admin Token
-
-    Note over BackendInit,Keycloak: Get Service Account Client Secret
-
-    BackendInit->>Keycloak: GET /admin/realms/{realm}/clients<br/>Authorization: Bearer {admin_token}<br/>?clientId=ams-portal-admin
-
-    Keycloak->>BackendInit: Client Details<br/>{id, clientId, ...}
-
-    BackendInit->>Keycloak: GET /admin/realms/{realm}/clients/{id}/client-secret<br/>Authorization: Bearer {admin_token}
-
-    Keycloak->>BackendInit: Client Secret<br/>{value: "secret"}
-
-    BackendInit->>BackendInit: Write Secret to<br/>/run/secrets/kc_admin_client_secret
-
-    BackendInit->>BackendInit: Export as Environment Variable
-
-    Note over BackendInit: Backend Ready<br/>Can Now Make Admin API Calls
-```
-
 ## User Management Flow
 
 Creating a new user through the admin API.
@@ -284,11 +249,13 @@ sequenceDiagram
 - **Use Case:** Service-to-service communication
 - **Security:** Machine authentication, no user context
 - **Implementation:** Backend uses this for Keycloak admin operations
+- **Details:** See [Backend Initialization](../../backend/docs/INITIALIZATION.md)
 
 ### Pattern 4: Resource Owner Password Flow
 - **Use Case:** Trusted first-party apps
 - **Security:** Less secure, credentials exposed to client
 - **Status:** Used only for admin CLI token in init scripts
+- **Details:** See [Backend Initialization](../../backend/docs/INITIALIZATION.md)
 
 ---
 

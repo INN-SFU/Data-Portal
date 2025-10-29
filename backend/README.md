@@ -230,6 +230,7 @@ docker compose -p ams-keycloak -f docker-compose.keycloak.yml down -v
 
 ## Additional Documentation
 
+- **[Backend Initialization](./docs/INITIALIZATION.md)** - Startup sequence and service account setup
 - **[Complete System Setup](./DOCKER_SETUP.md)** - One-command deployment guide
 - **[Architecture Diagrams](../docs/diagrams/)** - Visual system documentation
 - **[Main README](../README.md)** - Project overview and features
