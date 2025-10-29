@@ -59,9 +59,9 @@ Detailed view of the backend application structure.
 graph LR
     subgraph "API Layer v0.1"
         AuthAPI[Auth Endpoints]
-        AssetAPI[Asset Endpoints]
+        AssetAPI[Asset Access API]
         AdminAPI[Admin Endpoints]
-        InstanceAPI[Instance Endpoints]
+        InstanceAPI[Instance Management API]
     end
 
     subgraph "Core Business Logic"

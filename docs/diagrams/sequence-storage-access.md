@@ -14,7 +14,7 @@ sequenceDiagram
     participant S3Storage
 
     User->>Frontend: Click Download File
-    Frontend->>Backend: GET /api/asset/download<br/>Bearer {token}<br/>?instance_uuid={uuid}&path=data/file.txt
+    Frontend->>Backend: GET /api/asset/download<br/>Bearer {token}<br/>instance_name={name}&resource=data/file.txt
 
     Backend->>Backend: Validate JWT Token
     Backend->>Backend: Extract User Claims<br/>(user_id, roles)
@@ -66,7 +66,7 @@ sequenceDiagram
     participant S3Storage
 
     User->>Frontend: Select File to Upload
-    Frontend->>Backend: PUT /api/asset/upload<br/>Bearer {token}<br/>?instance_uuid={uuid}&path=data/newfile.txt
+    Frontend->>Backend: PUT /api/asset/upload<br/>Bearer {token}<br/>instance_name={name}&resource=data/newfile.txt
 
     Backend->>Backend: Validate JWT Token
     Backend->>Casbin: enforce(user_id, instance_uuid, write)
@@ -129,7 +129,7 @@ sequenceDiagram
     participant S3Storage
 
     User->>Frontend: Navigate to Storage Instance
-    Frontend->>Backend: GET /api/asset/user-assets-data<br/>Bearer {token}<br/>?instance_uuid={uuid}
+    Frontend->>Backend: GET /api/asset/user-assets-data<br/>Bearer {token}
 
     Backend->>Backend: Validate JWT Token
     Backend->>Casbin: enforce(user_id, instance_uuid, list)
@@ -183,7 +183,7 @@ sequenceDiagram
     participant S3Storage
 
     User->>Frontend: Click Download Folder
-    Frontend->>Backend: GET /api/asset/download-folder<br/>Bearer {token}<br/>?instance_uuid={uuid}&path=data/reports/
+    Frontend->>Backend: GET /api/asset/download-folder<br/>Bearer {token}<br/>instance_name={name}&resource=data/reports/
 
     Backend->>Backend: Validate JWT Token
     Backend->>Casbin: enforce(user_id, instance_uuid, read)

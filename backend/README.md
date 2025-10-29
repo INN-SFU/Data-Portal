@@ -78,7 +78,7 @@ backend/
 └── start.sh               # Quick start script
 ```
 
-## Access Points
+## Service URLs
 
 - **Backend API**: http://localhost:8000/docs (Swagger UI)
 - **Keycloak Admin**: http://keycloak.local:8080/admin (admin/admin123)
@@ -108,14 +108,17 @@ All endpoints use the `/api` prefix:
 - `GET /api/asset/user-home-data` - Get user home data
 - `GET /api/asset/user-assets-data` - Get user assets
 
-**Administration:**
-- `GET /api/admin/user/` - List users
-- `PUT /api/admin/user/` - Create user
-- `DELETE /api/admin/user/` - Remove user
-- `GET /api/admin/policies` - List policies
-- `PUT /api/admin/policy` - Add policy
-- `DELETE /api/admin/policy` - Remove policy
-- `POST/DELETE /api/admin/endpoints/` - Manage storage instances
+**Administration (all require admin privileges):**
+- `GET /api/users/` - List users
+- `POST /api/users/` - Create user
+- `DELETE /api/users/{username}` - Delete user
+- `GET /api/policies/` - List policies
+- `POST /api/policies/` - Add policy
+- `DELETE /api/policies/` - Remove policy
+- `GET /api/instances/` - List storage instances
+- `POST /api/instances/` - Create storage instance
+- `GET /api/instances/{uuid}` - Get instance details
+- `DELETE /api/instances/{uuid}` - Delete storage instance
 
 **Health & Monitoring:**
 - `GET /api/health/` - Basic health check

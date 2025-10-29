@@ -15,10 +15,15 @@ For detailed information, see the [project wiki](https://github.com/INN-SFU/Data
 
 ## Documentation
 
-📐 **[Architecture Diagrams](./docs/diagrams/)** - Visual system documentation
+📚 **Guides:**
+- [Backend Development](./backend/README.md) - Backend development and API details
+- [Docker Setup](./backend/DOCKER_SETUP.md) - One-command deployment guide
+
+📐 **Architecture Diagrams:**
 - [Component Architecture](./docs/diagrams/component-architecture.md) - System structure and relationships
 - [Authentication Sequences](./docs/diagrams/sequence-authentication.md) - Login, token validation, admin operations
 - [Storage Access Sequences](./docs/diagrams/sequence-storage-access.md) - File operations and access control
+- [All Diagrams](./docs/diagrams/) - Complete visual documentation
 
 ## Features
 
@@ -62,14 +67,15 @@ This starts the complete system (Backend, Keycloak, Frontend) with automatic con
 
 **What's Running:**
 - ✅ Automated Keycloak realm import and configuration
-- ✅ Backend API with automatic smoke tests
+- ✅ Backend API with automatic smoke tests (32 tests)
 - ✅ Frontend web application
 - ✅ Service health checks and dependencies
 - ✅ Docker network with service discovery
 
-**Next Steps:**
-- See [backend/DOCKER_SETUP.md](backend/DOCKER_SETUP.md) for detailed deployment options
-- See [backend/README.md](backend/README.md) for backend development guide
+**Learn More:**
+- [Detailed Deployment Guide](backend/DOCKER_SETUP.md) - Advanced Docker options
+- [Backend Development Guide](backend/README.md) - API development and testing
+- [Architecture Diagrams](./docs/diagrams/) - Visual system documentation
 
 ## Architecture
 
@@ -105,20 +111,24 @@ This starts the complete system (Backend, Keycloak, Frontend) with automatic con
 
 ```
 AMS/
-├── backend/             # Main backend service
-│   ├── api/v0_1/       # FastAPI application
-│   ├── core/           # Business logic
-│   │   ├── connectivity/   # Storage agents
-│   │   ├── management/     # Policies & users
-│   │   └── settings/       # Configuration
-│   ├── config/         # Templates and realm exports
-│   ├── tests/          # Test suite
-│   ├── server.py       # Entry point
-│   └── start.sh        # Docker startup script
-├── frontend/           # React application
-├── deployment/         # Production configs
-└── docs/              # Documentation
-    └── diagrams/      # Architecture diagrams
+├── backend/                    # Main backend service
+│   ├── api/v0_1/              # FastAPI application
+│   │   └── endpoints/         # API routes
+│   ├── core/                  # Business logic
+│   │   ├── connectivity/      # Storage agents (S3, Dummy)
+│   │   ├── management/        # Instances, policies, users
+│   │   └── settings/          # Configuration
+│   ├── config/                # Keycloak realm exports
+│   ├── tests/                 # Test suite (unit + integration + smoke)
+│   ├── server.py              # Application entry point
+│   ├── start.sh               # Quick start script
+│   ├── README.md              # Backend development guide
+│   └── DOCKER_SETUP.md        # Deployment guide
+├── frontend/                   # React application
+├── deployment/                 # Production configurations
+├── docs/                       # Documentation
+│   └── diagrams/              # Mermaid architecture diagrams
+└── README.md                   # This file
 ```
 
 ## API Reference
@@ -136,15 +146,17 @@ All endpoints use the `/api` prefix.
 - `GET /api/asset/user-home-data` - User home directory
 - `GET /api/asset/user-assets-data` - User assets list
 
-**Administration:**
-- `GET /api/admin/user/` - List users
-- `PUT /api/admin/user/` - Create user
-- `DELETE /api/admin/user/` - Delete user
-- `GET /api/admin/policies` - List policies
-- `PUT /api/admin/policy` - Add policy
-- `DELETE /api/admin/policy` - Remove policy
-- `POST /api/admin/endpoints/` - Create storage instance
-- `DELETE /api/admin/endpoints/` - Delete storage instance
+**Administration (all require admin privileges):**
+- `GET /api/users/` - List users
+- `POST /api/users/` - Create user
+- `DELETE /api/users/{username}` - Delete user
+- `GET /api/policies/` - List policies
+- `POST /api/policies/` - Add policy
+- `DELETE /api/policies/` - Remove policy
+- `GET /api/instances/` - List storage instances
+- `POST /api/instances/` - Create storage instance
+- `GET /api/instances/{uuid}` - Get instance details
+- `DELETE /api/instances/{uuid}` - Delete storage instance
 
 **Health Monitoring:**
 - `GET /api/health/` - Basic health

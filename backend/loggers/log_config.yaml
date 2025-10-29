@@ -66,12 +66,12 @@ loggers:
     handlers: [console, policy_manager_file]
     propagate: false
 
-  # Storage-specific loggers (POSIX and S3 only)
-  storage.posix:
+  # Storage-specific loggers
+  storage.s3:
     level: ${LOG_LEVEL}
     handlers: [console, storage_file]
     propagate: false
-  storage.s3:
+  storage.dummy:
     level: ${LOG_LEVEL}
     handlers: [console, storage_file]
     propagate: false

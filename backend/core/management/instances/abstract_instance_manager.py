@@ -14,20 +14,20 @@ class AbstractInstanceManager(ABC):
     def instances(self) -> list[Instance]:
         return self._instances
 
-    def get_instances(self, access_points: set = None) -> dict[str, Instance]:
+    def get_instances(self, instance_names: set = None) -> dict[str, Instance]:
         """
-        Get instances filtered by access point names.
-        
-        :param access_points: Set of instance names to filter by. If None, returns all instances.
+        Get instances filtered by instance names.
+
+        :param instance_names: Set of instance names to filter by. If None, returns all instances.
         :return: Dictionary mapping instance names to Instance objects
         """
-        if access_points is None:
+        if instance_names is None:
             return {instance.name: instance for instance in self._instances}
-        
+
         return {
-            instance.name: instance 
-            for instance in self._instances 
-            if instance.name in access_points
+            instance.name: instance
+            for instance in self._instances
+            if instance.name in instance_names
         }
 
     @instances.setter

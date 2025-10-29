@@ -94,7 +94,7 @@ def create_test_instance(auth_headers, instance_name):
     url = f"{backend_base()}/api/instances/"
     payload = {
         "flavour": "dummy",
-        "access_point_name": instance_name,
+        "instance_name": instance_name,
         "instance_url": f"dummy://test/{instance_name}"
     }
     r = requests.post(url, json=payload, headers=auth_headers, timeout=10)
