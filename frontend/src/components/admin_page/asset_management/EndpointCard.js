@@ -43,7 +43,7 @@ export default function EndpointCard({
 
       for (const id of readLeaves) {
         const headers = await authHeaders();
-        const params = { access_point: endpointName, resource: String(id), action: "read" };
+        const params = { instance_name: endpointName, resource: String(id), action: "read" };
         const { data } = await http.put("/api/assets/download", null, { params, headers });
         const urls = data?.presigned_urls || [];
         const paths = data?.file_paths || [];
@@ -90,7 +90,7 @@ export default function EndpointCard({
 
           // Ask backend for presigned URL(s)
           const { data } = await http.put("/api/assets/upload", null, {
-            params: { access_point: endpointName, resource },
+            params: { instance_name: endpointName, resource },
             headers,
           });
 

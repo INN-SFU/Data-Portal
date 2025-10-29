@@ -14,7 +14,7 @@ def agent_factory(config: dict, flavour: str) -> AbstractStorageAgent:
     """
     Factory function to create an AbstractStorageAgent instance based on the provided configuration.
 
-    :param flavour: The flavour of the agent to create (e.g., 'posix', 's3').
+    :param flavour: The flavour of the agent to create (e.g., 's3', 'dummy').
     :param config: The configuration dictionary containing the details for creating the agent.
     :return:
     """

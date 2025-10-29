@@ -33,8 +33,8 @@ class AbstractStorageAgent(ABC):
         """
         Initialize a new instance of the class.
 
-        :param access_point_name: The slug for the access point.
-        :type access_point_name: str
+        :param instance_name: The slug for the access point.
+        :type instance_name: str
         :param instance_url: The instance_url for the access point.
         :type instance_url: str
         """
