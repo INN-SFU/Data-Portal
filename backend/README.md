@@ -125,3 +125,89 @@ All services use the `ams-network` for service discovery:
 - Closer to production Kubernetes/network setup
 - Simpler configuration (no hardcoded IPs)
 - Better security (isolated network)
+
+## Development
+
+### Running Tests
+
+```bash
+# All tests
+python -m pytest tests/ -v
+
+# Specific test suite
+python -m pytest tests/unit/ -v
+python -m pytest tests/integration/ -v
+
+# With coverage
+python -m pytest tests/ --cov=. --cov-report=html
+```
+
+### Local Development (No Docker)
+
+```bash
+# Ensure virtual environment is activated
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements-dev.txt
+
+# Start Keycloak in Docker (required)
+docker compose -p ams-keycloak -f docker-compose.keycloak.yml up -d
+
+# Run backend locally
+cd backend
+python server.py
+```
+
+### Code Quality
+
+```bash
+# Format code
+black .
+isort .
+
+# Lint
+flake8 .
+mypy .
+
+# Security scan
+bandit -r .
+```
+
+## Stopping Services
+
+```bash
+# Stop backend
+docker compose -p ams-backend -f docker-compose.backend.yml down
+
+# Stop Keycloak
+docker compose -p ams-keycloak -f docker-compose.keycloak.yml down
+
+# Stop everything and remove volumes
+docker compose -p ams-backend -f docker-compose.backend.yml down -v
+docker compose -p ams-keycloak -f docker-compose.keycloak.yml down -v
+```
+
+## Troubleshooting
+
+### Backend won't start
+- Check Keycloak is running: `docker ps | grep keycloak`
+- Check logs: `docker compose -p ams-backend logs backend`
+- Verify network exists: `docker network ls | grep ams-network`
+
+### Authentication failing
+- Verify Keycloak configuration ran: `docker logs ams-backend-dev | grep "Keycloak"`
+- Check client secret is configured
+- Try restarting backend: `docker restart ams-backend-dev`
+
+### Storage operations failing
+- Check storage instance configuration in `/app/core/settings/managers/instances/configs/`
+- Verify S3 credentials are valid
+- Check Casbin policies for user permissions
+
+## Additional Documentation
+
+- **[Backend Initialization](./docs/INITIALIZATION.md)** - Startup sequence and service account setup
+- **[Complete System Setup](./DOCKER_SETUP.md)** - One-command deployment guide
+- **[Architecture Diagrams](../docs/diagrams/)** - Visual system documentation
+- **[Main README](../README.md)** - Project overview and features
