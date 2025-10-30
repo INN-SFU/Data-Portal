@@ -29,15 +29,19 @@ For detailed information, see the [project wiki](https://github.com/INN-SFU/Data
 
 ## Features
 
-- **S3-Compatible Storage**: Presigned URL support for secure, time-limited file access
-- **Policy-Based Access Control**: Casbin RBAC for fine-grained permissions
-- **Keycloak Authentication**: Enterprise-grade OIDC/OAuth2 authentication
-- **RESTful API**: FastAPI with automatic OpenAPI documentation
-- **Bearer Token Support**: React-ready JWT authentication
-- **Containerized Deployment**: Docker Compose orchestration with automatic setup
-- **Service Discovery**: Docker networking for seamless inter-service communication
-- **Health Checks**: Readiness and liveness probes for all services
-- **Automated Testing**: Speed-first testing framework with <30s feedback loop
+**Governance & Access Control:**
+- **Policy-Based Authorization**: Fine-grained access control enabling data owners to define and enforce custom access policies for their assets, supporting delegation and role-based permissions
+- **Heterogeneous Storage Support**: Unified access layer across diverse storage backends (S3-compatible, object storage) without requiring data migration or centralization
+- **Presigned URL Access**: Secure, time-limited direct access to files, enabling controlled external sharing while maintaining audit trails
+
+**Authentication & Identity:**
+- **Institutional Identity Integration**: Standards-based authentication (OIDC/OAuth2) allowing organizations to integrate with existing identity providers and authentication infrastructure
+- **Flexible Deployment Models**: Support for both shared governance instances and self-hosted deployments with complete control over authentication and authorization infrastructure
+
+**Developer & Operations:**
+- **RESTful API**: Well-documented API with automatic OpenAPI specification, enabling integration with institutional workflows and custom applications
+- **Containerized Architecture**: Production-ready Docker deployment with service orchestration, health monitoring, and automated configuration
+- **Rapid Development Workflow**: Comprehensive testing framework with fast feedback loops (<30s) for reliable development and CI/CD integration
 
 ## Quick Start
 
