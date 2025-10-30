@@ -16,17 +16,24 @@ For detailed information, see the [project wiki](https://github.com/INN-SFU/Data
 
 ## Features
 
-- **Multi-Storage Support**: S3, POSIX (with presigned URLs), OpenStack Swift
-- **Presigned URL Access**: Secure, time-limited file access via JWT tokens for POSIX storage
-- **Policy-Based Access Control**: Casbin integration for fine-grained permissions
-- **Keycloak Authentication**: Enterprise-grade OIDC/OAuth2 authentication
-- **Bearer Token API**: React-ready JWT authentication with Authorization header support
-- **RESTful API**: FastAPI with automatic OpenAPI documentation
-- **Web Interface**: HTML templates for user-friendly data management
-- **Microservices Architecture**: Modular services (Backend, Storage Issuer, Storage Gateway)
-- **Docker Networking**: Service discovery via shared Docker network
-- **Speed-First Testing**: <30s feedback loop for rapid development
-- **Containerized Deployment**: Docker and Docker Compose support
+**Governance & Access Control:**
+- **Policy-Based Authorization**: Fine-grained access control enabling data owners to define and enforce custom access policies for their assets, supporting delegation and role-based permissions
+- **Heterogeneous Storage Support**: Unified access layer across diverse storage backends (S3-compatible, POSIX filesystems, object storage) without requiring data migration or centralization
+- **Presigned URL Access**: Secure, time-limited direct access to files via JWT tokens (POSIX) and signed URLs (S3), enabling controlled external sharing while maintaining audit trails
+
+**Authentication & Identity:**
+- **Institutional Identity Integration**: Standards-based authentication (OIDC/OAuth2) allowing organizations to integrate with existing identity providers and authentication infrastructure
+- **Flexible Deployment Models**: Support for both shared governance instances and self-hosted deployments with complete control over authentication and authorization infrastructure
+
+**Storage Architecture:**
+- **Microservices Design**: Modular architecture with specialized services (Backend API, Storage Issuer, Storage Gateway) enabling independent scaling and deployment flexibility
+- **POSIX Storage Support**: Direct filesystem access through presigned JWT tokens with automatic credential management and secure token validation
+- **S3-Compatible Storage**: Native support for AWS S3 and S3-compatible object storage with presigned URL generation
+
+**Developer & Operations:**
+- **RESTful API**: Well-documented API with automatic OpenAPI specification, enabling integration with institutional workflows and custom applications
+- **Containerized Architecture**: Production-ready Docker deployment with service orchestration, health monitoring, and automated configuration
+- **Rapid Development Workflow**: Comprehensive testing framework with fast feedback loops (<30s) for reliable development and CI/CD integration
 
 ## Quick Start
 
