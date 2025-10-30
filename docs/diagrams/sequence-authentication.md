@@ -238,20 +238,15 @@ sequenceDiagram
 ### Pattern 1: Authorization Code Flow (Standard)
 - **Use Case:** Web applications with a backend
 - **Security:** Most secure, code exchange prevents token interception
-- **Implementation:** Current system uses this
+- **Implementation:** Current system uses this for user authentication
 
-### Pattern 2: Implicit Flow (Legacy, Not Recommended)
-- **Use Case:** Single-page apps (historical)
-- **Security:** Less secure, token exposed in URL
-- **Status:** Not used in this system
-
-### Pattern 3: Client Credentials Flow
+### Pattern 2: Client Credentials Flow
 - **Use Case:** Service-to-service communication
 - **Security:** Machine authentication, no user context
 - **Implementation:** Backend uses this for Keycloak admin operations
 - **Details:** See [Backend Initialization](../../backend/docs/INITIALIZATION.md)
 
-### Pattern 4: Resource Owner Password Flow
+### Pattern 3: Resource Owner Password Flow
 - **Use Case:** Trusted first-party apps
 - **Security:** Less secure, credentials exposed to client
 - **Status:** Used only for admin CLI token in init scripts
