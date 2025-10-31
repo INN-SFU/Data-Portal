@@ -10,6 +10,7 @@ from core.injection.managers import get_instance_manager, get_user_manager
 from api.v0_1.endpoints.service.auth import decode_token
 from ..auth_dependencies import require_admin
 from api.v0_1.endpoints.service.models import (GetAssetRequest, GetAssetResponse, PutAssetRequest, PutAssetResponse,
+                                               DeleteAssetRequest, DeleteAssetResponse,
                                                UserHomeData, UserAssetsData, AssetManagementData)
 from .utils import convert_file_tree_to_dict
 from core.management.instances import AbstractInstanceManager
@@ -47,13 +48,51 @@ def put_asset(asset: PutAssetRequest = Depends(),
         except KeyError:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instance {instance_name} not found.")
 
-        presigned_urls, file_paths = agent.generate_access_link(str(resource), 'write', 3600, str(user_uuid))
+        presigned_urls, file_paths = agent.generate_access_link(str(resource), 'write', 3600)
         print(presigned_urls)
         return PutAssetResponse(
             presigned_urls=presigned_urls,
             file_paths=file_paths
         )
 
+
+    else:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="User does not have write access to this resource")
+
+
+@assets_router.delete("/delete", dependencies=[Depends(decode_token)])
+def delete_asset(asset: DeleteAssetRequest = Depends(),
+                 user: dict = Depends(decode_token),
+                 user_manager: AbstractUserManager = Depends(get_user_manager),
+                 policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+                 instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
+                 ) -> DeleteAssetResponse:
+
+    # Get user UUID from token payload
+    user_uuid = user_manager.get_user_uuid(user['preferred_username'])
+    instance_name = asset.instance_name
+    instance_uuid = instance_manager.get_instance_uuid(instance_name)
+    resource = asset.resource
+
+    policy = Policy(
+        user_uuid=user_uuid,
+        instance_uuid=instance_uuid,
+        resource=resource,
+        action='write'  # Write permission includes delete
+    )
+
+    if policy_manager.validate_policy(policy):
+        try:
+            agent = instance_manager.get_instance_by_uuid(instance_uuid).agent
+        except KeyError:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instance {instance_name} not found.")
+
+        presigned_urls, file_paths = agent.generate_access_link(str(resource), 'delete', 3600)
+        return DeleteAssetResponse(
+            presigned_urls=presigned_urls,
+            file_paths=file_paths
+        )
 
     else:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
@@ -88,7 +127,7 @@ def get_asset(asset: GetAssetRequest = Depends(),
     if policy_manager.validate_policy(policy):
         agent = instance_manager.get_instance_by_uuid(instance_uuid).agent
         try:
-            presigned_urls, file_paths = agent.generate_access_link(policy.resource, policy.action, 600, str(user_uuid))
+            presigned_urls, file_paths = agent.generate_access_link(policy.resource, policy.action, 600)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Unable to generate presigned URL: {str(e)}")
@@ -218,16 +257,14 @@ async def get_asset_dashboard(
     )
     instances = instance_manager.get_instances_by_uuid(instance_uuids)
 
-    ##########################
+    # Refresh file trees if requested (using smart refresh for efficiency)
     if refresh:
         for instance in instances:
-            if hasattr(instance.agent, "refresh_file_tree"):
-                try:
-                    instance.agent.refresh_file_tree()
-                except Exception as e:
-                    # don't fail the whole request on a single agent refresh error
-                    logger.warning(f"Failed to refresh tree for {instance.name}: {e}")
-    ##########################
+            try:
+                instance.agent.smart_refresh_file_tree()
+            except Exception as e:
+                # don't fail the whole request on a single agent refresh error
+                logger.warning(f"Failed to refresh tree for {instance.name}: {e}")
 
     file_trees = {}
     for instance in instances:

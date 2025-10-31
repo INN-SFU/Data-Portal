@@ -33,6 +33,16 @@ class PutAssetResponse(BaseModel):
     file_paths: list[str] = Field(..., description="List of file paths these URLs correspond to.")
 
 
+class DeleteAssetRequest(BaseModel):
+    resource: str = Field(..., description="Path/key to delete (e.g. 'folder/sub/file.txt').")
+    instance_name: str = Field(..., description="Name of the storage access point.")
+
+
+class DeleteAssetResponse(BaseModel):
+    presigned_urls: list[str] = Field(..., description="List of presigned DELETE URLs.")
+    file_paths: list[str] = Field(..., description="List of file paths these URLs correspond to.")
+
+
 class AddUserRequest(BaseModel):
     username: str = Field(..., description="The username of the user.")
     email: str = Field(..., description="The email of the user.")
