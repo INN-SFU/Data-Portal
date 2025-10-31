@@ -27,7 +27,10 @@ def kc_admin_client_id() -> str:
 
 def kc_issuer() -> str:
     # external issuer (must match token 'iss')
-    # Derive from KEYCLOAK_DOMAIN and KEYCLOAK_REALM
+    # Use KEYCLOAK_EXTERNAL_ISSUER if set, otherwise derive from KEYCLOAK_DOMAIN
+    external = os.getenv("KEYCLOAK_EXTERNAL_ISSUER")
+    if external:
+        return external
     return f"{kc_base()}/realms/{kc_realm()}"
 
 def backend_base() -> str:

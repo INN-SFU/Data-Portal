@@ -19,12 +19,10 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
       KC_LOG_LEVEL: INFO
-      KC_HOSTNAME: keycloak.local
+      KC_HOSTNAME: localhost
       KC_HOSTNAME_STRICT: "false"
     ports:
       - "8080:8080"
-    extra_hosts:
-      - "keycloak.local:127.0.0.1"
     volumes:
       - ./config/keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
     networks:
@@ -48,13 +46,11 @@ services:
       keycloak:
         condition: service_healthy
     environment:
-      KEYCLOAK_DOMAIN: http://keycloak.local:8080
+      KEYCLOAK_DOMAIN: http://keycloak:8080
       KEYCLOAK_REALM: ams-portal
       KEYCLOAK_ADMIN_CLIENT_ID: ams-portal-admin
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
-    extra_hosts:
-      - "keycloak.local:172.17.0.1"  # Docker host IP
     entrypoint: ["bash", "/app/init_keycloak.sh"]  # Override entrypoint to run init script
     networks:
       - ams-network
@@ -70,13 +66,17 @@ services:
     entrypoint: ["bash", "/app/entrypoint.backend.sh"]
     environment:
       # Keycloak connection
-      KEYCLOAK_DOMAIN: http://keycloak.local:8080
+      KEYCLOAK_DOMAIN: http://keycloak:8080
       KEYCLOAK_REALM: ams-portal
       KEYCLOAK_UI_CLIENT_ID: ams-portal-ui
       KEYCLOAK_ADMIN_CLIENT_ID: ams-portal-admin
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
       KEYCLOAK_ADMIN_CLIENT_SECRET_FILE: /run/secrets/kc_admin_client_secret
+      # Token issuer must match the URL in JWT tokens (frontend accesses via localhost)
+      KEYCLOAK_TOKEN_ISSUER: http://localhost:8080/realms/ams-portal
+      # External issuer for smoke tests (how tokens are actually issued)
+      KEYCLOAK_EXTERNAL_ISSUER: http://localhost:8080/realms/ams-portal
 
       # App/runtime config
       AMS_HOST: 0.0.0.0
@@ -103,8 +103,6 @@ services:
       - "8000:8000"
     networks:
       - ams-network
-    extra_hosts:
-      - "keycloak.local:172.17.0.1"  # Docker host IP
     volumes:
       - .:/app
       - ./logs:/app/data/logs
@@ -135,7 +133,7 @@ services:
         condition: service_healthy
     environment:
       REACT_APP_API_URL: http://localhost:8000
-      REACT_APP_KEYCLOAK_URL: http://keycloak.local:8080
+      REACT_APP_KEYCLOAK_URL: http://localhost:8080
       REACT_APP_KEYCLOAK_REALM: ams-portal
       REACT_APP_KEYCLOAK_CLIENT_ID: ams-portal-ui
       API_GATEWAY: http://backend:8000

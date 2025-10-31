@@ -49,11 +49,14 @@ if [ "$RUN_SMOKE_TESTS" = "true" ]; then
     TEST_RC=$?
 
     if [ $TEST_RC -ne 0 ]; then
-      log "Smoke tests FAILED (exit $TEST_RC)."
-      # Uncomment to fail the container on test failure:
-      # exit $TEST_RC
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "⚠️  SMOKE TESTS FAILED (exit code: $TEST_RC)"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      echo "Backend is running but some tests failed."
+      echo "Run 'docker exec ams-backend python tests/run_smoke_tests.py --verbose' for details"
+      echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     else
-      log "All smoke tests passed."
+      log "✅ All smoke tests passed."
     fi
   else
     log "WARN: pytest not installed or not importable; skipping tests."
