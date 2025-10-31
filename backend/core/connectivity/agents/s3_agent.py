@@ -65,11 +65,13 @@ class S3StorageAgent(AbstractStorageAgent):
             verb = "get_object"
         elif method == "write":
             verb = "put_object"
+        elif method == "delete":
+            verb = "delete_object"
         else:
             raise ValueError(f"Unsupported method {method!r}")
 
-        # WRITE: single presigned‐PUT URL
-        if verb == "put_object":
+        # WRITE/DELETE: single presigned URL for exact resource
+        if verb in ("put_object", "delete_object"):
             try:
                 bucket, key = resource.split("/", 1)
             except ValueError:
@@ -79,7 +81,7 @@ class S3StorageAgent(AbstractStorageAgent):
                 Params={"Bucket": bucket, "Key": key},
                 ExpiresIn=ttl
             )
-            logger.info(f"generate_access_link (write): URL for {resource}")
+            logger.info(f"generate_access_link ({method}): URL for {resource}")
             return [url], [resource]
 
         # READ: treat resource as regex, full‐match
@@ -150,6 +152,57 @@ class S3StorageAgent(AbstractStorageAgent):
 
     def close(self):
         self.s3_client.close()
+
+    def smart_refresh_file_tree(self):
+        """
+        Efficiently refresh the S3 file tree using differential updates.
+
+        Compares current S3 state with cached tree and handles both additions and deletions.
+        This is much faster than rebuilding the entire tree for large buckets.
+        """
+        logger.info("Starting smart refresh of S3 file tree")
+
+        # Get current files from S3
+        current_files = set()
+        for bucket in self.fetch_all_buckets():
+            current_files.add(bucket)
+            for obj in self.fetch_all_bucket_keys(bucket):
+                current_files.add(os.path.join(bucket, obj))
+
+        # Get cached files from tree
+        cached_files = set(
+            n.identifier
+            for n in self.file_tree.all_nodes()
+            if n.identifier != 'root'
+        )
+
+        # Find new files (additions)
+        new_files = current_files - cached_files
+
+        # Find deleted files (removals)
+        deleted_files = cached_files - current_files
+
+        # Add new files to tree
+        for file_path in new_files:
+            self._add_file_to_tree(file_path)
+            logger.debug(f"Added new file to tree: {file_path}")
+
+        # Remove deleted files from tree
+        for file_path in deleted_files:
+            self._remove_file_from_tree(file_path)
+            logger.debug(f"Removed deleted file from tree: {file_path}")
+
+        # Log summary
+        changes = []
+        if new_files:
+            changes.append(f"added {len(new_files)}")
+        if deleted_files:
+            changes.append(f"removed {len(deleted_files)}")
+
+        if changes:
+            logger.info(f"Smart refresh complete: {', '.join(changes)} files")
+        else:
+            logger.info("Smart refresh complete: no changes")
 
     def __str__(self):
         return f"S3StorageAgent(instance_url={self.instance_url})"

@@ -63,6 +63,19 @@ class AbstractStorageAgent(ABC):
 
             parent = self.file_tree.get_node(current_nid)
 
+    def _remove_file_from_tree(self, path: str):
+        """
+        Remove a file/directory from the file tree.
+
+        :param path: The path of the file/directory to be removed.
+        :return: None
+        """
+        if not self.file_tree.contains(path):
+            return  # Path not in tree, nothing to remove
+
+        # Remove the node and all its children
+        self.file_tree.remove_node(path)
+
     def _load_file_tree(self):
         """
         Loads the file tree.
@@ -255,6 +268,22 @@ class AbstractStorageAgent(ABC):
         This method should be implemented by subclasses to refresh the file tree.
         """
         self._load_file_tree()
+
+    @abstractmethod
+    def smart_refresh_file_tree(self):
+        """
+        Intelligently refresh the file tree using the most efficient method
+        for this storage backend type.
+
+        Implementations should:
+        - Use differential updates when possible (e.g., for S3)
+        - Fall back to full refresh when appropriate (e.g., for fast local filesystems)
+        - Handle new file additions at minimum
+        - Optionally handle deletions if efficient
+
+        :return: None
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def refresh_connection(self):
