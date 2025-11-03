@@ -31,24 +31,7 @@ docker restart ams-backend-dev
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                  ams-network (Docker)                    │
-├─────────────────────────────────────────────────────────┤
-│                                                           │
-│  ┌──────────────┐         ┌──────────────┐              │
-│  │   Backend    │────────▶│   Keycloak   │              │
-│  │   API:8000   │         │    :8080     │              │
-│  └──────────────┘         └──────────────┘              │
-│         │                                                │
-│         ▼                                                │
-│  ┌──────────────┐                                       │
-│  │  S3 Storage  │                                       │
-│  │   Backends   │                                       │
-│  └──────────────┘                                       │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-```
+See the [Architecture Diagrams](../docs/diagrams/) for visual documentation of system components and interactions.
 
 **Service Communication:**
 - Backend API → Keycloak: `http://keycloak.local:8080` (authentication)
@@ -56,27 +39,23 @@ docker restart ams-backend-dev
 
 ## Project Structure
 
-```
-backend/
-├── api/v0_1/              # FastAPI application and endpoints
-│   ├── endpoints/         # API route handlers
-│   └── app.py             # FastAPI app initialization
-├── core/                  # Core business logic
-│   ├── connectivity/      # Storage agent implementations
-│   │   ├── agents/        # S3 and storage agent abstractions
-│   │   └── manager.py     # Storage connectivity manager
-│   ├── management/        # Policy and instance management
-│   │   ├── instances/     # Storage instance management
-│   │   ├── policies/      # Casbin policy enforcement
-│   │   └── users/         # User management via Keycloak
-│   └── settings/          # Configuration and secrets
-├── config/                # Configuration templates and realm exports
-├── tests/                 # Test suite
-├── docker-compose.*.yml   # Docker orchestration files
-├── Dockerfile             # Backend container image
-├── server.py              # Main application entry point
-└── start.sh               # Quick start script
-```
+**Main Components:**
+- `api/v0_1/` - FastAPI application and endpoints
+  - `endpoints/` - API route handlers
+  - `app.py` - FastAPI app initialization
+- `core/` - Core business logic
+  - `connectivity/` - Storage agent implementations (S3, abstractions)
+  - `management/` - Policy and instance management
+    - `instances/` - Storage instance management
+    - `policies/` - Casbin policy enforcement
+    - `users/` - User management via Keycloak
+  - `settings/` - Configuration and secrets
+- `config/` - Configuration templates and realm exports
+- `tests/` - Test suite
+- `docker-compose.*.yml` - Docker orchestration files
+- `Dockerfile` - Backend container image
+- `server.py` - Main application entry point
+- `start.sh` - Quick start script
 
 ## Service URLs
 

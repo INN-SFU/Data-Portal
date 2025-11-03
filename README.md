@@ -85,27 +85,19 @@ This starts the complete system (Backend, Keycloak, Frontend) with automatic con
 
 ## Project Structure
 
-```
-AMS/
-├── backend/                    # Main backend service
-│   ├── api/v0_1/              # FastAPI application
-│   │   └── endpoints/         # API routes
-│   ├── core/                  # Business logic
-│   │   ├── connectivity/      # Storage agents (S3, Dummy)
-│   │   ├── management/        # Instances, policies, users
-│   │   └── settings/          # Configuration
-│   ├── config/                # Keycloak realm exports
-│   ├── tests/                 # Test suite (unit + integration + smoke)
-│   ├── server.py              # Application entry point
-│   ├── start.sh               # Quick start script
-│   ├── README.md              # Backend development guide
-│   └── DOCKER_SETUP.md        # Deployment guide
-├── frontend/                   # React application
-├── deployment/                 # Production configurations
-├── docs/                       # Documentation
-│   └── diagrams/              # Mermaid architecture diagrams
-└── README.md                   # This file
-```
+**Main Directories:**
+- `backend/` - Main backend service with FastAPI application
+  - `api/v0_1/endpoints/` - API routes
+  - `core/connectivity/` - Storage agents (S3, Dummy)
+  - `core/management/` - Instances, policies, users
+  - `core/settings/` - Configuration
+  - `config/` - Keycloak realm exports
+  - `tests/` - Test suite (unit + integration + smoke)
+- `frontend/` - React application
+- `deployment/` - Production configurations
+- `docs/diagrams/` - Mermaid architecture diagrams
+
+For detailed system architecture, see [Architecture Diagrams](./docs/diagrams/).
 
 ## API Reference
 
