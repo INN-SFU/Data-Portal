@@ -2,6 +2,8 @@
 
 **Policy-Driven Data Access Management Platform for Decentralized and Heterogeneous Storage Instances**
 
+Test
+
 A modular platform that enables secure, policy-driven collaboration across institutional boundaries while preserving data sovereignty. Designed to support the full research lifecycle - from data collection and analysis to collaboration and external sharing - the system accommodates diverse organizational needs through flexible deployment models: institutions can participate in a shared governance instance for collaborative convenience, or self-host their own instance for complete control over authentication, authorization, and policy infrastructure.
 
 Data never leaves the owner's storage infrastructure; the platform provides only the access control layer while data remains on owner-controlled systems. This separation of governance from storage enables multi-institutional research collaboration across heterogeneous storage backends, bridging diverse systems into a unified governance layer without requiring data migration or storage consolidation. Each data owner defines and enforces their own access policies through administrative tools, enabling controlled sharing and external system integration while maintaining compliance with institutional requirements for sensitive datasets. The architecture respects data sovereignty at both the deployment level (who operates the governance platform) and the data level (who controls access policies for their assets).
