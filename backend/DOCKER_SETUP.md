@@ -33,28 +33,12 @@ Once started (takes ~60-90 seconds):
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     ams-network (Docker)                     │
-├─────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌──────────────┐                                            │
-│  │   Frontend   │──┐                                         │
-│  │    :3000     │  │                                         │
-│  └──────────────┘  │                                         │
-│                    ▼                                         │
-│  ┌──────────────┐  ┌──────────────┐                         │
-│  │   Backend    │─▶│   Keycloak   │                         │
-│  │   API:8000   │  │    :8080     │                         │
-│  └──────────────┘  └──────────────┘                         │
-│         ▲                                                    │
-│         │                                                    │
-│  ┌──────────────┐                                           │
-│  │ Keycloak-Init│  (runs once, configures Keycloak)        │
-│  └──────────────┘                                           │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
+See the [Architecture Diagrams](../docs/diagrams/) for visual documentation.
+
+**Service Communication:**
+- Frontend :3000 → Backend API :8000 → Keycloak :8080
+- `keycloak-init` container runs once to configure Keycloak
+- All services communicate over `ams-network` Docker network
 
 ## Key Features
 
