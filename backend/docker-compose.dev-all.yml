@@ -5,64 +5,19 @@
 #
 # Usage: docker compose -f docker-compose.dev-all.yml up -d
 
+include:
+  - docker-compose.keycloak.yml
+
 services:
   # 1. Keycloak - Authentication Service
-  keycloak:
-    image: quay.io/keycloak/keycloak:24.0.3
-    container_name: ams-keycloak
-    command: start-dev --import-realm
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin123
-      KC_DB: dev-file
-      KC_HEALTH_ENABLED: "true"
-      KC_METRICS_ENABLED: "true"
-      KC_LOG_LEVEL: INFO
-      KC_HOSTNAME: localhost
-      KC_HOSTNAME_STRICT: "false"
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./config/keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
-    networks:
-      - ams-network
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 && grep -q ' 200' <&3"
-        ]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 30s
-
-  # 2. Keycloak Configurator - One-time initialization
-  keycloak-init:
-    build: .
-    container_name: ams-keycloak-init
-    depends_on:
-      keycloak:
-        condition: service_healthy
-    environment:
-      KEYCLOAK_DOMAIN: http://keycloak:8080
-      KEYCLOAK_REALM: ams-portal
-      KEYCLOAK_ADMIN_CLIENT_ID: ams-portal-admin
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin123
-    entrypoint: ["bash", "/app/init_keycloak.sh"]  # Override entrypoint to run init script
-    networks:
-      - ams-network
-    restart: "no"  # Run once and exit
+  # migrated to standalone `docker-compose.keycloak.yml`
 
   # 3. Backend API - Main Application
   backend:
     build: .
     container_name: ams-backend
     depends_on:
-      keycloak-init:
-        condition: service_completed_successfully
-    entrypoint: ["bash", "/app/entrypoint.backend.sh"]
+      - keycloak
     environment:
       # Keycloak connection
       KEYCLOAK_DOMAIN: http://keycloak:8080
