@@ -15,6 +15,9 @@ services:
       # KC_HOSTNAME: keycloak.local
       KC_HOSTNAME: localhost
       KC_HOSTNAME_STRICT: "false"
+      KEYCLOAK_ADMIN_CLIENT_SECRET: /run/secrets/kc_admin_client_secret
+    secrets:
+      - kc_admin_client_secret
     ports: ["8080:8080"]
     # extra_hosts:
     #   - "keycloak.local:127.0.0.1"
@@ -37,3 +40,7 @@ services:
 networks:
   ams-network:
     driver: bridge
+
+secrets:
+  kc_admin_client_secret:
+    environment: KEYCLOAK_ADMIN_CLIENT_SECRET
