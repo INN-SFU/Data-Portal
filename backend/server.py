@@ -6,16 +6,52 @@ import uvicorn
 import yaml
 
 
+def get_secret(key: str) -> str:
+    """The application should also be configured to read secrets from files rather than environment variables.
+    Exposure of secrets through environment variables has led to numerous security incidents over the years.
+
+    Here's a pattern we recommend for python. This pattern:
+    - Prioritizes reading secrets from files using the _FILE suffix convention
+    - Maintains compatibility with environment variables as a fallback
+    - Follows conventions used by official images like MySQL and Postgres
+
+    https://phase.dev/blog/docker-compose-secrets/
+    """
+
+    # Check for _FILE suffix first
+    file_env = f"{key}_FILE"
+    if file_env in os.environ:
+        # if not file_env:
+            # raise RuntimeError("Missing env variable {file_env}")
+        if not Path(file_env).exists():
+            raise RuntimeError(f"Environment variable {key} file not found: {file_env}")
+        
+        try:
+            with open(os.environ[file_env], 'r') as f:
+                logging.info(f"Loaded env variable from file {file_env}")
+                return f.read().strip()
+            
+        except Exception as err:
+            logging.warning(f"An error occurred reading file {file_env}. Falling back to environment variable {key}: {err}")
+            # Fall back to environment variable
+            if not os.environ.get(key):
+                logging.warning(f"The variable {key} is empty.")
+            return os.environ.get(key)    
+
+
 if __name__ == "__main__":
 
-    # ---- Required app vars (must be set via .env.development or environment)
-    required_vars = ["AMS_HOST", "AMS_PORT", "AMS_RELOAD", "API_VERSION", "LOG_DIR", "LOG_LEVEL"]
-    missing = [v for v in required_vars if not os.getenv(v)]
-    if missing:
-        raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}. Load from backend/.env.development")
+    # ---- Required app vars (Compose is source of truth; set safe defaults for local runs)
+    os.environ.setdefault("SYSTEM_RESET", "false")
+    os.environ.setdefault("AMS_HOST", "0.0.0.0")
+    os.environ.setdefault("AMS_PORT", "8000")
+    os.environ.setdefault("AMS_RELOAD", "false")
+    os.environ.setdefault("API_VERSION", "0_1")
 
     # ---- Logging
     print("Initializing loggers...")
+    os.environ.setdefault("LOG_DIR", str((Path.cwd() / "data" / "logs").resolve()))
+    os.environ.setdefault("LOG_LEVEL", "INFO")
     log_config_path = Path(os.getenv("LOG_CONFIG", "./loggers/log_config.yaml")).resolve()
     with open(log_config_path, "r") as f:
         cfg_text = f.read().replace("${LOG_DIR}", os.environ["LOG_DIR"]).replace("${LOG_LEVEL}", os.environ["LOG_LEVEL"])
@@ -35,22 +71,6 @@ if __name__ == "__main__":
     prefix = Path(__file__).parent.resolve()
     os.environ["ROOT_DIRECTORY"] = str(prefix)
 
-    # ---- Read Keycloak admin client secret from file
-    logging.info("Loading Keycloak admin client secret...")
-    secret_file = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET_FILE")
-    if not secret_file:
-        raise RuntimeError("Missing required env: KEYCLOAK_ADMIN_CLIENT_SECRET_FILE")
-    if not Path(secret_file).exists():
-        raise RuntimeError(f"Keycloak admin client secret file not found: {secret_file}")
-
-    with open(secret_file, 'r') as f:
-        secret = f.read().strip()
-    if not secret:
-        raise RuntimeError(f"Keycloak admin client secret file is empty: {secret_file}")
-
-    os.environ["KEYCLOAK_ADMIN_CLIENT_SECRET"] = secret
-    logging.info(f"Loaded Keycloak admin client secret from {secret_file}")
-
     # ---- Keycloak derived URLs (internal service address). Do NOT touch TOKEN_ISSUER here.
     logging.info("Setting up Keycloak derived URLs...")
     kc_domain = os.getenv("KEYCLOAK_DOMAIN")
@@ -63,6 +83,8 @@ if __name__ == "__main__":
         f"&response_type=code"
     )
 
+    os.environ['KEYCLOAK_ADMIN_CLIENT_SECRET'] = get_secret("KEYCLOAK_ADMIN_CLIENT_SECRET")
+    
     # ---- Run server
     host = os.getenv("AMS_HOST", "0.0.0.0")
     port = int(os.getenv("AMS_PORT", "8000"))
