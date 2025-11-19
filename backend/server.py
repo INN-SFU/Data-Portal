@@ -6,6 +6,27 @@ import uvicorn
 import yaml
 
 
+def get_secret(key: str) -> str:
+    """The application should also be configured to read secrets from files rather than environment variables.
+    Exposure of secrets through environment variables has led to numerous security incidents over the years.
+
+    Here's a pattern we recommend for python. This pattern:
+    - Prioritizes reading secrets from files using the _FILE suffix convention
+    - Maintains compatibility with environment variables as a fallback
+    - Follows conventions used by official images like MySQL and Postgres
+
+    https://phase.dev/blog/docker-compose-secrets/
+    """
+
+    # Check for _FILE suffix first
+    file_env = f"{key}_FILE"
+    if file_env in os.environ:
+        with open(os.environ[file_env], 'r') as f:
+            return f.read().strip()
+    # Fall back to environment variable
+    return os.environ.get(key)
+
+
 if __name__ == "__main__":
 
     # ---- Required app vars (Compose is source of truth; set safe defaults for local runs)
@@ -49,6 +70,8 @@ if __name__ == "__main__":
         f"&redirect_uri={os.getenv('KEYCLOAK_REDIRECT_URI')}"
         f"&response_type=code"
     )
+
+    os.environ['KEYCLOAK_ADMIN_CLIENT_SECRET'] = get_secret("KEYCLOAK_ADMIN_CLIENT_SECRET")
 
     # ---- Optional system reset
     if os.getenv("SYSTEM_RESET", "false").lower() == "true":
