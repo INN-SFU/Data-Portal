@@ -5,6 +5,10 @@
 #
 # Usage: docker compose -f docker-compose.dev-all.yml up -d
 
+secrets:
+  kc_admin_client_secret:
+    environment: KEYCLOAK_ADMIN_CLIENT_SECRET
+
 include:
   - docker-compose.keycloak.yml
 
@@ -62,8 +66,8 @@ services:
       - ./logs:/app/data/logs
       - ./data/policies:/app/data/policies
       - ./data/configs:/app/data/configs
-    tmpfs:
-      - /run/secrets:rw,noexec,nosuid,nodev
+    secrets:
+      - kc_admin_client_secret
     working_dir: /app
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health/ready"]
