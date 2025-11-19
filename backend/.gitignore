@@ -23,6 +23,7 @@ MANIFEST
 
 # Configuration files (contain sensitive data)
 config.yaml
+config.yml
 core/settings/.env
 core/settings/security/.secrets
 *.policies
