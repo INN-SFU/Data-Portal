@@ -1,4 +1,3 @@
-version: "3.8"
 
 # Complete AMS System - Development Environment
 # This compose file orchestrates all AMS services with proper dependencies
