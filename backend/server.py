@@ -8,17 +8,14 @@ import yaml
 
 if __name__ == "__main__":
 
-    # ---- Required app vars (Compose is source of truth; set safe defaults for local runs)
-    os.environ.setdefault("SYSTEM_RESET", "false")
-    os.environ.setdefault("AMS_HOST", "0.0.0.0")
-    os.environ.setdefault("AMS_PORT", "8000")
-    os.environ.setdefault("AMS_RELOAD", "false")
-    os.environ.setdefault("API_VERSION", "0_1")
+    # ---- Required app vars (must be set via .env.development or environment)
+    required_vars = ["AMS_HOST", "AMS_PORT", "AMS_RELOAD", "API_VERSION", "LOG_DIR", "LOG_LEVEL"]
+    missing = [v for v in required_vars if not os.getenv(v)]
+    if missing:
+        raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}. Load from backend/.env.development")
 
     # ---- Logging
     print("Initializing loggers...")
-    os.environ.setdefault("LOG_DIR", str((Path.cwd() / "data" / "logs").resolve()))
-    os.environ.setdefault("LOG_LEVEL", "INFO")
     log_config_path = Path(os.getenv("LOG_CONFIG", "./loggers/log_config.yaml")).resolve()
     with open(log_config_path, "r") as f:
         cfg_text = f.read().replace("${LOG_DIR}", os.environ["LOG_DIR"]).replace("${LOG_LEVEL}", os.environ["LOG_LEVEL"])
@@ -38,6 +35,22 @@ if __name__ == "__main__":
     prefix = Path(__file__).parent.resolve()
     os.environ["ROOT_DIRECTORY"] = str(prefix)
 
+    # ---- Read Keycloak admin client secret from file
+    logging.info("Loading Keycloak admin client secret...")
+    secret_file = os.getenv("KEYCLOAK_ADMIN_CLIENT_SECRET_FILE")
+    if not secret_file:
+        raise RuntimeError("Missing required env: KEYCLOAK_ADMIN_CLIENT_SECRET_FILE")
+    if not Path(secret_file).exists():
+        raise RuntimeError(f"Keycloak admin client secret file not found: {secret_file}")
+
+    with open(secret_file, 'r') as f:
+        secret = f.read().strip()
+    if not secret:
+        raise RuntimeError(f"Keycloak admin client secret file is empty: {secret_file}")
+
+    os.environ["KEYCLOAK_ADMIN_CLIENT_SECRET"] = secret
+    logging.info(f"Loaded Keycloak admin client secret from {secret_file}")
+
     # ---- Keycloak derived URLs (internal service address). Do NOT touch TOKEN_ISSUER here.
     logging.info("Setting up Keycloak derived URLs...")
     kc_domain = os.getenv("KEYCLOAK_DOMAIN")
@@ -49,12 +62,6 @@ if __name__ == "__main__":
         f"&redirect_uri={os.getenv('KEYCLOAK_REDIRECT_URI')}"
         f"&response_type=code"
     )
-
-    # ---- Optional system reset
-    if os.getenv("SYSTEM_RESET", "false").lower() == "true":
-        from core.settings.security.SYS_RESET import SYS_RESET
-        logging.info("Performing system reset...")
-        SYS_RESET()
 
     # ---- Run server
     host = os.getenv("AMS_HOST", "0.0.0.0")
