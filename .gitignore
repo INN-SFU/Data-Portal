@@ -46,7 +46,6 @@ ENV/
 
 # Backend - Logs and runtime data
 /backend/*.log
-/backend/loggers/logs/
 /backend/data/
 /backend/bin/
 /backend/run/
