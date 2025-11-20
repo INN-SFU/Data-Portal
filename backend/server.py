@@ -23,7 +23,7 @@ def get_secret(key: str) -> str:
     if file_env in os.environ:
         # if not file_env:
             # raise RuntimeError("Missing env variable {file_env}")
-        if not Path(file_env).exists():
+        if not Path(os.environ[file_env]).exists():
             raise RuntimeError(f"Environment variable {key} file not found: {file_env}")
         
         try:
