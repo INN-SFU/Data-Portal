@@ -19,7 +19,7 @@ services:
     # extra_hosts:
     #   - "keycloak.local:127.0.0.1"
     volumes:
-      - ./config/keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
+      - ./keycloak-realm-export.json:/opt/keycloak/data/import/realm.json:ro
     healthcheck:
       test:
         [
