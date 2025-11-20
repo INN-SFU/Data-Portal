@@ -12,7 +12,7 @@ secrets:
     environment: KEYCLOAK_ADMIN_CLIENT_SECRET
 
 include:
-  - docker-compose.keycloak.yml
+  - ../local/keycloak/docker-compose.keycloak.yml
 
 services:
   # 1. Keycloak - Authentication Service
