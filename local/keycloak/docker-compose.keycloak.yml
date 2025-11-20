@@ -6,15 +6,15 @@ services:
     command: start-dev --import-realm
     environment:
       # KC bootstrap (owner: keycloak)
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin123
-      KC_DB: dev-file
-      KC_HEALTH_ENABLED: "true"
-      KC_METRICS_ENABLED: "true"
-      KC_LOG_LEVEL: INFO
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN?error}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD?error}
+      KC_DB: ${KC_DB:-dev-file} # default value INFO is the variable is not set or null
+      KC_HEALTH_ENABLED: ${KC_HEALTH_ENABLED:-true}
+      KC_METRICS_ENABLED: ${KC_METRICS_ENABLED:-true}
+      KC_LOG_LEVEL: ${KC_LOG_LEVEL:-INFO}
       # KC_HOSTNAME: keycloak.local
-      KC_HOSTNAME: localhost
-      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME: ${KC_HOSTNAME:-localhost}
+      KC_HOSTNAME_STRICT: ${KC_HOSTNAME_STRICT:-false}
     ports: ["8080:8080"]
     # extra_hosts:
     #   - "keycloak.local:127.0.0.1"
