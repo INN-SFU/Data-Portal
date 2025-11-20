@@ -1,11 +1,10 @@
-version: "3.8"
 
 services:
   frontend:
+    container_name: ams-frontend-dev
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: ams-frontend-dev
     environment:
       # React dev server config - use separate domains
       REACT_APP_KeyCloakServerUrl: http://keycloak.local:8080

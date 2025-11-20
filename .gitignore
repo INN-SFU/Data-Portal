@@ -22,14 +22,15 @@ wheels/
 MANIFEST
 
 # Virtual environments
-venv/
-env/
-ENV/
-.env
-.venv
+**/venv/
+**/env/
+**/ENV/
+**/.env
+**/.venv
 
 # Backend - Configuration files (contain sensitive data)
 /backend/config.yaml
+/backend/config.yml
 /backend/core/settings/.env
 /backend/core/settings/security/.secrets
 /backend/*.policies

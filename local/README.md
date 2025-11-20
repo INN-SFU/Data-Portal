@@ -1,5 +1,31 @@
 # Local Development
 
+## Starting Services locally (with Docker)
+
+Requires the minimum `.env` file within `local` folder:
+
+```bash
+# .env
+
+# Keycloak Authorization and Authentication management (mandatory)
+KEYCLOAK_ADMIN=<CHANGE_ME_WITH_KEYCLOAK_ADMIN_USER>
+KEYCLOAK_ADMIN_PASSWORD=<CHANGE_ME_WITH_KEYCLOAK_ADMIN_PASS>
+
+# Admin credentials
+KEYCLOAK_ADMIN_CLIENT_SECRET=<CHANGE_ME_WITH_KEYCLOAK_CLIENT_SECRET_STRING>
+```
+
+A file named `.env` in the current directory is automatically loaded. Run services with:
+
+```bash
+cd local
+docker compose up -d --build
+# Starts:
+# 1. Keycloak (pre-configured) (deploy)
+# 2. Backend via backend/docker-compose.backend.yml (deploy)
+# 3. Frontend via frontend/docker-compose.prod.yml (build and deploy)
+```
+
 ## Starting Services
 
 ```bash
