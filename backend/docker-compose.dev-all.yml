@@ -23,7 +23,8 @@ services:
     container_name: ams-backend
     build: .
     depends_on:
-      - keycloak
+      keycloak: 
+        condition: service_healthy
     # entrypoint: ["bash", "/app/entrypoint.backend.sh"]
     environment:
       # Keycloak connection
