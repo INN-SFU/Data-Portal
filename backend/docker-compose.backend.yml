@@ -7,6 +7,9 @@ services:
   backend:
     build: .
     container_name: ams-backend
+    depends_on:
+      keycloak: 
+        condition: service_healthy
     # entrypoint: ["bash", "/app/entrypoint.backend.sh"]
     environment:
       # Keycloak connection (external instance on separate domain)
@@ -48,9 +51,9 @@ services:
     networks:
       - ams-network  # Shared network for backend and other services
 
-    extra_hosts:
-      # Keycloak uses host-gateway as it's external to the AMS network
-      - "keycloak.local:host-gateway"
+    # extra_hosts:
+    #   # Keycloak uses host-gateway as it's external to the AMS network
+    #   - "keycloak.local:host-gateway"
 
     volumes:
       - .:/app
