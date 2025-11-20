@@ -1,9 +1,13 @@
 
+secrets:
+  kc_admin_client_secret:
+    environment: KEYCLOAK_ADMIN_CLIENT_SECRET
+
 services:
   backend:
     build: .
-    container_name: ams-backend-dev
-    entrypoint: ["bash", "/app/entrypoint.backend.sh"]
+    container_name: ams-backend
+    # entrypoint: ["bash", "/app/entrypoint.backend.sh"]
     environment:
       # Keycloak connection (external instance on separate domain)
       KEYCLOAK_DOMAIN: http://keycloak.local:8080
@@ -13,6 +17,10 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
       KEYCLOAK_ADMIN_CLIENT_SECRET_FILE: /run/secrets/kc_admin_client_secret
+      # Token issuer must match the URL in JWT tokens (frontend accesses via localhost)
+      KEYCLOAK_TOKEN_ISSUER: http://localhost:8080/realms/ams-portal
+      # External issuer for smoke tests (how tokens are actually issued)
+      KEYCLOAK_EXTERNAL_ISSUER: http://localhost:8080/realms/ams-portal
 
       # App/runtime config
       AMS_HOST: 0.0.0.0
@@ -29,14 +37,14 @@ services:
       USER_POLICIES: /app/data/policies
       INSTANCE_CONFIGS: /app/data/configs
 
-      # Optional: handy for running pytest from the host
+      # Backend base URL
       BACKEND_BASE_URL: http://localhost:8000
 
       # Control smoke test execution on startup (default: true)
       RUN_SMOKE_TESTS: "true"
 
-    ports: ["8000:8000"]
-
+    ports:
+      - "8000:8000"
     networks:
       - ams-network  # Shared network for backend and other services
 
@@ -49,8 +57,8 @@ services:
       - ./logs:/app/data/logs
       - ./data/policies:/app/data/policies
       - ./data/configs:/app/data/configs
-    tmpfs:
-      - /run/secrets:rw,noexec,nosuid,nodev
+    secrets:
+      - kc_admin_client_secret
     working_dir: /app
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health/ready"]
@@ -63,4 +71,5 @@ networks:
   ams-network:
     # Shared network enables Docker DNS-based service discovery
     # Services can reach each other using service names
-    external: true
+    # external: true
+    driver: bridge

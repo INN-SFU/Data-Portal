@@ -5,6 +5,8 @@
 #
 # Usage: docker compose -f docker-compose.dev-all.yml up -d
 
+name: ams-portal-dev-all
+
 secrets:
   kc_admin_client_secret:
     environment: KEYCLOAK_ADMIN_CLIENT_SECRET
@@ -18,8 +20,8 @@ services:
 
   # 3. Backend API - Main Application
   backend:
-    build: .
     container_name: ams-backend
+    build: .
     depends_on:
       - keycloak
     # entrypoint: ["bash", "/app/entrypoint.backend.sh"]
@@ -79,6 +81,7 @@ services:
 
   # 4. Frontend - Web UI
   frontend:
+    container_name: ams-frontend
     build:
       context: ../frontend
       dockerfile: Dockerfile
@@ -86,7 +89,6 @@ services:
         REACT_APP_KEYCLOAK_URL: http://localhost:8080
         REACT_APP_KEYCLOAK_REALM: ams-portal
         REACT_APP_KEYCLOAK_CLIENT_ID: ams-portal-ui
-    container_name: ams-frontend
     depends_on:
       backend:
         condition: service_healthy
