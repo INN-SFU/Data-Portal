@@ -5,8 +5,8 @@ secrets:
 
 services:
   backend:
-    build: .
     container_name: ams-backend
+    build: .
     depends_on:
       keycloak: 
         condition: service_healthy
