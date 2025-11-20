@@ -37,7 +37,3 @@ services:
 networks:
   ams-network:
     driver: bridge
-
-#secrets:
-#  kc_admin_client_secret:
-#    environment: KEYCLOAK_ADMIN_CLIENT_SECRET
