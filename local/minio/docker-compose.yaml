@@ -1,0 +1,17 @@
+
+services:
+  minio:
+    image: quay.io/minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    volumes:
+      - data-minio:/data
+      # - ./data:/data
+    command: server /data --console-address ":9001" #--log-level:org.keycloak.social.user_profile_dump:DEBUG
+
+volumes:
+  data-minio:

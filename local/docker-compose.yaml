@@ -3,5 +3,6 @@ name: ams-portal
 
 include:
   - keycloak/docker-compose.keycloak.yml
-  - ../backend/docker-compose.backend.yml
+  - minio/docker-compose.yaml
+  - ../backend/docker-compose.backend.ym l
   - ../frontend/docker-compose.frontend-prod.yml
