@@ -11,7 +11,7 @@ services:
     volumes:
       - data-minio:/data
       # - ./data:/data
-    command: server /data --console-address ":9001" #--log-level:org.keycloak.social.user_profile_dump:DEBUG
+    command: server /data --console-address ":9001"
 
 volumes:
   data-minio:
