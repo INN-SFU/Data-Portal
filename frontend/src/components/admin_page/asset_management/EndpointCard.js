@@ -43,8 +43,8 @@ export default function EndpointCard({
 
       for (const id of readLeaves) {
         const headers = await authHeaders();
-        const params = { instance_name: endpointName, resource: String(id), action: "read" };
-        const { data } = await http.get("/api/assets/download", { params, headers });
+        const params = { access_point: endpointName, resource: String(id), action: "read" };
+        const { data } = await http.get("/assets/download", null, { params, headers });
         const urls = data?.presigned_urls || [];
         const paths = data?.file_paths || [];
         for (let i = 0; i < urls.length; i++) {
@@ -89,8 +89,8 @@ export default function EndpointCard({
           const headers = await authHeaders();
 
           // Ask backend for presigned URL(s)
-          const { data } = await http.put("/api/assets/upload", null, {
-            params: { instance_name: endpointName, resource },
+          const { data } = await http.put("/assets/upload", null, {
+            params: { access_point: endpointName, resource },
             headers,
           });
 

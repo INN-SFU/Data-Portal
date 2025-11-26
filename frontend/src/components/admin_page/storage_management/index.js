@@ -3,9 +3,9 @@ import axios from "axios";
 import { useKeycloak } from "@react-keycloak/web";
 import "./StorageManagement.css";
 
-const http = axios.create({ baseURL: "http://localhost:8000" });
-const INSTANCES_BASE = "/api/instances";
-const FLAVOURS = ["s3"];
+const http = axios.create({ baseURL: "/api" });
+const INSTANCES_BASE = "/instances";
+const FLAVOURS = ["s3", "posix"];
 
 export default function StorageManagement() {
   const { keycloak, initialized } = useKeycloak();
