@@ -17,7 +17,7 @@ def get_user_manager() -> AbstractUserManager:
     global _user_manager
     if _user_manager is None:
         # Lazy import to avoid circular dependencies
-        from core.settings.managers.users.keycloak import KeycloakUserManager
+        from core.management.managers.users.keycloak import KeycloakUserManager
 
         # Check if required environment variables are available
         print("DEBUG: Initializing user manager...")
@@ -57,7 +57,7 @@ def get_policy_manager() -> AbstractPolicyManager:
     global _policy_manager
     if _policy_manager is None:
         # Lazy import to avoid circular dependencies
-        from core.settings.managers.policies.casbin.CasbinPolicyManager import CasbinPolicyManager
+        from core.management.managers.policies.casbin.CasbinPolicyManager import CasbinPolicyManager
 
         # Get all user UUIDs from the user manager to load their policies
         user_manager = get_user_manager()
@@ -76,7 +76,7 @@ def get_instance_manager() -> AbstractInstanceManager:
     global _instance_manager
     if _instance_manager is None:
         # Lazy import to avoid circular dependencies
-        from core.settings.managers.instances.InstanceManager import InstanceManager
+        from core.management.managers.instances.InstanceManager import InstanceManager
 
         _instance_manager = InstanceManager()
 
@@ -85,7 +85,7 @@ def get_instance_manager() -> AbstractInstanceManager:
         if instance_configs_dir and os.path.exists(instance_configs_dir):
             import json
             from uuid import UUID
-            from core.connectivity.instance_factory import instance_factory
+            from core.connectivity import agent_factory
             from core.management.instances.models import Instance
 
             config_files = [f for f in os.listdir(instance_configs_dir) if f.endswith('.json')]
@@ -103,7 +103,7 @@ def get_instance_manager() -> AbstractInstanceManager:
                 }
 
                 # Create the instance agent
-                instance = instance_factory(config_data)
+                instance = agent_factory(config_data)
 
                 # Create the instance object
                 new_instance = Instance(

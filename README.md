@@ -2,8 +2,6 @@
 
 **Policy-Driven Data Access Management Platform for Decentralized and Heterogeneous Storage Instances**
 
-Test-Test
-
 A modular platform that enables secure, policy-driven collaboration across institutional boundaries while preserving data sovereignty. Designed to support the full research lifecycle - from data collection and analysis to collaboration and external sharing - the system accommodates diverse organizational needs through flexible deployment models: institutions can participate in a shared governance instance for collaborative convenience, or self-host their own instance for complete control over authentication, authorization, and policy infrastructure.
 
 Data never leaves the owner's storage infrastructure; the platform provides only the access control layer while data remains on owner-controlled systems. This separation of governance from storage enables multi-institutional research collaboration across heterogeneous storage backends, bridging diverse systems into a unified governance layer without requiring data migration or storage consolidation. Each data owner defines and enforces their own access policies through administrative tools, enabling controlled sharing and external system integration while maintaining compliance with institutional requirements for sensitive datasets. The architecture respects data sovereignty at both the deployment level (who operates the governance platform) and the data level (who controls access policies for their assets).
@@ -18,10 +16,6 @@ Data never leaves the owner's storage infrastructure; the platform provides only
 For detailed information, see the [project wiki](https://github.com/INN-SFU/Data-Portal/wiki).
 
 ## Documentation
-
-📚 **Guides:**
-- [Backend Development](./backend/README.md) - Backend development and API details
-- [Docker Setup](./backend/DOCKER_SETUP.md) - One-command deployment guide
 
 📐 **Architecture Diagrams:**
 - [Component Architecture](./docs/diagrams/component-architecture.md) - System structure and relationships
@@ -43,47 +37,6 @@ For detailed information, see the [project wiki](https://github.com/INN-SFU/Data
 **Developer & Operations:**
 - **RESTful API**: Well-documented API with automatic OpenAPI specification, enabling integration with institutional workflows and custom applications
 - **Containerized Architecture**: Production-ready Docker deployment with service orchestration, health monitoring, and automated configuration
-- **Rapid Development Workflow**: Comprehensive testing framework with fast feedback loops (<30s) for reliable development and CI/CD integration
-
-## Quick Start
-
-**Prerequisites:**
-- Docker & Docker Compose V2
-- Git
-
-**One-command start:**
-
-```bash
-# Clone repository
-git clone <repository-url>
-cd AMS/backend
-
-# Start all services
-./start.sh
-```
-
-This starts the complete system (Backend, Keycloak, Frontend) with automatic configuration.
-
-**Access:**
-- **Backend API:** http://localhost:8000/docs
-- **Frontend:** http://localhost:3000
-- **Keycloak Admin:** http://keycloak.local:8080/admin
-
-**Default Credentials:**
-- Username: `admin`
-- Password: `admin123`
-
-**What's Running:**
-- ✅ Automated Keycloak realm import and configuration
-- ✅ Backend API with automatic smoke tests (32 tests)
-- ✅ Frontend web application
-- ✅ Service health checks and dependencies
-- ✅ Docker network with service discovery
-
-**Learn More:**
-- [Detailed Deployment Guide](backend/DOCKER_SETUP.md) - Advanced Docker options
-- [Backend Development Guide](backend/README.md) - API development and testing
-- [Architecture Diagrams](./docs/diagrams/) - Visual system documentation
 
 ## Project Structure
 
@@ -93,9 +46,8 @@ This starts the complete system (Backend, Keycloak, Frontend) with automatic con
   - `core/connectivity/` - Storage agents (S3, Dummy)
   - `core/management/` - Instances, policies, users
   - `core/settings/` - Configuration
-  - `config/` - Keycloak realm exports
-  - `tests/` - Test suite (unit + integration + smoke)
 - `frontend/` - React application
+- `local/keycloak/` - Keycloak configuration and realm export
 - `deployment/` - Production configurations
 - `docs/diagrams/` - Mermaid architecture diagrams
 
@@ -143,7 +95,7 @@ All endpoints use the `/api` prefix.
 const token = await keycloak.getToken();
 
 // 2. Call API with Bearer token
-const response = await fetch('/api/admin/user/', {
+const response = await fetch('/api/users/', {
   headers: {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
@@ -159,35 +111,6 @@ const response = await fetch('/api/admin/user/', {
 - `exp`, `iat` - Token expiration
 
 ## Development
-
-### Running Tests
-
-```bash
-# Fast unit tests (<30s)
-cd backend
-python -m pytest tests/unit/ -v
-
-# Integration tests (requires Docker services)
-python -m pytest tests/integration/ -v
-
-# All tests with coverage
-python -m pytest tests/ --cov=. --cov-report=html
-```
-
-### Code Quality
-
-```bash
-# Format code
-black .
-isort .
-
-# Lint
-flake8 .
-mypy .
-
-# Security scan
-bandit -r backend/
-```
 
 ### Environment Variables
 
@@ -265,7 +188,7 @@ docker restart ams-backend
 # Clean restart
 docker compose -f backend/docker-compose.dev-all.yml down -v
 docker network create ams-network
-cd backend && ./start.sh
+docker compose -f backend/docker-compose.dev-all.yml up -d
 ```
 
 ### Logs
@@ -285,10 +208,8 @@ cd backend && ./start.sh
 ## Contributing
 
 1. Create feature branch from `main`
-2. Follow code quality guidelines (Black, isort, Flake8)
-3. Write tests for new features
-4. Ensure all tests pass
-5. Submit pull request with clear description
+2. Ensure code follows project conventions
+3. Submit pull request with clear description
 
 ## License
 

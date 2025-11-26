@@ -12,8 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from fastapi.responses import JSONResponse
 
 from core.injection import get_instance_manager, get_policy_manager
-from core.connectivity.instance_factory import instance_factory
-from core.connectivity.agents import available_flavours
+from core.connectivity import agent_factory
+from core.connectivity import AVAILABLE_FLAVOURS
 from core.management.instances.models import Instance
 from core.management.instances import AbstractInstanceManager
 from core.management.policies import AbstractPolicyManager, Policy
@@ -161,7 +161,7 @@ async def create_instance(
 
     # Create the storage agent for the instance
     try:
-        agent = instance_factory(config_dict)
+        agent = agent_factory(config_dict)
     except Exception as e:
         raise HTTPException(
             status_code=400,

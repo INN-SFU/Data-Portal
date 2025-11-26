@@ -82,8 +82,6 @@ if __name__ == "__main__":
         f"&redirect_uri={os.getenv('KEYCLOAK_REDIRECT_URI')}"
         f"&response_type=code"
     )
-
-    os.environ['KEYCLOAK_ADMIN_CLIENT_SECRET'] = get_secret("KEYCLOAK_ADMIN_CLIENT_SECRET")
     
     # ---- Run server
     host = os.getenv("AMS_HOST", "0.0.0.0")

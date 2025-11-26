@@ -6,10 +6,10 @@ from pydantic import BaseModel, Field, create_model, HttpUrl
 from core.management.policies import Policy
 from core.management.users.models import User
 from core.connectivity.agents import (
-    available_flavours,
     S3StorageAgent,
     DummyStorageAgent
 )
+from core.connectivity import AVAILABLE_FLAVOURS
 
 
 class GetAssetRequest(BaseModel):
@@ -187,7 +187,7 @@ class UserAssetsData(BaseModel):
 
 # shared base:
 class InstanceBase(BaseModel):
-    flavour: Literal[tuple(available_flavours.keys())]
+    flavour: Literal[tuple(AVAILABLE_FLAVOURS.keys())]
     instance_name: str
     instance_url: str
 
