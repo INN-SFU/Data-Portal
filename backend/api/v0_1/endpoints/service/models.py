@@ -6,15 +6,15 @@ from pydantic import BaseModel, Field, create_model, HttpUrl
 from core.management.policies import Policy
 from core.management.users.models import User
 from core.connectivity.agents import (
-    available_flavours,
     S3StorageAgent,
-    PosixStorageAgent
+    DummyStorageAgent
 )
+from core.connectivity import AVAILABLE_FLAVOURS
 
 
 class GetAssetRequest(BaseModel):
     resource: str = Field(..., description="The resource to be accessed.")
-    access_point: str = Field(..., description="The name of the access point.")
+    instance_name: str = Field(..., description="The name of the access point.")
     action: str = Field(..., description="The action to be performed on the resource.")
 
 
@@ -25,11 +25,21 @@ class GetAssetResponse(BaseModel):
 
 class PutAssetRequest(BaseModel):
     resource: str = Field(..., description="Target path/key to write to (e.g. 'folder/sub/file.txt').")
-    access_point: str = Field(..., description="Name of the storage access point.")
+    instance_name: str = Field(..., description="Name of the storage access point.")
 
 
 class PutAssetResponse(BaseModel):
     presigned_urls: list[str] = Field(..., description="List of presigned PUT URLs (one per file).")
+    file_paths: list[str] = Field(..., description="List of file paths these URLs correspond to.")
+
+
+class DeleteAssetRequest(BaseModel):
+    resource: str = Field(..., description="Path/key to delete (e.g. 'folder/sub/file.txt').")
+    instance_name: str = Field(..., description="Name of the storage access point.")
+
+
+class DeleteAssetResponse(BaseModel):
+    presigned_urls: list[str] = Field(..., description="List of presigned DELETE URLs.")
     file_paths: list[str] = Field(..., description="List of file paths these URLs correspond to.")
 
 
@@ -177,8 +187,8 @@ class UserAssetsData(BaseModel):
 
 # shared base:
 class InstanceBase(BaseModel):
-    flavour: Literal[tuple(available_flavours.keys())]
-    access_point_name: str
+    flavour: Literal[tuple(AVAILABLE_FLAVOURS.keys())]
+    instance_name: str
     instance_url: str
 
 
@@ -190,15 +200,15 @@ S3InstanceCreate = create_model(
     **{name: (typ, ...) for name, typ in S3StorageAgent.CONFIG.items()}
 )
 
-PosixInstanceCreate = create_model(
-    "PosixInstanceCreate",
+DummyInstanceCreate = create_model(
+    "DummyInstanceCreate",
     __base__=InstanceBase,
-    flavour=(Literal[PosixStorageAgent.FLAVOUR], ...),
-    **{name: (typ, ...) for name, typ in PosixStorageAgent.CONFIG.items()}
+    flavour=(Literal[DummyStorageAgent.FLAVOUR], ...),
+    **{name: (typ, ...) for name, typ in DummyStorageAgent.CONFIG.items()}
 )
 
 # discriminated union:
 InstanceCreate = Annotated[
-    Union[S3InstanceCreate, PosixInstanceCreate],
+    Union[S3InstanceCreate, DummyInstanceCreate],
     Field(discriminator="flavour")
 ]

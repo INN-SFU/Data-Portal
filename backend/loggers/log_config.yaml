@@ -16,86 +16,86 @@ handlers:
     formatter: simple
   app_file:
     class: logging.FileHandler
-    filename: loggers/logs/app.log
+    filename: ${LOG_DIR}/app.log
     mode: a
     formatter: detailed
   user_manager_file:
     class: logging.FileHandler
-    filename: loggers/logs/user-manager.log
+    filename: ${LOG_DIR}/user-manager.log
     mode: a
     formatter: component
   instance_manager_file:
     class: logging.FileHandler
-    filename: loggers/logs/instance-manager.log
+    filename: ${LOG_DIR}/instance-manager.log
     mode: a
     formatter: component
   policy_manager_file:
     class: logging.FileHandler
-    filename: loggers/logs/policy-manager.log
+    filename: ${LOG_DIR}/policy-manager.log
     mode: a
     formatter: component
   storage_file:
     class: logging.FileHandler
-    filename: loggers/logs/storage.log
+    filename: ${LOG_DIR}/storage.log
     mode: a
     formatter: component
   uvicorn_file:
     class: logging.FileHandler
-    filename: loggers/logs/uvicorn.log
+    filename: ${LOG_DIR}/uvicorn.log
     mode: a
     formatter: detailed
 
 loggers:
   # Application-level loggers
   app:
-    level: INFO
+    level: ${LOG_LEVEL}
     handlers: [console, app_file]
     propagate: false
-  
+
   # Management component loggers
   user-manager:
-    level: INFO
+    level: ${LOG_LEVEL}
     handlers: [console, user_manager_file]
     propagate: false
   instance-manager:
-    level: INFO
+    level: ${LOG_LEVEL}
     handlers: [console, instance_manager_file]
     propagate: false
   policy-manager:
-    level: INFO
+    level: ${LOG_LEVEL}
     handlers: [console, policy_manager_file]
     propagate: false
-  
-  # Storage-specific loggers (POSIX and S3 only)
-  storage.posix:
-    level: INFO
-    handlers: [console, storage_file]
-    propagate: false
+
+  # Storage-specific loggers
   storage.s3:
-    level: INFO
+    level: ${LOG_LEVEL}
     handlers: [console, storage_file]
     propagate: false
-  
+  storage.dummy:
+    level: ${LOG_LEVEL}
+    handlers: [console, storage_file]
+    propagate: false
+
   # Server loggers
   uvicorn:
-    level: INFO
+    level: ${LOG_LEVEL}
     handlers: [console, uvicorn_file]
     propagate: false
   uvicorn.error:
-    level: INFO
+    level: ${LOG_LEVEL}
     handlers: [console, uvicorn_file]
     propagate: false
   uvicorn.access:
     level: INFO
     handlers: [console, uvicorn_file]
     propagate: false
-  
+
   # Legacy casbin logger (will be replaced by policy-manager)
   casbin:
-    level: INFO
+    level: ${LOG_LEVEL}
     handlers: [console, policy_manager_file]
     propagate: false
 
 root:
-  level: INFO
+  level: ${LOG_LEVEL}
   handlers: [console]

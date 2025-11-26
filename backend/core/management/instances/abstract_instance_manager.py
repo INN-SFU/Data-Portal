@@ -14,20 +14,20 @@ class AbstractInstanceManager(ABC):
     def instances(self) -> list[Instance]:
         return self._instances
 
-    def get_instances(self, access_points: set = None) -> dict[str, Instance]:
+    def get_instances(self, instance_names: set = None) -> dict[str, Instance]:
         """
-        Get instances filtered by access point names.
-        
-        :param access_points: Set of instance names to filter by. If None, returns all instances.
+        Get instances filtered by instance names.
+
+        :param instance_names: Set of instance names to filter by. If None, returns all instances.
         :return: Dictionary mapping instance names to Instance objects
         """
-        if access_points is None:
+        if instance_names is None:
             return {instance.name: instance for instance in self._instances}
-        
+
         return {
-            instance.name: instance 
-            for instance in self._instances 
-            if instance.name in access_points
+            instance.name: instance
+            for instance in self._instances
+            if instance.name in instance_names
         }
 
     @instances.setter
@@ -77,12 +77,13 @@ class AbstractInstanceManager(ABC):
 
         :param instance_name: The name of the instance.
         :return: The UUID of the instance.
+        :raises KeyError: If instance with the given name is not found.
         """
         for instance in self.instances:
             if instance.name == instance_name:
                 return instance.uuid
 
-        raise ValueError(f"Instance with name '{instance_name}' not found.")
+        raise KeyError(f"Instance with name '{instance_name}' not found.")
 
     def get_instance_by_uuid(self, uuid: UUID) -> Instance:
         """

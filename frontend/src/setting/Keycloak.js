@@ -6,4 +6,7 @@ const keycloak = new Keycloak({
   clientId: process.env.REACT_APP_KeyCloakClientId, // client ID
 });
 
+// Enable crypto polyfill for local development without HTTPS
+keycloak.enableLogging = true;
+
 export default keycloak;

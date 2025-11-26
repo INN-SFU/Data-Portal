@@ -39,6 +39,79 @@ async def list_users(
 
 
 @users_router.get(
+    "/me",
+    response_model=User,
+    summary="Get current user information",
+    description="Retrieve information about the currently authenticated user."
+)
+async def get_current_user_info(
+    current_user: dict = Depends(get_current_user),
+    user_manager: AbstractUserManager = Depends(get_user_manager)
+) -> User:
+    """Get current user's own information (authenticated user)."""
+    current_username = current_user.get("preferred_username")
+    if not current_username:
+        raise HTTPException(status_code=400, detail="Username not found in token")
+
+    try:
+        uuid = user_manager.get_user_uuid(current_username)
+        return user_manager.get_user(uuid)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="User not found in system")
+
+
+@users_router.get(
+    "/dashboard",
+    response_model=UserManagementData,
+    summary="Get user management dashboard data",
+    description="Admin dashboard with all users and their access permissions."
+)
+async def get_user_dashboard(
+    admin_user: dict = Depends(require_admin),
+    user_manager: AbstractUserManager = Depends(get_user_manager),
+    policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+    instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
+) -> UserManagementData:
+    """Get user management dashboard data (admin only)."""
+    users = user_manager.get_all_users()
+    file_trees = {}
+
+    # Build file trees for each user based on their access
+    for user in users:
+        instance_uuids = list(set(
+            policy.endpoint_uuid
+            for policy in policy_manager.get_user_policies(user.uuid)
+        ))
+        instances = instance_manager.get_instances_by_uuid(instance_uuids)
+        user_trees = {}
+
+        for instance in instances:
+            f_trees = instance.agent.partition_file_tree_by_access(
+                policy_manager, user.uuid, instance.uuid, ['read', 'write', 'admin']
+            )
+            if f_trees:
+                user_trees[(instance.name, str(instance.uuid))] = {
+                    access_type: convert_file_tree_to_dict(tree)
+                    for access_type, tree in f_trees.items()
+                }
+
+        file_trees[str(user.uuid)] = user_trees
+
+    # Include form metadata
+    required_models = ["AddUserRequest", "AddUserResponse", "RemoveUserResponse"]
+    json_registry = {
+        name: {
+            "instance": entry["instance"],
+            "schema": entry["model_class"].model_json_schema()
+        }
+        for name, entry in model_registry.items()
+        if name in required_models
+    }
+
+    return UserManagementData(users=users, file_trees=file_trees, models=json_registry)
+
+
+@users_router.get(
     "/{username}",
     response_model=User,
     summary="Get user information",
@@ -87,8 +160,21 @@ async def create_user(
         pass
 
     # Create user
-    user_manager.create_user(user_create)
-    uuid = user_manager.get_user_uuid(user_data.username)
+    try:
+        user_manager.create_user(user_create)
+        uuid = user_manager.get_user_uuid(user_data.username)
+    except Exception as e:
+        # Catch Keycloak validation errors (invalid email, missing fields, etc.)
+        error_msg = str(e)
+        if "error-invalid-email" in error_msg:
+            raise HTTPException(status_code=400, detail="Invalid email format")
+        elif "User name is missing" in error_msg or "username" in error_msg.lower():
+            raise HTTPException(status_code=400, detail="Username is required")
+        elif "already exists" in error_msg.lower():
+            raise HTTPException(status_code=400, detail="User already exists")
+        else:
+            # Log the full error for debugging
+            raise HTTPException(status_code=400, detail=f"Failed to create user: {error_msg}")
 
     # Create policy store (rollback on failure)
     if not policy_manager.create_user_policy_store(uuid):
@@ -126,76 +212,3 @@ async def delete_user(
         raise HTTPException(status_code=500, detail="Failed to remove user policy file")
 
     return RemoveUserResponse(success=True, details=user_details)
-
-
-@users_router.get(
-    "/me",
-    response_model=User,
-    summary="Get current user information",
-    description="Retrieve information about the currently authenticated user."
-)
-async def get_current_user_info(
-    current_user: dict = Depends(get_current_user),
-    user_manager: AbstractUserManager = Depends(get_user_manager)
-) -> User:
-    """Get current user's own information (authenticated user)."""
-    current_username = current_user.get("preferred_username")
-    if not current_username:
-        raise HTTPException(status_code=400, detail="Username not found in token")
-    
-    try:
-        uuid = user_manager.get_user_uuid(current_username)
-        return user_manager.get_user(uuid)
-    except KeyError:
-        raise HTTPException(status_code=404, detail="User not found in system")
-
-
-@users_router.get(
-    "/dashboard",
-    response_model=UserManagementData,
-    summary="Get user management dashboard data",
-    description="Admin dashboard with all users and their access permissions."
-)
-async def get_user_dashboard(
-    admin_user: dict = Depends(require_admin),
-    user_manager: AbstractUserManager = Depends(get_user_manager),
-    policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
-    instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
-) -> UserManagementData:
-    """Get user management dashboard data (admin only)."""
-    users = user_manager.get_all_users()
-    file_trees = {}
-
-    # Build file trees for each user based on their access
-    for user in users:
-        instance_uuids = list(set(
-            policy.endpoint_uuid 
-            for policy in policy_manager.get_user_policies(user.uuid)
-        ))
-        instances = instance_manager.get_instances_by_uuid(instance_uuids)
-        user_trees = {}
-
-        for instance in instances:
-            f_trees = instance.agent.partition_file_tree_by_access(
-                policy_manager, user.uuid, instance.uuid, ['read', 'write', 'admin']
-            )
-            if f_trees:
-                user_trees[(instance.name, str(instance.uuid))] = {
-                    access_type: convert_file_tree_to_dict(tree) 
-                    for access_type, tree in f_trees.items()
-                }
-
-        file_trees[str(user.uuid)] = user_trees
-
-    # Include form metadata
-    required_models = ["AddUserRequest", "AddUserResponse", "RemoveUserResponse"]
-    json_registry = {
-        name: {
-            "instance": entry["instance"],
-            "schema": entry["model_class"].model_json_schema()
-        }
-        for name, entry in model_registry.items()
-        if name in required_models
-    }
-
-    return UserManagementData(users=users, file_trees=file_trees, models=json_registry)

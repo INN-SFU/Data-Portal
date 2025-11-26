@@ -5,7 +5,7 @@ import "./StorageManagement.css";
 
 const http = axios.create({ baseURL: "http://localhost:8000" });
 const INSTANCES_BASE = "/api/instances";
-const FLAVOURS = ["s3", "posix"];
+const FLAVOURS = ["s3"];
 
 export default function StorageManagement() {
   const { keycloak, initialized } = useKeycloak();
@@ -16,15 +16,11 @@ export default function StorageManagement() {
 
   // form state
   const [instanceName, setInstanceName] = useState("my-instance-id");
-  const [accessPointName, setAccessPointName] = useState("my-access-point");
   const [flavour, setFlavour] = useState("");
   // S3 fields
   const [s3Url, setS3Url] = useState("http://localhost:9000");
   const [s3Key, setS3Key] = useState("");
   const [s3Secret, setS3Secret] = useState("");
-  // POSIX fields
-  const [posixUrl, setPosixUrl] = useState("");
-  const [posixCa, setPosixCa] = useState("");
 
   const authHeaders = async () => {
     if (!initialized) return {};
@@ -56,7 +52,6 @@ export default function StorageManagement() {
     setErr("");
 
     if (!instanceName.trim()) return setErr("Instance name is required.");
-    if (!accessPointName.trim()) return setErr("Access point name is required.");
     if (!flavour) return setErr("Flavour is required.");
 
     let payload;
@@ -67,21 +62,9 @@ export default function StorageManagement() {
       payload = {
         flavour: "s3",
         instance_name: instanceName.trim(),
-        access_point_name: accessPointName.trim(),
         instance_url: s3Url.trim(),
         aws_access_key_id: s3Key.trim(),
         aws_secret_access_key: s3Secret.trim(),
-      };
-    } else if (flavour === "posix") {
-      if (!posixUrl.trim() || !posixCa.trim()) {
-        return setErr("For POSIX, please fill instance URL and SSH CA key.");
-      }
-      payload = {
-        flavour: "posix",
-        instance_name: instanceName.trim(),
-        access_point_name: accessPointName.trim(),
-        instance_url: posixUrl.trim(),
-        ssh_ca_key: posixCa.trim(),
       };
     } else {
       return setErr(`Unsupported flavour: ${flavour}`);
@@ -92,7 +75,7 @@ export default function StorageManagement() {
       await http.post(`${INSTANCES_BASE}/`, payload, { headers });
       await loadInstances();
       // light reset of sensitive fields
-      setS3Key(""); setS3Secret(""); setPosixCa("");
+      setS3Key(""); setS3Secret("");
       alert("Instance created.");
     } catch (e) {
       setErr(toMsg(e));
@@ -118,18 +101,11 @@ export default function StorageManagement() {
       <section className="im-card">
         <h3>Create Instance</h3>
         <form onSubmit={handleCreate} className="im-form">
-          <div className="im-row">
-            <label className="im-field">
-              <span>Instance Name *</span>
-              <input value={instanceName} onChange={e => setInstanceName(e.target.value)} placeholder="my-instance-id" />
-              <small className="im-muted">Used to derive a stable UUID</small>
-            </label>
-            <label className="im-field">
-              <span>Access Point Name *</span>
-              <input value={accessPointName} onChange={e => setAccessPointName(e.target.value)} placeholder="my-access-point" />
-              <small className="im-muted">Human-friendly name shown in the UI</small>
-            </label>
-          </div>
+          <label className="im-field">
+            <span>Instance Name *</span>
+            <input value={instanceName} onChange={e => setInstanceName(e.target.value)} placeholder="my-instance-id" />
+            <small className="im-muted">Used to derive a stable UUID and shown in the UI</small>
+          </label>
 
           <label className="im-field">
             <span>Flavour *</span>
@@ -152,19 +128,6 @@ export default function StorageManagement() {
               <label className="im-field">
                 <span>Secret Key *</span>
                 <input type="password" value={s3Secret} onChange={e => setS3Secret(e.target.value)} />
-              </label>
-            </div>
-          )}
-
-          {flavour === "posix" && (
-            <div className="im-row">
-              <label className="im-field">
-                <span>Instance URL *</span>
-                <input value={posixUrl} onChange={e => setPosixUrl(e.target.value)} placeholder="/mnt/data" />
-              </label>
-              <label className="im-field">
-                <span>SSH CA Key *</span>
-                <input value={posixCa} onChange={e => setPosixCa(e.target.value)} />
               </label>
             </div>
           )}
