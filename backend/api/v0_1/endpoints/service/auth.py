@@ -44,18 +44,53 @@ def get_jwks_client():
 def decode_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
     # Extract bearer token from Authorization header
     token = credentials.credentials if credentials else None
-    
+
     if not token:
         logger.warning("No token found in Authorization header")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token required")
-    
+
     logger.debug("Token received via Authorization header")
+    logger.debug(f"Token preview (first 50 chars): {token[:50]}...")
+
+    # Decode token header to inspect issuer claim
+    try:
+        import base64
+        import json
+        # JWT tokens have 3 parts: header.payload.signature
+        header_b64 = token.split('.')[0]
+        # Add padding if needed
+        header_b64 += '=' * (4 - len(header_b64) % 4)
+        header = json.loads(base64.b64decode(header_b64))
+
+        payload_b64 = token.split('.')[1]
+        payload_b64 += '=' * (4 - len(payload_b64) % 4)
+        payload = json.loads(base64.b64decode(payload_b64))
+
+        logger.debug(f"Token header: {header}")
+        logger.debug(f"Token issuer claim: {payload.get('iss', 'Not present')}")
+        logger.debug(f"Token azp claim: {payload.get('azp', 'Not present')}")
+        logger.debug(f"Token aud claim: {payload.get('aud', 'Not present')}")
+        logger.debug(f"Token exp: {payload.get('exp', 'Not present')}")
+        logger.debug(f"Token username: {payload.get('preferred_username', 'Not present')}")
+    except Exception as e:
+        logger.warning(f"Could not decode token for inspection: {e}")
 
     client_id = os.getenv("KEYCLOAK_UI_CLIENT_ID")
     keycloak_domain = os.getenv("KEYCLOAK_DOMAIN")
     realm = os.getenv("KEYCLOAK_REALM")
-    issuer = f"{keycloak_domain}/realms/{realm}"
-    
+    well_known_url = os.getenv("KEYCLOAK_WELL_KNOWN_URL")
+
+    # Allow configurable issuer for different environments (dev/staging/prod)
+    # Defaults to internal domain for container-to-container communication
+    issuer = os.getenv("KEYCLOAK_TOKEN_ISSUER", f"{keycloak_domain}/realms/{realm}")
+
+    logger.debug(f"DEBUG: Environment variables:")
+    logger.debug(f"  KEYCLOAK_UI_CLIENT_ID: {client_id}")
+    logger.debug(f"  KEYCLOAK_DOMAIN: {keycloak_domain}")
+    logger.debug(f"  KEYCLOAK_REALM: {realm}")
+    logger.debug(f"  KEYCLOAK_WELL_KNOWN_URL: {well_known_url}")
+    logger.debug(f"  KEYCLOAK_TOKEN_ISSUER: {os.getenv('KEYCLOAK_TOKEN_ISSUER', 'Not set - using default')}")
+    logger.debug(f"  Computed issuer: {issuer}")
     logger.debug(f"Token validation config - client_id: {client_id}, realm: {realm}, issuer: {issuer}")
 
     jwks_client = get_jwks_client()
@@ -90,9 +125,6 @@ def decode_token(credentials: HTTPAuthorizationCredentials = Depends(bearer_sche
             detail="Could not validate credentials"
         ) from e
     return payload
-
-
-
 
 
 def is_user_admin(token_payload: dict) -> bool:

@@ -22,31 +22,53 @@ wheels/
 MANIFEST
 
 # Virtual environments
-venv/
-env/
-ENV/
-.env
-.venv
+**/venv/
+**/env/
+**/ENV/
+**/.env
+**/.venv
 
-# Configuration files (contain sensitive data) - now in backend/
+# Backend - Configuration files (contain sensitive data)
 /backend/config.yaml
+/backend/config.yml
 /backend/core/settings/.env
 /backend/core/settings/security/.secrets
 /backend/*.policies
 /backend/core/settings/managers/instances/configs/*.json
 
-# Legacy authentication data - now in backend/
+# Backend - Legacy authentication data
 /backend/core/authentication/user_data/
 /backend/core/authentication/uuids.json
 /backend/core/settings/endpoints/agents.json
 
-# OpenStack/Cloud credentials - now in backend/
+# Backend - OpenStack/Cloud credentials
 /backend/core/connectivity/arbutus/*.sh
 /backend/core/settings/security/def-rmcintos-dev-openrc.sh
 
-# Logs - now in backend/
+# Backend - Logs and runtime data
 /backend/*.log
-/backend/loggers/logs/
+/backend/data/
+/backend/bin/
+/backend/run/
+/backend/*.old
+
+# Frontend - Node.js dependencies
+/frontend/node_modules/
+
+# Frontend - Production build
+/frontend/build/
+
+# Frontend - Runtime logs
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+
+# Frontend - Testing
+/frontend/coverage/
+
+# Frontend - Lock files (optional - team preference)
+/frontend/package-lock.json
+/frontend/yarn.lock
 
 # IDE
 .vscode/
@@ -76,35 +98,9 @@ temp/
 
 # Docker
 .dockerignore
+docker-compose.override.yml
+.docker/
 
 # Documentation build
 docs/_build/
-
-# frontend configuration
-# Node.js dependencies
-/frontend/node_modules/
-
-# Production build
-/frontend/build/
-
-# Runtime logs
-/frontend/npm-debug.log*
-/frontend/yarn-debug.log*
-/frontend/yarn-error.log*
-
-# OS files
-/frontend/.DS_Store
-
-# IDE/editor folders
-/frontend/.idea/
-/frontend/.vscode/
-
-# Environment variables
-/frontend/.env.development
-
-# Testing
-/frontend/coverage/
-
-/frontend/package-lock.json
-/frontend/yarn.lock
 

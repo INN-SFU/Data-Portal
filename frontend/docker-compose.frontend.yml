@@ -1,0 +1,31 @@
+
+services:
+  frontend:
+    container_name: ams-frontend-dev
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      # React dev server config - use separate domains
+      REACT_APP_KeyCloakServerUrl: http://keycloak.local:8080
+      REACT_APP_KeyCloakRealm: ams-portal
+      REACT_APP_KeyCloakClientId: ams-portal-ui
+      # Backend API URL
+      REACT_APP_API_BASE_URL: http://backend.local:8000
+      # Avoid browser auto-open and enable polling for hot reload
+      BROWSER: none
+      CHOKIDAR_USEPOLLING: "true"
+      WDS_SOCKET_PORT: 3000
+    ports: ["3000:3000"]
+    extra_hosts:
+      - "keycloak.local:127.0.0.1"
+      - "backend.local:127.0.0.1"
+      - "frontend.local:127.0.0.1"
+    volumes:
+      # Volume mount source for hot reload
+      - ./src:/app/src
+      - ./public:/app/public
+      # Prevent overwriting node_modules
+      - /app/node_modules
+    stdin_open: true
+    tty: true

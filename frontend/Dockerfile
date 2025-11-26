@@ -5,10 +5,20 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Copy app source (includes .env.production if present)
+# Copy app source (includes .env files)
 COPY . .
 
-# CRA/Vite will read .env.production automatically during build
+# Set build-time environment variables to use localhost Keycloak
+ARG REACT_APP_KEYCLOAK_URL=http://localhost:8080
+ARG REACT_APP_KEYCLOAK_REALM=ams-portal
+ARG REACT_APP_KEYCLOAK_CLIENT_ID=ams-portal-ui
+
+# Convert build args to env vars for React build process
+ENV REACT_APP_KeyCloakServerUrl=$REACT_APP_KEYCLOAK_URL
+ENV REACT_APP_KeyCloakRealm=$REACT_APP_KEYCLOAK_REALM
+ENV REACT_APP_KeyCloakClientId=$REACT_APP_KEYCLOAK_CLIENT_ID
+
+# Build the app
 RUN npm run build
 
 # ---- Stage 2: Nginx runtime ----

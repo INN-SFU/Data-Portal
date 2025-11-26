@@ -10,6 +10,7 @@ from core.injection.managers import get_instance_manager, get_user_manager
 from api.v0_1.endpoints.service.auth import decode_token
 from ..auth_dependencies import require_admin
 from api.v0_1.endpoints.service.models import (GetAssetRequest, GetAssetResponse, PutAssetRequest, PutAssetResponse,
+                                               DeleteAssetRequest, DeleteAssetResponse,
                                                UserHomeData, UserAssetsData, AssetManagementData)
 from .utils import convert_file_tree_to_dict
 from core.management.instances import AbstractInstanceManager
@@ -30,22 +31,22 @@ def put_asset(asset: PutAssetRequest = Depends(),
 
     # Get user UUID from token payload
     user_uuid = user_manager.get_user_uuid(user['preferred_username'])
-    access_point = asset.access_point
-    access_point_uuid = instance_manager.get_instance_uuid(access_point)
+    instance_name = asset.instance_name
+    instance_uuid = instance_manager.get_instance_uuid(instance_name)
     resource = asset.resource
 
     policy = Policy(
         user_uuid=user_uuid,
-        instance_uuid=access_point_uuid,
+        instance_uuid=instance_uuid,
         resource=resource,
         action='write'
     )
 
     if policy_manager.validate_policy(policy):
         try:
-            agent = instance_manager.get_instance_by_uuid(access_point_uuid).agent
+            agent = instance_manager.get_instance_by_uuid(instance_uuid).agent
         except KeyError:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Access point {access_point} not found.")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instance {instance_name} not found.")
 
         presigned_urls, file_paths = agent.generate_access_link(str(resource), 'write', 3600)
         print(presigned_urls)
@@ -60,7 +61,45 @@ def put_asset(asset: PutAssetRequest = Depends(),
                             detail="User does not have write access to this resource")
 
 
-@assets_router.put("/download", dependencies=[Depends(decode_token)])
+@assets_router.delete("/delete", dependencies=[Depends(decode_token)])
+def delete_asset(asset: DeleteAssetRequest = Depends(),
+                 user: dict = Depends(decode_token),
+                 user_manager: AbstractUserManager = Depends(get_user_manager),
+                 policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+                 instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
+                 ) -> DeleteAssetResponse:
+
+    # Get user UUID from token payload
+    user_uuid = user_manager.get_user_uuid(user['preferred_username'])
+    instance_name = asset.instance_name
+    instance_uuid = instance_manager.get_instance_uuid(instance_name)
+    resource = asset.resource
+
+    policy = Policy(
+        user_uuid=user_uuid,
+        instance_uuid=instance_uuid,
+        resource=resource,
+        action='write'  # Write permission includes delete
+    )
+
+    if policy_manager.validate_policy(policy):
+        try:
+            agent = instance_manager.get_instance_by_uuid(instance_uuid).agent
+        except KeyError:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instance {instance_name} not found.")
+
+        presigned_urls, file_paths = agent.generate_access_link(str(resource), 'delete', 3600)
+        return DeleteAssetResponse(
+            presigned_urls=presigned_urls,
+            file_paths=file_paths
+        )
+
+    else:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="User does not have write access to this resource")
+
+
+@assets_router.get("/download", dependencies=[Depends(decode_token)])
 def get_asset(asset: GetAssetRequest = Depends(),
               user: dict = Depends(decode_token),
               user_manager: AbstractUserManager = Depends(get_user_manager),
@@ -73,20 +112,20 @@ def get_asset(asset: GetAssetRequest = Depends(),
 
     #
     try:
-        access_point_uuid = instance_manager.get_instance_uuid(asset.access_point)
+        instance_uuid = instance_manager.get_instance_uuid(asset.instance_name)
     except KeyError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Access point {asset.access_point} not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instance {asset.instance_name} not found.")
 
     # Build the policy
     policy = Policy(
         user_uuid=user_uuid,
-        instance_uuid=access_point_uuid,
+        instance_uuid=instance_uuid,
         resource=asset.resource,
         action=asset.action
     )
 
     if policy_manager.validate_policy(policy):
-        agent = instance_manager.get_instance_by_uuid(access_point_uuid).agent
+        agent = instance_manager.get_instance_by_uuid(instance_uuid).agent
         try:
             presigned_urls, file_paths = agent.generate_access_link(policy.resource, policy.action, 600)
         except ValueError as e:
@@ -118,12 +157,12 @@ async def get_user_home_data(
     """
     uid = token_payload.get("preferred_username")
 
-    # Get all storage access points the user has read access to
-    access_points = set([policy[1] for policy in policy_manager.get_user_policies(uid)])
-    user_file_tree = dict.fromkeys(access_points)
+    # Get all storage instance names the user has read access to
+    instance_names = set([policy[1] for policy in policy_manager.get_user_policies(uid)])
+    user_file_tree = dict.fromkeys(instance_names)
 
     # Loop through each storage instance and filter its file tree
-    storage_instances = instance_manager.get_instances(access_points)
+    storage_instances = instance_manager.get_instances(instance_names)
     for instance in storage_instances.keys():
         def node_filter(n: node):
             vals = (uid, instance, n.identifier, 'write')
@@ -168,9 +207,9 @@ async def get_user_assets_data(
             agent.filter_file_tree(node_filter)
         )
 
-    access_point_names = {instance.access_point_name: str(uid) for uid, instance in instances.items()}
+    instance_names_map = {instance.name: str(uid) for uid, instance in instances.items()}
 
-    return UserAssetsData(assets=file_trees, instances=access_point_names)
+    return UserAssetsData(assets=file_trees, instances=instance_names_map)
 
 
 @assets_router.get(
@@ -218,16 +257,14 @@ async def get_asset_dashboard(
     )
     instances = instance_manager.get_instances_by_uuid(instance_uuids)
 
-    ##########################
+    # Refresh file trees if requested (using smart refresh for efficiency)
     if refresh:
         for instance in instances:
-            if hasattr(instance.agent, "refresh_file_tree"):
-                try:
-                    instance.agent.refresh_file_tree()
-                except Exception as e:
-                    # don't fail the whole request on a single agent refresh error
-                    logger.warning(f"Failed to refresh tree for {instance.name}: {e}")
-    ##########################
+            try:
+                instance.agent.smart_refresh_file_tree()
+            except Exception as e:
+                # don't fail the whole request on a single agent refresh error
+                logger.warning(f"Failed to refresh tree for {instance.name}: {e}")
 
     file_trees = {}
     for instance in instances:

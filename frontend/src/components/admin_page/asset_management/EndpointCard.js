@@ -43,8 +43,8 @@ export default function EndpointCard({
 
       for (const id of readLeaves) {
         const headers = await authHeaders();
-        const params = { access_point: endpointName, resource: String(id), action: "read" };
-        const { data } = await http.put("/api/assets/download", null, { params, headers });
+        const params = { instance_name: endpointName, resource: String(id), action: "read" };
+        const { data } = await http.get("/api/assets/download", { params, headers });
         const urls = data?.presigned_urls || [];
         const paths = data?.file_paths || [];
         for (let i = 0; i < urls.length; i++) {
@@ -90,7 +90,7 @@ export default function EndpointCard({
 
           // Ask backend for presigned URL(s)
           const { data } = await http.put("/api/assets/upload", null, {
-            params: { access_point: endpointName, resource },
+            params: { instance_name: endpointName, resource },
             headers,
           });
 
@@ -112,6 +112,40 @@ export default function EndpointCard({
     input.click();
   };
 
+  // ---------------------- Delete (from WRITE selection) ----------------------
+  const handleDelete = async () => {
+    if (!hasWrite) return alert("No writable items.");
+    const writeLeaves = getSelectedLeaves(writeArray, selectedByAccess.write || new Set());
+    if (writeLeaves.length === 0) return alert("Select files to delete in WRITE.");
+
+    if (!window.confirm(`Delete ${writeLeaves.length} file(s)? This cannot be undone.`)) return;
+
+    setBusy("del");
+    try {
+      for (const resource of writeLeaves) {
+        const headers = await authHeaders();
+
+        // Ask backend for presigned DELETE URL
+        const { data } = await http.delete("/api/assets/delete", {
+          params: { instance_name: endpointName, resource },
+          headers,
+        });
+
+        const urls = data?.presigned_urls || [];
+        for (const url of urls) {
+          const resp = await fetch(url, { method: "DELETE", credentials: "omit", cache: "no-store", mode: "cors" });
+          if (!resp.ok) throw new Error(`Storage DELETE failed (${resp.status}): ${await safeText(resp)}`);
+        }
+      }
+      if (onMutate) onMutate(); // refresh dashboard
+      alert("Delete complete.");
+    } catch (e) {
+      alert(`Delete failed: ${e?.response?.data?.detail || e?.message || e}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   // ------------------------------- HTML  --------------------------------
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
@@ -126,23 +160,8 @@ export default function EndpointCard({
           <strong>{endpointName}</strong>
           <div style={{ fontSize: 12, color: "#6b7280" }}>UUID: {endpointUuid}</div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={(e) => { e.stopPropagation(); handleDownload(); }}
-            disabled={!!busy || !hasRead}
-            style={{ background: "#3b82f6", color: "#fff", border: 0, borderRadius: 8, padding: "6px 10px" }}
-            title={!hasRead ? "No readable items" : undefined}
-          >
-            {busy === "down" ? "Downloading…" : "Download"}
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); handleUpload(); }}
-            disabled={!!busy || !hasWrite}
-            style={{ background: "#10b981", color: "#fff", border: 0, borderRadius: 8, padding: "6px 10px" }}
-            title={!hasWrite ? "No writable items" : undefined}
-          >
-            {busy === "up" ? "Uploading…" : "Upload"}
-          </button>
+        <div style={{ fontSize: 14, color: "#6b7280" }}>
+          {open ? "▼" : "▶"}
         </div>
       </div>
 
@@ -154,7 +173,16 @@ export default function EndpointCard({
             <div style={{ display: "grid", gap: 16 }}>
               {hasRead && (
                 <div>
-                  <div style={{ fontWeight: 600, marginBottom: 6 }}>Read</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ fontWeight: 600 }}>Read</div>
+                    <button
+                      onClick={handleDownload}
+                      disabled={!!busy}
+                      style={{ background: "#3b82f6", color: "#fff", border: 0, borderRadius: 8, padding: "6px 10px", fontSize: 13 }}
+                    >
+                      {busy === "down" ? "Downloading…" : "Download"}
+                    </button>
+                  </div>
                   <Tree
                     nodes={readArray}
                     selected={selectedByAccess.read || new Set()}
@@ -163,8 +191,26 @@ export default function EndpointCard({
                 </div>
               )}
               {hasWrite && (
-                <div style={{ borderTop: "1px dashed #e5e7eb", paddingTop: 8 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 6 }}>Write</div>
+                <div style={{ borderTop: hasRead ? "1px dashed #e5e7eb" : "none", paddingTop: hasRead ? 8 : 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ fontWeight: 600 }}>Write</div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={handleUpload}
+                        disabled={!!busy}
+                        style={{ background: "#10b981", color: "#fff", border: 0, borderRadius: 8, padding: "6px 10px", fontSize: 13 }}
+                      >
+                        {busy === "up" ? "Uploading…" : "Upload"}
+                      </button>
+                      <button
+                        onClick={handleDelete}
+                        disabled={!!busy}
+                        style={{ background: "#ef4444", color: "#fff", border: 0, borderRadius: 8, padding: "6px 10px", fontSize: 13 }}
+                      >
+                        {busy === "del" ? "Deleting…" : "Delete"}
+                      </button>
+                    </div>
+                  </div>
                   <Tree
                     nodes={writeArray}
                     selected={selectedByAccess.write || new Set()}
@@ -210,7 +256,13 @@ function getSelectedLeaves(list, sel) {
 function getSelectedTopFolders(list, sel) {
   const parentOf = new Map(list.map(n => [String(n.id), String(n.parent)]));
   const parentIds = new Set(list.filter(n => n.parent !== "#").map(n => String(n.parent)));
-  const chosenFolders = Array.from(sel).map(String).filter(id => parentIds.has(id));
+
+  // Include both folders with children AND top-level buckets (parent === "#")
+  const chosenFolders = Array.from(sel).map(String).filter(id => {
+    const node = list.find(n => String(n.id) === id);
+    return node && (parentIds.has(id) || node.parent === "#");
+  });
+
   const chosenSet = new Set(chosenFolders);
   return chosenFolders.filter(id => !chosenSet.has(parentOf.get(id)));
 }

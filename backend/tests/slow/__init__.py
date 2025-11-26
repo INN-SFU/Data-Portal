@@ -1,1 +1,0 @@
-# Slow tests (>30s, requires external services)
