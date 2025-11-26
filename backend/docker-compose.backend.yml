@@ -7,9 +7,6 @@ services:
   backend:
     container_name: ams-backend
     build: .
-    depends_on:
-      keycloak: 
-        condition: service_healthy
     # entrypoint: ["bash", "/app/entrypoint.backend.sh"]
     environment:
       # Keycloak connection (external instance on separate domain)
@@ -19,7 +16,6 @@ services:
       KEYCLOAK_ADMIN_CLIENT_ID: ams-portal-admin
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
-      KEYCLOAK_ADMIN_CLIENT_SECRET_FILE: /run/secrets/kc_admin_client_secret
       # Token issuer must match the URL in JWT tokens (frontend accesses via localhost)
       KEYCLOAK_TOKEN_ISSUER: http://localhost:8080/realms/ams-portal
       # External issuer for smoke tests (how tokens are actually issued)
