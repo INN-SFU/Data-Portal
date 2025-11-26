@@ -3,7 +3,8 @@ import axios from "axios";
 import { useKeycloak } from "@react-keycloak/web";
 import EndpointCard from "./EndpointCard.js";
 
-const http = axios.create({ baseURL: "http://localhost:8000" });
+// const http = axios.create({ baseURL: "http://localhost:8000" });
+const http = axios.create({ baseURL: "/api" });
 
 function Spinner() {
   return <div style={{ padding: 16 }}>Loading…</div>;
@@ -58,7 +59,8 @@ export default function AssetManagement({ bootstrap }) {
       setLoading(true);
       setError(null);
       const headers = await authHeaders();
-      const { data } = await http.get("/api/assets/dashboard", {
+      // const { data } = await http.get("/api/assets/dashboard", {
+      const { data } = await http.get("/assets/dashboard", {
         headers,
         params: { _t: Date.now(), ...(forceRefresh ? { refresh: 1 } : {}) },
       });

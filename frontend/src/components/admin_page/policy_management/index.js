@@ -3,9 +3,12 @@ import axios from "axios";
 import { useKeycloak } from "@react-keycloak/web";
 import "./PolicyManagement.css";
 // Constants and the component states
-const http = axios.create({ baseURL: "http://localhost:8000" });
-const INSTANCES_BASE = "/api/instances";   
-const POLICIES_BASE  = "/api/policies";    
+// const http = axios.create({ baseURL: "http://localhost:8000" });
+const http = axios.create({ baseURL: "/api" });
+// const INSTANCES_BASE = "/api/instances";   
+// const POLICIES_BASE  = "/api/policies";    
+const INSTANCES_BASE = "/instances";   
+const POLICIES_BASE  = "/policies";    
 
 export default function PolicyManagement() {
   const { keycloak, initialized } = useKeycloak();
@@ -79,7 +82,7 @@ export default function PolicyManagement() {
     try {
       const headers = await authHeaders();
       await http.post(
-        `${POLICIES_BASE}`,
+        `${POLICIES_BASE}/`,
         null,
         { headers, params: { username: u, instance_name: i, resource: r, action: a } }
       );
@@ -101,7 +104,7 @@ export default function PolicyManagement() {
     setErr("");
 
     const headers = await authHeaders();
-    await http.delete(`${POLICIES_BASE}`, {
+    await http.delete(`${POLICIES_BASE}/`, {
       headers,
       params: {
         user_uuid: p.user_uuid,

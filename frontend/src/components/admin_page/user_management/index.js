@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useKeycloak } from '@react-keycloak/web';
 import './User_Management.css';
 
-const http = axios.create({ baseURL: "http://localhost:8000" });
+const http = axios.create({ baseURL: "/api" });
 
 export default function UserManagement() {
   const { keycloak, initialized } = useKeycloak();
@@ -29,18 +29,20 @@ export default function UserManagement() {
   // API calls (use the hook-provided token each time)
   const apiListUsers = async () => {
     const headers = await authHeaders();
-    const { data } = await http.get('/api/users/', { headers });
+    const { data } = await http.get('/users/', { headers });
     return data;
   };
 
   const apiCreateUser = async (payload) => {
     const headers = await authHeaders();
-    await http.post('/api/users/', payload, { headers });
+    const res= await http.post('/users/', payload, { headers });
+    console.log("This is user created: ");
+    console.dir(res.data)
   };
 
   const apiDeleteUser = async (uname) => {
     const headers = await authHeaders();
-    await http.delete(`/api/users/${encodeURIComponent(uname)}`, { headers });
+    await http.delete(`/users/${encodeURIComponent(uname)}`, { headers });
   };
 
   useEffect(() => {
