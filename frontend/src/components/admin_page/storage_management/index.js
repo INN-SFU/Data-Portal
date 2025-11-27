@@ -5,7 +5,7 @@ import "./StorageManagement.css";
 
 const http = axios.create({ baseURL: "/api" });
 const INSTANCES_BASE = "/instances";
-const FLAVOURS = ["s3", "posix"];
+const FLAVOURS = ["s3"];
 
 export default function StorageManagement() {
   const { keycloak, initialized } = useKeycloak();
