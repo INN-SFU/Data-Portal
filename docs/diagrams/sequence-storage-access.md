@@ -364,11 +364,18 @@ p, user_uuid, instance_uuid, data/uploads/.*, write
 ```
 User can read from `shared` but only write to `uploads`.
 
-### Pattern 4: Admin Access
+### Pattern 4: Admin Access (Policy Management)
 ```
-p, admin_uuid, instance_uuid, .*, admin
+p, user_uuid, instance_uuid, .*, admin
 ```
-Admin has full control (read, write, delete, manage).
+User can manage policies for all resources in the instance.
+
+**Note:** The "admin" action in Casbin is used for **policy management** only.
+It grants the ability to view and modify access policies for the specified resources,
+but does NOT grant file read/write/delete permissions.
+
+**Separate from Keycloak Admin:** This is instance-level policy management permission,
+distinct from the Keycloak realm "admin" role which grants system-wide admin operations.
 
 ---
 
