@@ -9,7 +9,7 @@ RUN npm ci
 COPY . .
 
 # Set build-time environment variables to use localhost Keycloak
-ARG REACT_APP_KEYCLOAK_URL=http://localhost:8080
+ARG REACT_APP_KEYCLOAK_URL=https://keycloak.rmcintos.cedar.researchcomputinggroup.ca
 ARG REACT_APP_KEYCLOAK_REALM=ams-portal
 ARG REACT_APP_KEYCLOAK_CLIENT_ID=ams-portal-ui
 
