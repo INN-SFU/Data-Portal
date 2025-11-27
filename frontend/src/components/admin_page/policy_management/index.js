@@ -83,8 +83,8 @@ export default function PolicyManagement() {
       const headers = await authHeaders();
       await http.post(
         `${POLICIES_BASE}/`,
-        null,
-        { headers, params: { username: u, instance_name: i, resource: r, action: a } }
+        { username: u, instance_name: i, resource: r, action: a },
+        { headers }
       );
       await loadPolicies();
       setResource("");
