@@ -44,7 +44,7 @@ export default function EndpointCard({
       for (const id of readLeaves) {
         const headers = await authHeaders();
         const params = { access_point: endpointName, resource: String(id), action: "read" };
-        const { data } = await http.get("/assets/download", null, { params, headers });
+        const { data } = await http.get("/assets/download", { params, headers });
         const urls = data?.presigned_urls || [];
         const paths = data?.file_paths || [];
         for (let i = 0; i < urls.length; i++) {
