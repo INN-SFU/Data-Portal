@@ -113,23 +113,32 @@ sequenceDiagram
 
     Backend->>Backend: Extract Roles<br/>(realm_access.roles)
 
-    alt Has Admin Role
-        Backend->>Casbin: Check Policy<br/>(user_id, admin, create_user)
-        Casbin->>Backend: ALLOW
+    alt Has Keycloak Admin Role
+        Note over Backend,Casbin: Keycloak realm "admin" role grants<br/>access to all admin operations
 
-        Backend->>Keycloak: Admin API Call<br/>Create User
-        Keycloak->>Backend: User Created<br/>{user_id, email}
+        alt User CRUD Operation
+            Backend->>Keycloak: Admin API Call<br/>Create/Update/Delete User
+            Keycloak->>Backend: User Modified<br/>{user_id, email}
+            Backend->>Casbin: Update User Policies<br/>(create/remove policy store)
+            Casbin->>Backend: Policies Updated
+            Backend->>Frontend: 200/201 OK<br/>{message, user_data}
+        else Policy CRUD Operation
+            Backend->>Casbin: Add/Remove Policy
+            Casbin->>Backend: Policy Modified
+            Backend->>Backend: Persist to Policy Store
+            Backend->>Frontend: 200 OK<br/>{message, policy_data}
+        else Instance CRUD Operation
+            Backend->>Backend: Create/Update/Delete Instance
+            Backend->>Backend: Save Instance Config
+            Backend->>Casbin: Update Instance Policies
+            Casbin->>Backend: Policies Updated
+            Backend->>Frontend: 200/201 OK<br/>{message, instance_data}
+        end
 
-        Backend->>Casbin: Add Default User Policies<br/>(grant access to new user)
-        Casbin->>Backend: Policies Added
-
-        Backend->>Frontend: 201 Created<br/>{message, user_data}
         Frontend->>Admin: Success Message
 
-    else No Admin Role
-        Backend->>Casbin: Check Policy
-        Casbin->>Backend: DENY
-        Backend->>Frontend: 403 Forbidden<br/>Insufficient permissions
+    else No Keycloak Admin Role
+        Backend->>Frontend: 403 Forbidden<br/>Admin role required
         Frontend->>Admin: Error Message
     end
 ```
@@ -179,11 +188,11 @@ sequenceDiagram
     participant PolicyMgr
     participant Casbin
 
-    Admin->>Backend: POST /api/admin/user/<br/>{username, email, password}
+    Admin->>Backend: POST /api/users/<br/>{username, email, password}
 
-    Backend->>Backend: Validate Admin Token
-    Backend->>Casbin: Check admin permission
-    Casbin->>Backend: ALLOW
+    Backend->>Backend: Validate JWT Token
+    Backend->>Backend: Check Keycloak Admin Role<br/>(realm_access.roles)
+    Note over Backend: Requires "admin" role in Keycloak realm
 
     Backend->>Keycloak: POST /admin/realms/{realm}/users<br/>{username, email, enabled: true}
     Keycloak->>Keycloak: Create User Account
@@ -198,6 +207,7 @@ sequenceDiagram
     Backend->>PolicyMgr: Add Default Policies<br/>(user basic access)
     PolicyMgr->>Casbin: Add Policy Rules
     Casbin->>PolicyMgr: Policies Added
+    PolicyMgr->>PolicyMgr: Persist to Policy Store
 
     Backend->>Admin: 201 Created<br/>{user_id, username, email}
 ```

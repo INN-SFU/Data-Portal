@@ -20,9 +20,15 @@ graph TB
 
         subgraph "Core Components"
             Auth[Authentication<br/>Module]
-            Policy[Policy Manager<br/>Casbin RBAC]
-            Instance[Instance Manager]
-            Storage[Storage Agents]
+
+            subgraph "Policy Manager"
+                Policy[CasbinPolicy<br/>Manager]
+            end
+
+            subgraph "Instance Manager"
+                Instance[Instance<br/>Manager]
+                Storage[Storage Agents<br/>S3, Dummy]
+            end
         end
     end
 
@@ -38,17 +44,20 @@ graph TB
     User -->|HTTPS| ReactUI
     Admin -->|HTTPS| ReactUI
     ReactUI -->|REST API<br/>Bearer Token| Backend
-    Backend -->|OIDC/OAuth2| Keycloak
+    Backend -->|Validates Tokens| Auth
+    Auth -->|OIDC/OAuth2| Keycloak
     Backend -->|Enforces Policies| Policy
     Backend -->|Manages Instances| Instance
-    Backend -->|Delegates Access| Storage
-    Storage -->|Native Presigned URLs| S3
+    Instance -->|Contains| Storage
+    Storage -->|Filters via| Policy
+    Storage -->|Presigned URLs| S3
     Storage -->|Mock Operations| Dummy
 
     style Backend fill:#4A90E2
     style Keycloak fill:#E94B3C
     style ReactUI fill:#61DAFB
     style Policy fill:#FFD700
+    style Instance fill:#4A90E2
 ```
 
 ## Backend Core Components
@@ -58,23 +67,42 @@ Detailed view of the backend application structure.
 ```mermaid
 graph LR
     subgraph "API Layer v0.1"
-        AuthAPI[Auth Endpoints]
-        AssetAPI[Asset Access API]
-        AdminAPI[Admin Endpoints]
-        InstanceAPI[Instance Management API]
+        AuthAPI[Auth Endpoints<br/>/api/auth]
+        AssetsAPI[Assets API<br/>/api/assets]
+        UsersAPI[Users API<br/>/api/users]
+        PoliciesAPI[Policies API<br/>/api/policies]
+        InstancesAPI[Instances API<br/>/api/instances]
+        HealthAPI[Health API<br/>/api/health]
+    end
+
+    subgraph "Dependency Injection"
+        Injection[Dependency<br/>Injection Layer<br/>core/injection]
     end
 
     subgraph "Core Business Logic"
-        ConnMgr[Connectivity<br/>Manager]
         PolicyMgr[Policy<br/>Manager]
         InstanceMgr[Instance<br/>Manager]
         UserMgr[User<br/>Manager]
     end
 
+    subgraph "Concrete Policy Manager"
+        CasbinPolicyMgr[CasbinPolicy<br/>Manager]
+        CasbinEnforcer[Casbin<br/>Enforcer]
+    end
+
+    subgraph "Concrete Instance Manager"
+        ConcreteInstanceMgr[InstanceManager<br/>Implementation]
+    end
+
+    subgraph "Concrete User Manager"
+        KeycloakUserMgr[KeycloakUser<br/>Manager]
+    end
+
     subgraph "Storage Agents"
+        AgentFactory[Agent<br/>Factory]
+        AbstractAgent[Abstract Storage<br/>Agent Interface]
         S3Agent[S3 Storage<br/>Agent]
         DummyAgent[Dummy Storage<br/>Agent]
-        AbstractAgent[Abstract Storage<br/>Agent Interface]
     end
 
     subgraph "External Services"
@@ -82,24 +110,35 @@ graph LR
         S3Backend[S3<br/>Backend]
     end
 
-    AuthAPI --> ConnMgr
-    AssetAPI --> ConnMgr
-    AdminAPI --> PolicyMgr
-    AdminAPI --> UserMgr
-    InstanceAPI --> InstanceMgr
+    AuthAPI --> Injection
+    AssetsAPI --> Injection
+    UsersAPI --> Injection
+    PoliciesAPI --> Injection
+    InstancesAPI --> Injection
 
-    ConnMgr --> AbstractAgent
-    InstanceMgr --> AbstractAgent
+    Injection --> PolicyMgr
+    Injection --> InstanceMgr
+    Injection --> UserMgr
+
+    PolicyMgr -.->|implements| CasbinPolicyMgr
+    InstanceMgr -.->|implements| ConcreteInstanceMgr
+    UserMgr -.->|implements| KeycloakUserMgr
+
+    CasbinPolicyMgr --> CasbinEnforcer
+    CasbinEnforcer -.->|Enforces Rules| AbstractAgent
+
+    ConcreteInstanceMgr --> AgentFactory
+    AgentFactory -.->|Creates| AbstractAgent
     AbstractAgent --> S3Agent
     AbstractAgent --> DummyAgent
 
     AuthAPI -.->|Validates Tokens| KeycloakSvc
-    PolicyMgr -.->|Casbin Rules| PolicyMgr
     UserMgr -.->|CRUD Operations| KeycloakSvc
     S3Agent -.->|Presigned URLs| S3Backend
 
-    style ConnMgr fill:#4A90E2
+    style Injection fill:#90EE90
     style PolicyMgr fill:#FFD700
+    style InstanceMgr fill:#4A90E2
     style AbstractAgent fill:#95E1D3
 ```
 
@@ -112,32 +151,41 @@ classDiagram
     class AbstractStorageAgent {
         <<abstract>>
         +FLAVOUR: str
+        +file_tree: Tree
+        +instance_url: str
         +config(secrets) dict
-        +load_file_tree() FileTree
-        +generate_access_link() URL
-        +generate_upload_link() URL
+        +generate_access_link(resource, method, ttl) Tuple
+        +filter_file_tree(node_filter) Tree
+        +partition_file_tree_by_access() Dict
+        +refresh_file_tree()
+        +smart_refresh_file_tree()*
+        +refresh_connection()*
+        +close()*
     }
 
     class S3StorageAgent {
         +FLAVOUR = "s3"
         -s3_client: boto3.Client
-        -bucket_name: str
-        +load_file_tree() FileTree
-        +generate_access_link() URL
-        +generate_upload_link() URL
+        +generate_access_link(resource, method, ttl) Tuple
+        +smart_refresh_file_tree()
+        +refresh_connection()
+        +close()
+        -fetch_all_buckets() List
+        -fetch_all_bucket_keys(bucket) List
     }
 
     class DummyStorageAgent {
         +FLAVOUR = "dummy"
         -mock_data: dict
-        +load_file_tree() FileTree
-        +generate_access_link() URL
-        +generate_upload_link() URL
+        +generate_access_link(resource, method, ttl) Tuple
+        +smart_refresh_file_tree()
+        +refresh_connection()
+        +close()
     }
 
     class AgentFactory {
-        +agent_factory(config, flavour) AbstractStorageAgent
-        +available_flavours: dict
+        +agent_factory(config) AbstractStorageAgent
+        +AVAILABLE_FLAVOURS: dict
     }
 
     AbstractStorageAgent <|-- S3StorageAgent
@@ -156,12 +204,11 @@ graph TB
     subgraph "Policy Layer"
         CasbinEnforcer[Casbin Enforcer<br/>RBAC Model]
         ModelConf[model.conf<br/>RBAC Definition]
-        PolicyCSV[policy.csv<br/>Access Rules]
     end
 
     subgraph "Policy Manager"
-        PolicyMgr[Policy Manager]
-        PolicyStore[Policy Storage<br/>JSON Files]
+        PolicyMgr[CasbinPolicy Manager]
+        PolicyStore[User Policy Store]
     end
 
     subgraph "Access Control"
@@ -171,9 +218,9 @@ graph TB
     end
 
     ModelConf --> CasbinEnforcer
-    PolicyCSV --> CasbinEnforcer
     PolicyMgr --> CasbinEnforcer
     PolicyMgr --> PolicyStore
+    PolicyStore -.->|Loads at init| PolicyMgr
 
     CheckAccess --> CasbinEnforcer
     GrantAccess --> PolicyMgr
@@ -197,19 +244,23 @@ graph LR
     Frontend -->|2. API Call + JWT| Backend
     Backend -->|3. Validate Token| Keycloak
     Keycloak -->|4. User Info| Backend
-    Backend -->|5. Check Policy| Casbin
-    Casbin -->|6. ALLOW| Backend
-    Backend -->|7. Get Presigned URL| StorageAgent
-    StorageAgent -->|8. Generate URL| S3
-    S3 -->|9. Presigned URL| StorageAgent
-    StorageAgent -->|10. URL| Backend
-    Backend -->|11. URL Response| Frontend
-    Frontend -->|12. Redirect| User
-    User -->|13. Direct Download| S3
+    Backend -->|5. Check Policy| PolicyMgr
+    PolicyMgr -->|6. Enforce via Casbin| PolicyMgr
+    PolicyMgr -->|7. ALLOW| Backend
+    Backend -->|8. Get Instance| InstanceMgr
+    InstanceMgr -->|9. Return Instance.agent| Backend
+    Backend -->|10. Generate Presigned URL| StorageAgent
+    StorageAgent -->|11. Create URL| S3
+    S3 -->|12. Presigned URL| StorageAgent
+    StorageAgent -->|13. URL| Backend
+    Backend -->|14. URL Response| Frontend
+    Frontend -->|15. Redirect| User
+    User -->|16. Direct Download| S3
 
     style Backend fill:#4A90E2
     style Keycloak fill:#E94B3C
-    style Casbin fill:#FFD700
+    style PolicyMgr fill:#FFD700
+    style InstanceMgr fill:#4A90E2
     style S3 fill:#FF9900
 ```
 

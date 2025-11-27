@@ -139,19 +139,14 @@ sequenceDiagram
 
         Backend->>S3Agent: load_file_tree()<br/>(instance_uuid)
 
-        S3Agent->>S3Agent: Get Instance Config<br/>(bucket, prefix)
+        S3Agent->>S3Agent: Get Instance Config<br/>(bucket)
 
-        loop Paginated Listing
-            S3Agent->>S3Storage: list_objects_v2()<br/>Bucket={bucket}<br/>Prefix={prefix}<br/>MaxKeys=1000
+        S3Agent->>S3Storage: list_objects_v2()<br/>Bucket={bucket}
 
-            S3Storage->>S3Agent: Object List<br/>{objects[], is_truncated}
+        S3Storage->>S3Agent: Object List<br/>{objects[]}
+        Note over S3Agent,S3Storage: ⚠️ Only fetches first page (max 1000 objects)<br/>Pagination not implemented
 
-            S3Agent->>S3Agent: Build File Tree<br/>(parse keys, create hierarchy)
-
-            alt More Objects
-                S3Agent->>S3Agent: Store ContinuationToken
-            end
-        end
+        S3Agent->>S3Agent: Build File Tree<br/>(parse keys, create hierarchy)
 
         S3Agent->>S3Agent: Apply Resource Filters<br/>(Casbin resource patterns)
 
@@ -236,11 +231,11 @@ sequenceDiagram
     participant PolicyMgr
 
     Admin->>Frontend: Fill Instance Form<br/>(name, bucket, credentials)
-    Frontend->>Backend: POST /api/admin/instances/<br/>Bearer {token}<br/>{flavour: "s3", config: {...}}
+    Frontend->>Backend: POST /api/instances/<br/>Bearer {token}<br/>{flavour: "s3", config: {...}}
 
-    Backend->>Backend: Validate Admin Token
-    Backend->>Casbin: enforce(admin_id, admin, create_instance)
-    Casbin->>Backend: true (ALLOW)
+    Backend->>Backend: Validate JWT Token
+    Backend->>Backend: Check Keycloak Admin Role<br/>(realm_access.roles)
+    Note over Backend: Requires "admin" role in Keycloak realm
 
     Backend->>Backend: Generate instance_uuid<br/>uuid5(NAMESPACE_DNS, name)
 
@@ -255,7 +250,7 @@ sequenceDiagram
         Backend->>InstanceMgr: create_instance()<br/>(uuid, name, config, agent)
 
         InstanceMgr->>InstanceMgr: Add to Instances List
-        InstanceMgr->>InstanceMgr: Save Config JSON<br/>(configs/{uuid}.json)
+        InstanceMgr->>InstanceMgr: Save Instance Config
 
         Backend->>PolicyMgr: add_policy()<br/>(admin_id, instance_uuid, .*, admin)
 
@@ -287,11 +282,11 @@ sequenceDiagram
     participant PolicyMgr
 
     Admin->>Frontend: Click Delete Instance
-    Frontend->>Backend: DELETE /api/admin/instances/{uuid}<br/>Bearer {token}
+    Frontend->>Backend: DELETE /api/instances/{uuid}<br/>Bearer {token}
 
-    Backend->>Backend: Validate Admin Token
-    Backend->>Casbin: enforce(admin_id, admin, delete_instance)
-    Casbin->>Backend: true (ALLOW)
+    Backend->>Backend: Validate JWT Token
+    Backend->>Backend: Check Keycloak Admin Role<br/>(realm_access.roles)
+    Note over Backend: Requires "admin" role in Keycloak realm
 
     Backend->>InstanceMgr: get_instance_by_uuid(uuid)
     InstanceMgr->>Backend: Instance Details
@@ -303,7 +298,7 @@ sequenceDiagram
 
     Backend->>InstanceMgr: delete_instance(instance)
     InstanceMgr->>InstanceMgr: Remove from Instances List
-    InstanceMgr->>InstanceMgr: Delete Config File<br/>(configs/{uuid}.json)
+    InstanceMgr->>InstanceMgr: Delete Instance Config
 
     Backend->>PolicyMgr: remove_policies(policy_list)
     PolicyMgr->>Casbin: Remove Policy Rules
