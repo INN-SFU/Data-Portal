@@ -120,6 +120,20 @@ async def create_policy(
     if instance_manager.get_instance_by_uuid(policy.instance_uuid) is None:
         raise HTTPException(status_code=404, detail="Instance not found")
 
+    # Check that the requesting admin has Casbin admin access to the instance/resource
+    admin_uuid = admin_user.get("sub")
+    admin_check = Policy(
+        user_uuid=admin_uuid,
+        instance_uuid=policy.instance_uuid,
+        resource=policy.resource,
+        action='admin'
+    )
+    if not policy_manager.validate_policy(admin_check):
+        raise HTTPException(
+            status_code=403,
+            detail=f"You must have admin access to instance/resource '{policy.resource}' to create policies for it"
+        )
+
     # Add policy
     try:
         policy_manager.add_policies([policy])
@@ -181,6 +195,20 @@ async def delete_policy(
         resource=old_policy.resource,
         action=old_policy.action
     )
+
+    # Check that the requesting admin has Casbin admin access to the instance/resource
+    admin_uuid = admin_user.get("sub")
+    admin_check = Policy(
+        user_uuid=admin_uuid,
+        instance_uuid=policy.instance_uuid,
+        resource=policy.resource,
+        action='admin'
+    )
+    if not policy_manager.validate_policy(admin_check):
+        raise HTTPException(
+            status_code=403,
+            detail=f"You must have admin access to instance/resource '{policy.resource}' to delete policies for it"
+        )
 
     # Remove policy
     try:

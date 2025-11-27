@@ -272,6 +272,20 @@ async def delete_instance(
     except ValueError:
         raise HTTPException(status_code=404, detail="Instance not found")
 
+    # Check that the requesting admin has Casbin admin access to the instance
+    admin_uuid = UUID(admin_user.get("sub"))
+    admin_check = Policy(
+        user_uuid=admin_uuid,
+        instance_uuid=instance_uuid,
+        resource='.*',
+        action='admin'
+    )
+    if not policy_manager.validate_policy(admin_check):
+        raise HTTPException(
+            status_code=403,
+            detail=f"You must have admin access to instance '{instance.name}' to delete it"
+        )
+
     # Create instance object for deletion
     instance_to_delete = Instance(
         uuid=instance_uuid,
