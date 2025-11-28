@@ -59,7 +59,7 @@ A role assigned within the Keycloak realm (checked in `realm_access.roles` or `r
    - Instance creation: Keycloak admin only (auto-grants creator Casbin admin)
    - User management: Keycloak admin only (users are system-wide, not per-instance)
 
-2. **File Access:** Keycloak admin does NOT grant file read/write/delete access. File operations require Casbin `read`, `write`, or `delete` actions.
+2. **File Access:** Keycloak admin does NOT grant file read/write/delete access. File operations require Casbin `read` or `write` actions (write includes delete).
 
 3. **Instance Admin vs System Admin:** Keycloak admin is a system role providing API access; Casbin admin is an instance/resource-level permission for delegation.
 
@@ -74,7 +74,7 @@ A rule defining access permissions in the format: `p, user_uuid, instance_uuid, 
 Example: `p, abc-123, def-456, data/reports/.*, read`
 
 ### **Casbin Admin Action**
-The "admin" action in Casbin policies grants **policy management** permissions for specific resources/instances. It does NOT grant file read/write/delete access.
+The "admin" action in Casbin policies grants **policy management** permissions for specific resources/instances. It does NOT grant file read/write access.
 
 **Use case:** Allows a user to manage (view/modify) access policies for resources they have admin action on.
 
@@ -265,16 +265,13 @@ Instance(
 Permission to download/view files. Implemented via presigned GET URLs.
 
 ### **write**
-Permission to upload/modify files. Implemented via presigned PUT/POST URLs.
+Permission to upload/modify/delete files. Implemented via presigned PUT/POST/DELETE URLs. The `write` action grants both upload and delete capabilities.
 
 ### **admin** (Casbin action)
 Permission to manage policies for resources. Does NOT grant read/write access to files.
 
 ### **list**
 Permission to view file tree structure. Required for browsing directories.
-
-### **delete**
-Permission to remove files. Implemented via presigned DELETE URLs.
 
 ---
 
