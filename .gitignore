@@ -29,6 +29,7 @@ MANIFEST
 **/.venv
 
 # Backend - Configuration files (contain sensitive data)
+/backend/**/.env.development
 /backend/config.yaml
 /backend/config.yml
 /backend/core/settings/.env
