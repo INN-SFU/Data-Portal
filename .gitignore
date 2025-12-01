@@ -22,30 +22,54 @@ wheels/
 MANIFEST
 
 # Virtual environments
-venv/
-env/
-ENV/
-.env
-.venv
+**/venv/
+**/env/
+**/ENV/
+**/.env
+**/.venv
 
-# Configuration files (contain sensitive data)
-config.yaml
-core/settings/.env
-core/settings/security/.secrets
-*.policies
+# Backend - Configuration files (contain sensitive data)
+/backend/**/.env.development
+/backend/config.yaml
+/backend/config.yml
+/backend/core/settings/.env
+/backend/core/settings/security/.secrets
+/backend/*.policies
+/backend/core/settings/managers/instances/configs/*.json
 
-# Legacy authentication data
-core/authentication/user_data/
-core/authentication/uuids.json
-core/settings/endpoints/agents.json
+# Backend - Legacy authentication data
+/backend/core/authentication/user_data/
+/backend/core/authentication/uuids.json
+/backend/core/settings/endpoints/agents.json
 
-# OpenStack/Cloud credentials
-core/connectivity/arbutus/*.sh
-core/settings/security/def-rmcintos-dev-openrc.sh
+# Backend - OpenStack/Cloud credentials
+/backend/core/connectivity/arbutus/*.sh
+/backend/core/settings/security/def-rmcintos-dev-openrc.sh
 
-# Logs
-*.log
-loggers/logs/
+# Backend - Logs and runtime data
+/backend/*.log
+/backend/data/
+/backend/bin/
+/backend/run/
+/backend/*.old
+
+# Frontend - Node.js dependencies
+/frontend/node_modules/
+
+# Frontend - Production build
+/frontend/build/
+
+# Frontend - Runtime logs
+/frontend/npm-debug.log*
+/frontend/yarn-debug.log*
+/frontend/yarn-error.log*
+
+# Frontend - Testing
+/frontend/coverage/
+
+# Frontend - Lock files (optional - team preference)
+/frontend/package-lock.json
+/frontend/yarn.lock
 
 # IDE
 .vscode/
@@ -55,6 +79,7 @@ loggers/logs/
 
 # OS
 .DS_Store
+**/.DS_Store
 Thumbs.db
 
 # Testing
@@ -74,6 +99,9 @@ temp/
 
 # Docker
 .dockerignore
+docker-compose.override.yml
+.docker/
 
 # Documentation build
 docs/_build/
+

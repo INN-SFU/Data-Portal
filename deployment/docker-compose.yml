@@ -1,6 +1,7 @@
+
 services:
   ams-portal:
-    build: ..
+    build: ../backend
     container_name: ams-portal
     ports:
       - "${AMS_PORT:-8000}:8000"
@@ -10,15 +11,15 @@ services:
     volumes:
       # Mount configuration files
       - ../config.yaml:/app/config.yaml:ro
-      - ../core/settings/.env:/app/core/settings/.env:ro
-      - ../core/settings/security/.secrets:/app/core/settings/security/.secrets:ro
+      - ../backend/core/settings/.env:/app/core/settings/.env:ro
+      - ../backend/core/settings/security/.secrets:/app/core/settings/security/.secrets:ro
       
       # Mount data directories (optional - for persistent storage configs)
-      - ../core/settings/managers/endpoints/configs:/app/core/settings/managers/endpoints/configs
-      - ../core/settings/managers/policies:/app/core/settings/managers/policies
+      - ../backend/core/settings/managers/endpoints/configs:/app/core/settings/managers/endpoints/configs
+      - ../backend/core/settings/managers/policies:/app/core/settings/managers/policies
       
       # Mount logs (optional - for log persistence)
-      - ../loggers/logs:/app/loggers/logs
+      - ../backend/loggers/logs:/app/loggers/logs
     depends_on:
       - keycloak
     networks:
@@ -40,7 +41,7 @@ services:
       - "8080:8080"
     volumes:
       - keycloak_data:/opt/keycloak/data
-      - ../config/keycloak-realm-export.json:/opt/keycloak/data/import/ams-portal-realm.json:ro
+      - ../backend/config/keycloak-realm-export.json:/opt/keycloak/data/import/ams-portal-realm.json:ro
     networks:
       - ams-network
     restart: unless-stopped

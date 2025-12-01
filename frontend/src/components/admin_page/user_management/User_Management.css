@@ -1,0 +1,111 @@
+/* Root layout */
+.um-root {
+    display: grid;
+    gap: 16px;
+  }
+  
+  /* Cards / sections */
+  .um-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  
+  .um-muted { color: #6b7280; }
+  
+  /* Form */
+  .um-form {
+    display: grid;
+    gap: 12px;
+    max-width: 520px;
+  }
+  
+  .um-field {
+    display: grid;
+    gap: 6px;
+  }
+  
+  .um-field input {
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+  }
+  
+  /* Actions / buttons */
+  .um-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  
+  .um-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    cursor: pointer;
+  }
+  
+  .um-btn-primary {
+    background: #5560ff;
+    color: #fff;
+    border: none;
+  }
+  
+  .um-btn-danger {
+    background: #ef4444;
+    color: #fff;
+    border: none;
+  }
+  
+  /* Error */
+  .um-error {
+    color: #b91c1c;
+  }
+  
+  /* Users grid */
+  .um-user-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  
+  .um-user-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+    background: #fafafa;
+  }
+  
+  .um-user-card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  
+  .um-user-fullname { color: #374151; }
+  .um-user-email    { color: #6b7280; font-size: 14px; }
+  
+  .um-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  
+  .um-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+  }
+  

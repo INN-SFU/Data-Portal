@@ -1,0 +1,20 @@
+.admin-layout {
+    display: flex;
+    margin-top: 60px;                
+    min-height: calc(100vh - 60px);
+  }
+  
+
+  .admin-content {
+    flex: 1;
+    margin-left: 220px;               /* must match sidebar width */
+    padding: 24px;
+    background: #f9fafb;
+    box-sizing: border-box;
+  }
+  
+  /* mobile: sidebar becomes a drawer */
+  @media (max-width: 768px) {
+    .admin-content { margin-left: 0; }
+  }
+  

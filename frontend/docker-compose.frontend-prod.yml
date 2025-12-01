@@ -1,0 +1,36 @@
+
+name: ams-portal-frontend
+
+services:
+
+  # 4. Frontend - Web UI
+  frontend:
+    container_name: ams-frontend
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_KEYCLOAK_URL: http://localhost:8080
+        REACT_APP_KEYCLOAK_REALM: ams-portal
+        REACT_APP_KEYCLOAK_CLIENT_ID: ams-portal-ui
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      REACT_APP_API_URL: http://localhost:8000
+      REACT_APP_KEYCLOAK_URL: http://localhost:8080
+      REACT_APP_KEYCLOAK_REALM: ams-portal
+      REACT_APP_KEYCLOAK_CLIENT_ID: ams-portal-ui
+      API_GATEWAY: http://backend:8000
+      SERVER_NAME: localhost
+    ports:
+      - "3000:80"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - ams-network
+
+networks:
+  ams-network:
+    driver: bridge
