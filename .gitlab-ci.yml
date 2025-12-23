@@ -1,50 +1,42 @@
 
 variables:
   DOCKER_API_VERSION: "1.41"
+  # DOCKER_TLS_CERTDIR: ""            # disable TLS cert generation inside DinD
+  # DOCKER_HOST: tcp://docker:2375    # point client to the DinD service
 
 services:
   - docker:27-dind
 
+stages: [build, triggers]
+
+# Simple root-level smoke test job (optional)
 runner:
   stage: build
   tags:
-    - inn-runner   # Replace with the tag you set during runner registration
-  # image: ruby:3.1       # Matches the executor image you configured
+    - inn-runner       # Replace with the tag you set during runner registration
+  image: docker:27-cli # Matches the executor image you configured
   script:
     - echo "✅ Runner is working!"
-    - sudo docker version           # Check docker version
-
-# include: 
-#   - frontend/.gitlab-ci.yml
-
-
-stages: [triggers]
+    - docker version
 
 # Trigger Auto DevOps for the frontend only when frontend/ changes
 frontend-autodevops:
   stage: triggers
   trigger:
     include:
-      - local: 'frontend/.gitlab-ci.autodevops.yml'  # child config
+      - local: 'frontend/.gitlab-ci.autodevops.yml'
   rules:
     - changes:
         - frontend/**/*
       when: on_success
-      # Optional: avoid "run everything" on manual/scheduled pipelines:
-      # compare_to: main
-  # Variables can also be passed here if you prefer not to define them in the child file
-  # variables:
-  #   DOCKERFILE_PATH: frontend/Dockerfile
-  #   AUTO_DEVOPS_BUILD_IMAGE_CONTEXT: frontend
 
 # Trigger Auto DevOps for the backend only when backend/ changes
 backend-autodevops:
   stage: triggers
   trigger:
     include:
-      - local: 'backend/.gitlab-ci.autodevops.yml'   # child config
+      - local: 'backend/.gitlab-ci.autodevops.yml'
   rules:
     - changes:
         - backend/**/*
       when: on_success
-      # compare_to: main
