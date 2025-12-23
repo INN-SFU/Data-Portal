@@ -1,8 +1,8 @@
 
 variables:
   DOCKER_API_VERSION: "1.41"
-  # DOCKER_TLS_CERTDIR: ""            # disable TLS cert generation inside DinD
-  # DOCKER_HOST: tcp://docker:2375    # point client to the DinD service
+  DOCKER_TLS_CERTDIR: ""            # disable TLS cert generation inside DinD
+  DOCKER_HOST: tcp://docker:2375    # point client to the DinD service
 
 services:
   - docker:27-dind
@@ -17,6 +17,8 @@ runner:
   image: docker:27-cli    # Matches the executor image you configured
   script:
     - echo "✅ Runner is working!"
+    # Wait for DinD to be ready
+    - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
     - docker version
 
 # Trigger Auto DevOps for the frontend only when frontend/ changes
