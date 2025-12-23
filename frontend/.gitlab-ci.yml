@@ -5,7 +5,7 @@ include:
 # # Route jobs to the runner that mounts /var/run/docker.sock
 # default:
 #   tags:
-#     - inn-docker   # <-- tag your socket-mounted runner
+#     - inn-runner-docker   # <-- tag your socket-mounted runner
 
 variables:
   DOCKERFILE_PATH: frontend/Dockerfile
