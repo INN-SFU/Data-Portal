@@ -7,7 +7,7 @@ services:
 include:
   - template: Auto-DevOps.gitlab-ci.yml
 
-test-runner:
+runner-test:
   tags:
     - inn-runner   # Replace with the tag you set during runner registration
   # image: ruby:3.1       # Matches the executor image you configured
