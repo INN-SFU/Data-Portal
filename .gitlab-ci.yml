@@ -4,7 +4,7 @@ variables:
 services:
   - docker:27-dind
 
-runner-test:
+runner:
   tags:
     - inn-runner   # Replace with the tag you set during runner registration
   # image: ruby:3.1       # Matches the executor image you configured
