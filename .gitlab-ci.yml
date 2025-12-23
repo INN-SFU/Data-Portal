@@ -27,6 +27,7 @@ frontend-autodevops:
   trigger:
     include:
       - local: 'frontend/.gitlab-ci.yml'
+    strategy: depend  # Wait for child pipeline to complete and fail if it fails
   rules:
     - changes:
         - frontend/**/*
@@ -40,6 +41,7 @@ backend-autodevops:
   trigger:
     include:
       - local: 'backend/.gitlab-ci.yml'
+    strategy: depend  # Wait for child pipeline to complete and fail if it fails
   rules:
     - changes:
         - backend/**/*
