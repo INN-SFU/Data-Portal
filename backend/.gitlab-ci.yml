@@ -16,6 +16,7 @@ variables:
   # Add multiple image tags at build time (branch + short SHA)
   # Auto DevOps will appended these to the docker build` as repeated --tag flags.
   AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
+    --tag ${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHA}
     --tag ${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_REF_SLUG}
     --tag ${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHORT_SHA}
 
@@ -48,22 +49,39 @@ backend-retag:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
 
     # Pull the image built by Auto DevOps (SHA or fallback to branch tag)
-    - docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" || docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}" || true
+    # Try Auto DevOps tags. Stop at first success.
+    # - docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" || docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}" || true
+    - |
+      SOURCE_IMAGE=""
+      for tag in "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" \
+                 "${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHORT_SHA}" \
+                 "${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_REF_SLUG}"; do
+        echo "Trying to pull: $tag"
+        if docker pull "$tag" 2>/dev/null; then
+          SOURCE_IMAGE="$tag"
+          echo "Using source image: $SOURCE_IMAGE"
+          break
+        fi
+      done
+      if [ -z "$SOURCE_IMAGE" ]; then
+        echo "Error: image not found in registry (checked Auto DevOps tags)."
+        exit 1
+      fi
 
     # Tag with timestamp (e.g., backend:20251222-2357)
-    - docker tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}/backend:${ts}"
+    - docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/backend:${ts}"
     - docker push "${CI_REGISTRY_IMAGE}/backend:${ts}"
 
     # 'latest' for default branch (usually main)
     - |
       if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
-        docker tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}/backend:latest"
+        docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/backend:latest"
         docker push "${CI_REGISTRY_IMAGE}/backend:latest"
       fi
 
     # 'latest-dev' for development branch
     - |
       if [ "$CI_COMMIT_BRANCH" = "development" ]; then
-        docker tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}/backend:latest-dev"
+        docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/backend:latest-dev"
         docker push "${CI_REGISTRY_IMAGE}/backend:latest-dev"
       fi
