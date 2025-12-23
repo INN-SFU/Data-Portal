@@ -25,10 +25,21 @@ variables:
 test-frontend:
   stage: test
   image: node:20
+  variables:
+    CI: "true"
+    JEST_JUNIT_OUTPUT_DIR: "."
+    JEST_JUNIT_OUTPUT_NAME: "frontend-test-report.xml"
   before_script:
     - cd frontend
+    - npm install --save-dev jest-junit
   script:
-    - npm test || echo "Tests failed or not detected by Auto DevOps"
+    - npm test -- --reporters=default --reporters=jest-junit || echo "Tests failed or not detected by Auto DevOps"
+  artifacts:
+    reports:
+      junit: frontend/frontend-test-report.xml
+    paths:
+      - frontend/frontend-test-report.xml
+    when: always
 
 ruff-check-frontend:
   extends: .ruff-check-template
