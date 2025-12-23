@@ -21,7 +21,7 @@ variables:
     --tag ${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHORT_SHA}
 
 # Safety net test (kept until Auto Test/Herokuish consistently reliably detects tests)
-backend-test:
+test-backend:
   stage: test
   image: python:3.12
   before_script:
@@ -31,7 +31,7 @@ backend-test:
     - pytest -q || echo "Tests failed or not detected by Auto DevOps"
 
 # Post-build: add timestamp tag and branch-specific 'latest' tags
-backend-retag:
+retag-backend:
   stage: build
   image: docker:27-cli
   services:

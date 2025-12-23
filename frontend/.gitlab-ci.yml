@@ -21,7 +21,7 @@ variables:
     --tag ${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_SHORT_SHA}
 
 # Safety net test (kept until Auto Test/Herokuish consistently reliably detects tests)
-frontend-test:
+test-frontend:
   stage: test
   image: node:20
   before_script:
@@ -30,7 +30,7 @@ frontend-test:
     - npm test || echo "Tests failed or not detected by Auto DevOps"
 
 # Post-build: add timestamp tag and branch-specific 'latest' tags
-frontend-retag:
+retag-frontend:
   stage: build
   image: docker:27-cli
   services:
