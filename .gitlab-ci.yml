@@ -4,10 +4,6 @@ variables:
 services:
   - docker:27-dind
 
-include:
-  - template: Auto-DevOps.gitlab-ci.yml
-
-
 stages:
   - custom
 
@@ -19,3 +15,7 @@ test-runner:
   script:
     - echo "✅ Runner is working!"
     - sudo docker version           # Check docker version
+
+# include:
+#   - template: Auto-DevOps.gitlab-ci.yml
+
