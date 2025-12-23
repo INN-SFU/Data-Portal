@@ -45,7 +45,7 @@ retag-frontend:
     # Wait for DinD to be ready
     - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
     - ts=$(date -u +%Y%m%d-%H%M)
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
 
     # Pull the image built by Auto DevOps (SHA or fallback to branch tag)
     # Try Auto DevOps tags. Stop at first success.
