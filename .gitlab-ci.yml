@@ -9,7 +9,7 @@ include:
 
 
 stages:
-  - test-runner
+  - test
 
 test-runner:
   stage: test
