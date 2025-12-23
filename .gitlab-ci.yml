@@ -24,7 +24,7 @@ frontend-autodevops:
   stage: triggers
   trigger:
     include:
-      - local: 'frontend/.gitlab-ci.autodevops.yml'
+      - local: 'frontend/.gitlab-ci.yml'
   rules:
     - changes:
         - frontend/**/*
