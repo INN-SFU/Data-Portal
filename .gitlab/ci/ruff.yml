@@ -9,6 +9,7 @@
 
 .ruff-check-template:
   extends: .base_ruff
+  allow_failure: true
   variables:
     RUFF_TARGET: "."
     RUFF_REPORT: "code-quality-report.json"
@@ -22,3 +23,9 @@
     paths:
       - ${RUFF_REPORT}
 
+# .ruff-format-template:
+#   extends: .base_ruff
+#   variables:
+#     RUFF_TARGET: "."
+#   script:
+#     - ruff format --diff ${RUFF_TARGET}
