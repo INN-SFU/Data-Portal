@@ -3,10 +3,10 @@
 include:
   - template: Auto-DevOps.gitlab-ci.yml
 
-# Route jobs to the runner that mounts /var/run/docker.sock
-default:
-  tags:
-    - inn-docker   # <-- tag of your Docker-capable runner
+# # Route jobs to the runner that mounts /var/run/docker.sock
+# default:
+#   tags:
+#     - inn-runner-docker   # <-- tag of your Docker-capable runner
 
 # Tell Auto DevOps to build from backend/
 variables:
