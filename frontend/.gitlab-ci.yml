@@ -2,11 +2,21 @@
 include:
   - template: Auto-DevOps.gitlab-ci.yml
 
+# # Route jobs to the runner that mounts /var/run/docker.sock
+# default:
+#   tags:
+#     - inn-docker-socket   # <-- tag your socket-mounted runner
+
 variables:
   DOCKERFILE_PATH: frontend/Dockerfile
   AUTO_DEVOPS_BUILD_IMAGE_CONTEXT: frontend
+  # Add multi-tagging at build time (branch + short SHA)
+  # Auto DevOps will pass these to `docker build` as repeated --tag flags.
+  AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
+    --tag ${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_REF_SLUG}
+    --tag ${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_SHORT_SHA}
 
-# Safety net explicit test job for frontend
+# Safety net test (kept until Herokuish reliably detects tests)
 frontend-test:
   stage: test
   image: node:20
@@ -14,3 +24,21 @@ frontend-test:
     - cd frontend
   script:
     - npm test || echo "Tests failed or not detected by Auto DevOps"
+
+# Timestamp retag (uses host socket; no DinD, no DOCKER_HOST)
+frontend-retag:
+  stage: build
+  image: docker:27-cli
+  # If your runner automatically mounts the host socket into job containers,
+  # you don't need to declare it here. If not, add this Docker-in-Docker-like
+  # mount at runner level (recommended) or as a job-level volume:
+  # volumes:
+  #   - /var/run/docker.sock:/var/run/docker.sock
+  script:
+    - ts=$(date -u +%Y%m%d-%H%M)
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    # Pull the image built by Auto DevOps (commit SHA tag is typical)
+    - docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" || docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}" || true
+    # Tag with timestamp
+    - docker tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}/frontend:${ts}"
+    - docker push "${CI_REGISTRY_IMAGE}/frontend:${ts}"
