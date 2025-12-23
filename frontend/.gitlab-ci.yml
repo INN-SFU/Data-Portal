@@ -32,11 +32,9 @@ frontend-test:
 frontend-retag:
   stage: build
   image: docker:27-cli
-  # If your runner automatically mounts the host socket into job containers,
-  # you don't need to declare it here. If not, add this Docker-in-Docker-like
-  # mount at runner level (recommended) or as a job-level volume:
-  # volumes:
-  #   - /var/run/docker.sock:/var/run/docker.sock
+  variables:
+    DOCKER_HOST: unix:///var/run/docker.sock
+    DOCKER_API_VERSION: "1.41"
   rules:
     - when: on_success
   script:
