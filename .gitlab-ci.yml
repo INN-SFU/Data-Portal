@@ -14,5 +14,5 @@ runner:
     - echo "✅ Runner is working!"
     - sudo docker version           # Check docker version
 
-include:
-  - template: Auto-DevOps.gitlab-ci.yml
+include: 
+  - frontend/.gitlab-ci.yml
