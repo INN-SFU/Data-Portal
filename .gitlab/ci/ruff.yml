@@ -9,12 +9,11 @@
 
 .ruff-check-template:
   extends: .base_ruff
-  allow_failure: true
   variables:
     RUFF_TARGET: "."
     RUFF_REPORT: "code-quality-report.json"
   script:
-    - ruff check ${RUFF_TARGET} --output-format=gitlab --output-file=${RUFF_REPORT}
+    - ruff check --output-format=gitlab --output-file=${RUFF_REPORT} --exit-zero ${RUFF_TARGET}
     - echo "---- Ruff report (${RUFF_REPORT}) ----"
     - cat ${RUFF_REPORT} || true
   artifacts:
