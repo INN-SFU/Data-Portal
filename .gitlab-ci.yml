@@ -13,8 +13,8 @@ stages: [build, triggers]
 runner:
   stage: build
   tags:
-    - inn-runner       # Replace with the tag you set during runner registration
-  image: docker:27-cli # Matches the executor image you configured
+    - inn-runner-docker   # Replace with the tag you set during runner registration
+  image: docker:27-cli    # Matches the executor image you configured
   script:
     - echo "✅ Runner is working!"
     - docker version
