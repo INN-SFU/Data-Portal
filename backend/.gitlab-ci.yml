@@ -31,7 +31,7 @@ test-backend:
   script:
     - pytest -q || echo "Tests failed or not detected by Auto DevOps"
 
-backend-ruff:
+ruff-check-backend:
   extends: .ruff-check-template
   variables:
     RUFF_TARGET: backend

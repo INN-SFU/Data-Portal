@@ -30,7 +30,7 @@ test-frontend:
   script:
     - npm test || echo "Tests failed or not detected by Auto DevOps"
 
-frontend-ruff:
+ruff-check-frontend:
   extends: .ruff-check-template
   variables:
     RUFF_TARGET: frontend
