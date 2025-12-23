@@ -48,4 +48,3 @@ backend-autodevops:
         - backend/**/*
       when: on_success
       # compare_to: main
-``
