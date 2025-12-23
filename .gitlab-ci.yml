@@ -9,10 +9,10 @@ include:
 
 
 stages:
-  - test
+  - custom
 
 test-runner:
-  stage: test
+  stage: custom
   tags:
     - inn-runner   # Replace with the tag you set during runner registration
   # image: ruby:3.1       # Matches the executor image you configured
