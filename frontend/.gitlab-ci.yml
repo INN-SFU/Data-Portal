@@ -2,6 +2,7 @@
 # Use native Auto DevOps jobs (Auto Build/Test/Security/Deploy)
 include:
   - template: Auto-DevOps.gitlab-ci.yml
+  - local: '/.gitlab/ci/ruff.yml'    # Ruff code quality check from common local library.
 
 # # Route jobs to the runner that mounts /var/run/docker.sock
 # default:
@@ -28,6 +29,12 @@ test-frontend:
     - cd frontend
   script:
     - npm test || echo "Tests failed or not detected by Auto DevOps"
+
+frontend-ruff:
+  extends: .ruff-check-template
+  variables:
+    RUFF_TARGET: frontend
+    RUFF_REPORT: frontend-code-quality-report.json
 
 # Post-build: add timestamp tag and branch-specific 'latest' tags
 retag-frontend:
@@ -67,7 +74,7 @@ retag-frontend:
         exit 1
       fi
 
-    # Tag with timestamp (e.g., fronteend:20251222-2357)
+    # Tag with timestamp (e.g., frontend:20251222-2357)
     - docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/frontend:${ts}"
     - docker push "${CI_REGISTRY_IMAGE}/frontend:${ts}"
 

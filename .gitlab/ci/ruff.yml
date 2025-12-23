@@ -1,0 +1,20 @@
+.base_ruff:
+  stage: test
+  interruptible: true
+  image:
+    name: ghcr.io/astral-sh/ruff:0.14.10-alpine
+  before_script:
+    - cd $CI_PROJECT_DIR
+    - ruff --version
+
+.ruff-check-template:
+  extends: .base_ruff
+  variables:
+    RUFF_TARGET: "."
+    RUFF_REPORT: "code-quality-report.json"
+  script:
+    - ruff check ${RUFF_TARGET} --output-format=gitlab --output-file=${RUFF_REPORT}
+  artifacts:
+    reports:
+      codequality: $CI_PROJECT_DIR/${RUFF_REPORT}
+

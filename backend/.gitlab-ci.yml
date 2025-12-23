@@ -2,6 +2,7 @@
 # Use native Auto DevOps jobs (Auto Build/Test/Security/Deploy)
 include:
   - template: Auto-DevOps.gitlab-ci.yml
+  - local: '/.gitlab/ci/ruff.yml'    # Ruff code quality check from common local library.
 
 # # Route jobs to the runner that mounts /var/run/docker.sock
 # default:
@@ -29,6 +30,12 @@ test-backend:
     - pip install -r requirements.txt
   script:
     - pytest -q || echo "Tests failed or not detected by Auto DevOps"
+
+backend-ruff:
+  extends: .ruff-check-template
+  variables:
+    RUFF_TARGET: backend
+    RUFF_REPORT: backend-code-quality-report.json
 
 # Post-build: add timestamp tag and branch-specific 'latest' tags
 retag-backend:
