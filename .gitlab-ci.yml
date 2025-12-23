@@ -1,5 +1,8 @@
 variables:
   DOCKER_API_VERSION: "1.41"
 
+services:
+  - docker:27`-dind
+
 include:
   - template: Auto-DevOps.gitlab-ci.yml
