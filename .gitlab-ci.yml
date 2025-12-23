@@ -6,3 +6,16 @@ services:
 
 include:
   - template: Auto-DevOps.gitlab-ci.yml
+
+
+stages:
+  - test-runner
+
+test-runner:
+  stage: test
+  tags:
+    - inn-runner   # Replace with the tag you set during runner registration
+  # image: ruby:3.1       # Matches the executor image you configured
+  script:
+    - echo "✅ Runner is working!"
+    - sudo docker version           # Check docker version
