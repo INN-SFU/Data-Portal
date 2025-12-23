@@ -1,3 +1,4 @@
+
 variables:
   DOCKER_API_VERSION: "1.41"
 
@@ -5,6 +6,7 @@ services:
   - docker:27-dind
 
 runner:
+  stage: build
   tags:
     - inn-runner   # Replace with the tag you set during runner registration
   # image: ruby:3.1       # Matches the executor image you configured
@@ -14,4 +16,3 @@ runner:
 
 include:
   - template: Auto-DevOps.gitlab-ci.yml
-  
