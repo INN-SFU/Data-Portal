@@ -14,7 +14,11 @@
     RUFF_REPORT: "code-quality-report.json"
   script:
     - ruff check ${RUFF_TARGET} --output-format=gitlab --output-file=${RUFF_REPORT}
+    - echo "---- Ruff report (${RUFF_REPORT}) ----"
+    - cat ${RUFF_REPORT} || true
   artifacts:
     reports:
       codequality: $CI_PROJECT_DIR/${RUFF_REPORT}
+    paths:
+      - ${RUFF_REPORT}
 
