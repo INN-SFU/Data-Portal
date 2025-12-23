@@ -33,14 +33,14 @@ frontend-autodevops:
 
 
 # Trigger Auto DevOps for the backend only when backend/ changes
-backend-autodevops:
-  stage: triggers
-  trigger:
-    include:
-      - local: 'backend/.gitlab-ci.autodevops.yml'
-  rules:
-    - changes:
-        - backend/**/*
-      when: on_success    
-    - when: always   # <— temporary “override/fallback” so this job still runs
+# backend-autodevops:
+#   stage: triggers
+#   trigger:
+#     include:
+#       - local: 'backend/.gitlab-ci.yml'
+#   rules:
+#     - changes:
+#         - backend/**/*
+#       when: on_success    
+#     - when: always   # <— temporary “override/fallback” so this job still runs
 
