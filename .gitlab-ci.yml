@@ -1,5 +1,5 @@
 variables:
-  DOCKER_API_VERSION: "1.44"
+  DOCKER_API_VERSION: "1.41"
 
 include:
   - template: Auto-DevOps.gitlab-ci.yml
