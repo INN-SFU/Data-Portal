@@ -4,18 +4,14 @@ variables:
 services:
   - docker:27-dind
 
-stages:
-  - custom
+include:
+  - template: Auto-DevOps.gitlab-ci.yml
 
 test-runner:
-  stage: custom
   tags:
     - inn-runner   # Replace with the tag you set during runner registration
   # image: ruby:3.1       # Matches the executor image you configured
   script:
     - echo "✅ Runner is working!"
     - sudo docker version           # Check docker version
-
-# include:
-#   - template: Auto-DevOps.gitlab-ci.yml
 
