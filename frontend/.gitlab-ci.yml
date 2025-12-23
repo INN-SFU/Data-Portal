@@ -5,7 +5,7 @@ include:
 # # Route jobs to the runner that mounts /var/run/docker.sock
 # default:
 #   tags:
-#     - inn-docker-socket   # <-- tag your socket-mounted runner
+#     - inn-docker   # <-- tag your socket-mounted runner
 
 variables:
   DOCKERFILE_PATH: frontend/Dockerfile
@@ -34,6 +34,8 @@ frontend-retag:
   # mount at runner level (recommended) or as a job-level volume:
   # volumes:
   #   - /var/run/docker.sock:/var/run/docker.sock
+  rules:
+    - when: on_success
   script:
     - ts=$(date -u +%Y%m%d-%H%M)
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
@@ -42,3 +44,15 @@ frontend-retag:
     # Tag with timestamp
     - docker tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}/frontend:${ts}"
     - docker push "${CI_REGISTRY_IMAGE}/frontend:${ts}"
+    # latest on main
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        docker tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}/frontend:latest"
+        docker push "${CI_REGISTRY_IMAGE}/frontend:latest"
+      fi
+    # latest-dev on development
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "development" ]; then
+        docker tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}/frontend:latest-dev"
+        docker push "${CI_REGISTRY_IMAGE}/frontend:latest-dev"
+      fi
