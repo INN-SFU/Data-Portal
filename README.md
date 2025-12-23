@@ -214,3 +214,4 @@ docker compose -f backend/docker-compose.dev-all.yml up -d
 ## License
 
 Apache 2.0 License - see [LICENSE](LICENSE) file for details.
+
