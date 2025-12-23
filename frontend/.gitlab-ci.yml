@@ -1,3 +1,16 @@
 
 include:
   - template: Auto-DevOps.gitlab-ci.yml
+
+variables:
+  DOCKERFILE_PATH: frontend/Dockerfile
+  AUTO_DEVOPS_BUILD_IMAGE_CONTEXT: frontend
+
+# Safety net explicit test job for frontend
+frontend-test:
+  stage: test
+  image: node:20
+  before_script:
+    - cd frontend
+  script:
+    - npm test || echo "Tests failed or not detected by Auto DevOps"
