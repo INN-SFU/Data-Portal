@@ -4,9 +4,6 @@ variables:
 services:
   - docker:27-dind
 
-include:
-  - template: Auto-DevOps.gitlab-ci.yml
-
 runner-test:
   tags:
     - inn-runner   # Replace with the tag you set during runner registration
@@ -15,3 +12,6 @@ runner-test:
     - echo "✅ Runner is working!"
     - sudo docker version           # Check docker version
 
+include:
+  - template: Auto-DevOps.gitlab-ci.yml
+  
