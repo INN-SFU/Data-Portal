@@ -12,14 +12,14 @@ include:
 variables:
   DOCKERFILE_PATH: backend/Dockerfile
   AUTO_DEVOPS_BUILD_IMAGE_CONTEXT: backend
-
+  
   # Add multiple image tags at build time (branch + short SHA)
-  # These get appended to the docker build command.
+  # Auto DevOps will appended these to the docker build` as repeated --tag flags.
   AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
     --tag ${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_REF_SLUG}
     --tag ${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHORT_SHA}
 
-# Safety net: explicit backend test (until Auto Test consistently detects tests)
+# Safety net test (kept until Auto Test/Herokuish consistently reliably detects tests)
 backend-test:
   stage: test
   image: python:3.12
@@ -30,10 +30,12 @@ backend-test:
     - pytest -q || echo "Tests failed or not detected by Auto DevOps"
 
 # Post-build: add timestamp tag and branch-specific 'latest' tags
-backend-promote-tags:
+backend-retag:
   stage: build
   image: docker:27-cli
-  # If your runner doesn't auto-mount the socket, uncomment the volume
+  # If your runner automatically mounts the host socket into job containers,
+  # you don't need to declare it here. If not, add this Docker-in-Docker-like
+  # mount at runner level (recommended) or as a job-level volume:
   # volumes:
   #   - /var/run/docker.sock:/var/run/docker.sock
   rules:
@@ -45,7 +47,7 @@ backend-promote-tags:
     # Pull the image built by Auto DevOps (SHA or fallback to branch tag)
     - docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" || docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}" || true
 
-    # Timestamp tag (e.g., backend:20251222-2357)
+    # Tag with timestamp (e.g., backend:20251222-2357)
     - docker tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}/backend:${ts}"
     - docker push "${CI_REGISTRY_IMAGE}/backend:${ts}"
 

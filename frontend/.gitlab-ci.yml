@@ -1,22 +1,25 @@
 
+# Use native Auto DevOps jobs (Auto Build/Test/Security/Deploy)
 include:
   - template: Auto-DevOps.gitlab-ci.yml
 
 # # Route jobs to the runner that mounts /var/run/docker.sock
 # default:
 #   tags:
-#     - inn-runner-docker   # <-- tag your socket-mounted runner
+#     - inn-runner-docker   # <-- tag of your Docker-capable runner
 
+# Tell Auto DevOps to build from frontend/
 variables:
   DOCKERFILE_PATH: frontend/Dockerfile
   AUTO_DEVOPS_BUILD_IMAGE_CONTEXT: frontend
-  # Add multi-tagging at build time (branch + short SHA)
-  # Auto DevOps will pass these to `docker build` as repeated --tag flags.
+
+  # Add multiple image tags at build time (branch + short SHA)
+  # Auto DevOps will appended these to the docker build` as repeated --tag flags.
   AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
     --tag ${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_REF_SLUG}
     --tag ${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_SHORT_SHA}
 
-# Safety net test (kept until Herokuish reliably detects tests)
+# Safety net test (kept until Auto Test/Herokuish consistently reliably detects tests)
 frontend-test:
   stage: test
   image: node:20
@@ -25,7 +28,7 @@ frontend-test:
   script:
     - npm test || echo "Tests failed or not detected by Auto DevOps"
 
-# Timestamp retag (uses host socket; no DinD, no DOCKER_HOST)
+# Post-build: add timestamp tag and branch-specific 'latest' tags
 frontend-retag:
   stage: build
   image: docker:27-cli
@@ -39,18 +42,22 @@ frontend-retag:
   script:
     - ts=$(date -u +%Y%m%d-%H%M)
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-    # Pull the image built by Auto DevOps (commit SHA tag is typical)
+
+    # Pull the image built by Auto DevOps (SHA or fallback to branch tag)
     - docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" || docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}" || true
-    # Tag with timestamp
+
+    # Tag with timestamp (e.g., fronteend:20251222-2357)
     - docker tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}/frontend:${ts}"
     - docker push "${CI_REGISTRY_IMAGE}/frontend:${ts}"
-    # latest on main
+
+    # 'latest' for default branch (usually main)
     - |
       if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
         docker tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}/frontend:latest"
         docker push "${CI_REGISTRY_IMAGE}/frontend:latest"
       fi
-    # latest-dev on development
+
+    # 'latest-dev' for development branch
     - |
       if [ "$CI_COMMIT_BRANCH" = "development" ]; then
         docker tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}/frontend:latest-dev"
