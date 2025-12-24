@@ -45,6 +45,7 @@ test-backend:
       junit: backend/backend-test-report.xml
     paths:
       - backend-test-report.xml
+      - backend/backend-test-report.xml
     when: always
 
 code_quality_ruff_check:
