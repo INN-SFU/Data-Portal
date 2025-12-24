@@ -60,8 +60,8 @@
         export __SERVICE_TAGS__='["api"]'
       fi
 
-# Base deploy template (mirrors Auto DevOps .deploy structure)
-# This is the equivalent of Auto DevOps .deploy but for Nomad
+# Base deploy template with common before_script and after_script
+# Environment-specific jobs extend this and customize their own script/before_script
 # Note: This base job should not run directly - it's extended by environment-specific jobs
 .deploy:
   stage: deploy
@@ -79,9 +79,36 @@
     NOMAD_EXTERNAL_ACCESS: "${NOMAD_EXTERNAL_ACCESS:-}"
   dependencies:
     - build
-  # Note: before_script is built by each environment-specific job using !reference
-  # to avoid array merging issues. Each job references .deploy-setup, adds environment
-  # setup, then references .deploy-routing
+  # Common before_script: setup tools, verify connection, set service variables
+  before_script:
+    # Install required tools
+    - apk add --no-cache gettext docker-cli curl
+    # Verify Nomad connection
+    - |
+      if [ -z "$NOMAD_SERVER_ADDRESS" ] || [ -z "$NOMAD_SERVER_TOKEN" ]; then
+        echo "Error: NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN must be set"
+        exit 1
+      fi
+    - nomad version
+    - |
+      if ! nomad acl token self -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" > /dev/null 2>&1; then
+        echo "Error: Cannot connect to Nomad cluster"
+        exit 1
+      fi
+    # Set common service-specific variables
+    # Note: Environment-specific variables (NOMAD_ENVIRONMENT, __ENVIRONMENT__, etc.)
+    # should be set by extending jobs in their own before_script
+    - |
+      export __SERVICE__="${SERVICE_NAME}"
+      export __IMAGE_NAME__="${CI_REGISTRY_IMAGE}/${SERVICE_NAME}"
+      export __IMAGE_TAG__="${CI_COMMIT_SHORT_SHA}"
+      export __DATACENTERS__="${NOMAD_DATACENTERS}"
+      export __NAMESPACE__="${NOMAD_NAMESPACE:-default}"
+      export __JOB_DRIVER__="${NOMAD_JOB_DRIVER}"
+      export __IMAGE_FORCE_PULL__="${NOMAD_IMAGE_FORCE_PULL}"
+      export __USERNAME__="${CI_REGISTRY_USER}"
+      export __PASSWORD__="${CI_REGISTRY_PASSWORD}"
+  # Main deployment script (can be customized by extending jobs)
   script:
     - |
       if [ "$NOMAD_DEPLOY_ENABLED" != "true" ]; then
@@ -206,6 +233,13 @@
       fi
       
       echo "===== Deployment successful and healthy ====="
+  # Common after_script for cleanup/notification (can be customized by extending jobs)
+  after_script:
+    - echo "===== Deployment job completed ====="
+    - |
+      if [ -n "$NOMAD_ENVIRONMENT_URL" ]; then
+        echo "Deployment URL: $NOMAD_ENVIRONMENT_URL"
+      fi
   artifacts:
     paths:
       - "*.nomad"
@@ -260,7 +294,9 @@ stop_review_app:
 deploy:review:
   extends: .deploy
   before_script:
-    - *setup_script
+    # Include common setup from .deploy template
+    - !reference [.deploy, before_script]
+    # Environment-specific setup for Review Apps
     # Determine environment for Review Apps
     - |
       if [ -n "$CI_MERGE_REQUEST_IID" ]; then
@@ -273,7 +309,8 @@ deploy:review:
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - *routing_script
+    # Generate hostname and service tags for Traefik routing (using !reference)
+    - !reference [.routing-script, before_script]
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_MERGE_REQUEST_IID'
       when: on_success
@@ -289,15 +326,17 @@ deploy:review:
 deploy:development:
   extends: .deploy
   before_script:
-    - *setup_script
-    # Set environment for Development
+    # Include common setup from .deploy template
+    - !reference [.deploy, before_script]
+    # Environment-specific setup for Development
     - |
       export NOMAD_ENVIRONMENT="development"
       export NOMAD_ENVIRONMENT_NAME="development"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - *routing_script
+    # Generate hostname and service tags for Traefik routing (using !reference)
+    - !reference [.routing-script, before_script]
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_COMMIT_BRANCH == "development"'
       when: on_success
@@ -310,15 +349,17 @@ deploy:development:
 deploy:staging:
   extends: .deploy
   before_script:
-    - *setup_script
-    # Set environment for Staging
+    # Include common setup from .deploy template
+    - !reference [.deploy, before_script]
+    # Environment-specific setup for Staging
     - |
       export NOMAD_ENVIRONMENT="staging"
       export NOMAD_ENVIRONMENT_NAME="staging"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - *routing_script
+    # Generate hostname and service tags for Traefik routing (using !reference)
+    - !reference [.routing-script, before_script]
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
@@ -334,15 +375,17 @@ deploy:staging:
 .production:
   extends: .deploy
   before_script:
-    - *setup_script
-    # Set environment for Production
+    # Include common setup from .deploy template
+    - !reference [.deploy, before_script]
+    # Environment-specific setup for Production
     - |
       export NOMAD_ENVIRONMENT="production"
       export NOMAD_ENVIRONMENT_NAME="production"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - *routing_script
+    # Generate hostname and service tags for Traefik routing (using !reference)
+    - !reference [.routing-script, before_script]
   environment:
     name: production
     url: ${NOMAD_ENVIRONMENT_URL:-}
