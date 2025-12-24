@@ -9,6 +9,17 @@ variables:
 #   Using Docker socket - no DinD service needed
 #   DOCKER_HOST is not set - uses socket by default
 
+  # Disable deprecated CodeClimate-based Code Quality scanning
+  # This feature was deprecated in GitLab 17.3 and is planned for removal in 19.0.
+  # Reference: https://docs.gitlab.com/ci/testing/code_quality/#use-the-built-in-code-quality-cicd-template-deprecated
+  # 
+  # BREAKING CHANGE: This disables the built-in CodeClimate-based code quality scanning.
+  # We use direct tool integration instead (Ruff, ESLint, Bandit, MyPy) which provide
+  # better control and are the recommended approach going forward.
+  # 
+  # To re-enable (not recommended), remove this variable or set it to "false".
+  CODE_QUALITY_DISABLED: "true"
+
 
 stages: [build, triggers]
 
@@ -72,6 +83,8 @@ frontend-autodevops:
   variables:
     # Pass shared timestamp to child pipeline
     PIPELINE_TIMESTAMP: "${PIPELINE_TIMESTAMP}"
+    # Disable deprecated CodeClimate-based Code Quality (inherited from parent)
+    CODE_QUALITY_DISABLED: "${CODE_QUALITY_DISABLED}"
   rules:
     - changes:
         - frontend/**/*
@@ -92,6 +105,8 @@ backend-autodevops:
   variables:
     # Pass shared timestamp to child pipeline
     PIPELINE_TIMESTAMP: "${PIPELINE_TIMESTAMP}"
+    # Disable deprecated CodeClimate-based Code Quality (inherited from parent)
+    CODE_QUALITY_DISABLED: "${CODE_QUALITY_DISABLED}"
   rules:
     - changes:
         - backend/**/*
