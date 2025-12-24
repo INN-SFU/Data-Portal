@@ -12,15 +12,46 @@ variables:
 
 stages: [build, triggers]
 
+# Generate shared timestamp once for entire pipeline
+# This timestamp is used by all downstream jobs for consistent image tagging
+# Uses commit timestamp (CI_COMMIT_TIMESTAMP) instead of pipeline creation time
+generate-timestamp:
+  stage: build
+  image: alpine:latest
+  script:
+    # Format commit timestamp as YYYYMMDD-HHMM (UTC)
+    - |
+      if [ -n "$CI_COMMIT_TIMESTAMP" ]; then
+        # Format: 2025-12-24T03:13:23Z -> 20251224-0313
+        TIMESTAMP=$(echo "$CI_COMMIT_TIMESTAMP" | sed 's/T/ /; s/Z$//; s/-//g; s/://g' | awk '{print substr($1,1,8) "-" substr($2,1,4)}')
+        echo "Using commit timestamp: $CI_COMMIT_TIMESTAMP -> $TIMESTAMP"
+      else
+        # Fallback to current time if CI_COMMIT_TIMESTAMP not available
+        TIMESTAMP=$(date -u +%Y%m%d-%H%M)
+        echo "CI_COMMIT_TIMESTAMP not available, using current time: $TIMESTAMP"
+      fi
+      echo "PIPELINE_TIMESTAMP=$TIMESTAMP" >> timestamp.env
+      echo "Generated pipeline timestamp: $TIMESTAMP"
+  artifacts:
+    reports:
+      dotenv: timestamp.env
+    expire_in: 1 hour
+  rules:
+    - when: always
+
 # Simple root-level smoke test job (optional)
 runner:
   stage: build
   tags:
     - inn-runner-docker   # Replace with the tag you set during runner registration
   image: docker:27-cli    # Matches the executor image you configured
+  needs:
+    - job: generate-timestamp
+      artifacts: true
   script:
     - echo "✅ Runner is working!"
-    # Wait for DinD to be ready
+    - echo "Pipeline timestamp: ${PIPELINE_TIMESTAMP:-not set}"
+    # Wait for DinD/docker daemon to be ready
     - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
     # Test: Verify DinD has persistent cache mounted
     - docker version
@@ -95,10 +126,16 @@ runner:
 # Note: "when: always" ensures pipelines run even without file changes (temporary override)
 frontend-autodevops:
   stage: triggers
+  needs:
+    - job: generate-timestamp
+      artifacts: true
   trigger:
     include:
       - local: 'frontend/.gitlab-ci.yml'
     strategy: depend  # Wait for child pipeline to complete and fail if it fails
+  variables:
+    # Pass shared timestamp to child pipeline
+    PIPELINE_TIMESTAMP: "${PIPELINE_TIMESTAMP}"
   rules:
     - changes:
         - frontend/**/*
@@ -109,10 +146,16 @@ frontend-autodevops:
 # Trigger Auto DevOps for the backend only when backend/ changes
 backend-autodevops:
   stage: triggers
+  needs:
+    - job: generate-timestamp
+      artifacts: true
   trigger:
     include:
       - local: 'backend/.gitlab-ci.yml'
     strategy: depend  # Wait for child pipeline to complete and fail if it fails
+  variables:
+    # Pass shared timestamp to child pipeline
+    PIPELINE_TIMESTAMP: "${PIPELINE_TIMESTAMP}"
   rules:
     - changes:
         - backend/**/*
