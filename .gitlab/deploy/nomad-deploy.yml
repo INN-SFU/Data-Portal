@@ -304,7 +304,7 @@ stop_nomad_review_app:
     - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
       when: manual
       allow_failure: true
-    - if: '$CI_ENVIRONMENT_NAME =~ /^review\//'
+    - if: '$CI_ENVIRONMENT_NAME =~ /^review-/'
       when: manual
       allow_failure: true
   when: manual

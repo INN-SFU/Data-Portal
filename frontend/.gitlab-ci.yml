@@ -8,6 +8,7 @@ include:
   - template: Auto-DevOps.gitlab-ci.yml
   - local: '/.gitlab/ci/ruff.yml'    # Ruff code quality check from common local library.
   - local: '/.gitlab/ci/eslint.yml'   # ESLint code quality check from common local library.
+  - local: '/.gitlab/deploy/nomad-deploy.yml'  # Nomad deployment integration with Auto DevOps
 
 # # Route jobs to the runner that mounts /var/run/docker.sock
 # default:
@@ -36,6 +37,11 @@ variables:
     --tag ${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_SHORT_SHA}
     --build-arg BUILDKIT_INLINE_CACHE=1
 
+  # Nomad deployment configuration
+  SERVICE_NAME: "frontend"
+  NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED:-true}"
+  NOMAD_EXTERNAL_ACCESS: "true"  # Frontend always needs external access
+  
 # Safety net test (kept until Auto Test/Herokuish consistently reliably detects tests)
 test-frontend:
   stage: test
