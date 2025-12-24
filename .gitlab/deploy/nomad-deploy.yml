@@ -10,25 +10,8 @@
 # is enabled by default. If you prefer to automatically deploy to staging and only
 # manually promote to production, enable staging by setting STAGING_ENABLED.
 
-# Base deploy template (mirrors Auto DevOps .deploy structure)
-# This is the equivalent of Auto DevOps .deploy but for Nomad
-# Note: This base job should not run directly - it's extended by environment-specific jobs
-.deploy:
-  stage: deploy
-  image: 
-    name: hashicorp/nomad:latest
-    entrypoint: [""]
-  variables:
-    NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED:-true}"
-    NOMAD_DATACENTERS: "${NOMAD_DATACENTERS:-[\"dc1\"]}"
-    NOMAD_JOB_DRIVER: "${NOMAD_JOB_DRIVER:-docker}"
-    NOMAD_IMAGE_FORCE_PULL: "${NOMAD_IMAGE_FORCE_PULL:-true}"
-    # Per-service external access control (overrides environment-based defaults)
-    # Set to "true" to enable external access via Traefik, "false" to disable
-    # If not set, uses environment-based defaults (review=true, others=false for backend)
-    NOMAD_EXTERNAL_ACCESS: "${NOMAD_EXTERNAL_ACCESS:-}"
-  dependencies:
-    - build
+# Helper template for common before_script setup (install tools, verify connection, set service vars)
+.deploy-setup:
   before_script:
     # Install required tools
     - apk add --no-cache gettext docker-cli curl
@@ -55,8 +38,12 @@
       export __IMAGE_FORCE_PULL__="${NOMAD_IMAGE_FORCE_PULL}"
       export __USERNAME__="${CI_REGISTRY_USER}"
       export __PASSWORD__="${CI_REGISTRY_PASSWORD}"
+
+# Helper template for routing setup (generates hostname and service tags)
+# Requires: NOMAD_ENVIRONMENT, __ENVIRONMENT__, __ENVIRONMENT_SANITIZED__ to be set
+.deploy-routing:
+  before_script:
     # Generate hostname and service tags for Traefik routing
-    # (NOMAD_ENVIRONMENT and __ENVIRONMENT__ must be set by extending jobs)
     - |
       # Determine if external access is needed
       NEEDS_EXTERNAL_ACCESS="false"
@@ -102,6 +89,29 @@
         export NOMAD_ENVIRONMENT_URL=""
         export __SERVICE_TAGS__='["api"]'
       fi
+
+# Base deploy template (mirrors Auto DevOps .deploy structure)
+# This is the equivalent of Auto DevOps .deploy but for Nomad
+# Note: This base job should not run directly - it's extended by environment-specific jobs
+.deploy:
+  stage: deploy
+  image: 
+    name: hashicorp/nomad:latest
+    entrypoint: [""]
+  variables:
+    NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED:-true}"
+    NOMAD_DATACENTERS: "${NOMAD_DATACENTERS:-[\"dc1\"]}"
+    NOMAD_JOB_DRIVER: "${NOMAD_JOB_DRIVER:-docker}"
+    NOMAD_IMAGE_FORCE_PULL: "${NOMAD_IMAGE_FORCE_PULL:-true}"
+    # Per-service external access control (overrides environment-based defaults)
+    # Set to "true" to enable external access via Traefik, "false" to disable
+    # If not set, uses environment-based defaults (review=true, others=false for backend)
+    NOMAD_EXTERNAL_ACCESS: "${NOMAD_EXTERNAL_ACCESS:-}"
+  dependencies:
+    - build
+  # Note: before_script is built by each environment-specific job using !reference
+  # to avoid array merging issues. Each job references .deploy-setup, adds environment
+  # setup, then references .deploy-routing
   script:
     - |
       if [ "$NOMAD_DEPLOY_ENABLED" != "true" ]; then
@@ -280,7 +290,7 @@ stop_review_app:
 deploy:review:
   extends: .deploy
   before_script:
-    - !reference [.deploy, before_script]
+    - !reference [.deploy-setup, before_script]
     # Determine environment for Review Apps
     - |
       if [ -n "$CI_MERGE_REQUEST_IID" ]; then
@@ -293,6 +303,7 @@ deploy:review:
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+    - !reference [.deploy-routing, before_script]
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_MERGE_REQUEST_IID'
       when: on_success
@@ -308,7 +319,7 @@ deploy:review:
 deploy:development:
   extends: .deploy
   before_script:
-    - !reference [.deploy, before_script]
+    - !reference [.deploy-setup, before_script]
     # Set environment for Development
     - |
       export NOMAD_ENVIRONMENT="development"
@@ -316,6 +327,7 @@ deploy:development:
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+    - !reference [.deploy-routing, before_script]
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_COMMIT_BRANCH == "development"'
       when: on_success
@@ -328,7 +340,7 @@ deploy:development:
 deploy:staging:
   extends: .deploy
   before_script:
-    - !reference [.deploy, before_script]
+    - !reference [.deploy-setup, before_script]
     # Set environment for Staging
     - |
       export NOMAD_ENVIRONMENT="staging"
@@ -336,6 +348,7 @@ deploy:staging:
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+    - !reference [.deploy-routing, before_script]
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
@@ -351,7 +364,7 @@ deploy:staging:
 .production:
   extends: .deploy
   before_script:
-    - !reference [.deploy, before_script]
+    - !reference [.deploy-setup, before_script]
     # Set environment for Production
     - |
       export NOMAD_ENVIRONMENT="production"
@@ -359,6 +372,7 @@ deploy:staging:
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+    - !reference [.deploy-routing, before_script]
   environment:
     name: production
     url: ${NOMAD_ENVIRONMENT_URL:-}
