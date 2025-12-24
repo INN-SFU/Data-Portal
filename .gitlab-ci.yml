@@ -22,6 +22,17 @@ runner:
     # Test: Verify DinD has persistent cache mounted
     - docker version
     - docker info
+    - |
+      DIND_CONTAINER=$(docker ps -q -f ancestor=docker:27-dind | head -n1)
+      if [ -n "$DIND_CONTAINER" ]; then
+        echo "🔍 Found DinD container: $DIND_CONTAINER"
+        echo "📁 Checking /var/lib/docker in DinD container:"
+        docker exec "$DIND_CONTAINER" ls -la /var/lib/docker 2>/dev/null || echo "⚠️  Could not access /var/lib/docker (may be empty on first run)"
+        echo "💾 Checking if /dind-cache is mounted:"
+        docker exec "$DIND_CONTAINER" ls -la /dind-cache 2>/dev/null || echo "⚠️  /dind-cache not found (check runner config)"
+      else
+        echo "⚠️  DinD container not found - check service configuration"
+      fi
 
 # Trigger Auto DevOps for the frontend only when frontend/ changes
 frontend-autodevops:
