@@ -20,6 +20,7 @@ runner:
     # Wait for DinD to be ready
     - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
     - docker version
+    - docker exec $(docker ps -q -f name=docker) ls -la /var/lib/docker
 
 # Trigger Auto DevOps for the frontend only when frontend/ changes
 frontend-autodevops:
