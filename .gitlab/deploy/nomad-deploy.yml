@@ -10,85 +10,78 @@
 # is enabled by default. If you prefer to automatically deploy to staging and only
 # manually promote to production, enable staging by setting STAGING_ENABLED.
 
-# Helper template for common before_script setup (install tools, verify connection, set service vars)
-.deploy-setup:
-  before_script:
-    # Install required tools
-    - apk add --no-cache gettext docker-cli curl
-    # Verify Nomad connection
-    - |
-      if [ -z "$NOMAD_SERVER_ADDRESS" ] || [ -z "$NOMAD_SERVER_TOKEN" ]; then
-        echo "Error: NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN must be set"
-        exit 1
-      fi
-    - nomad version
-    - |
-      if ! nomad acl token self -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" > /dev/null 2>&1; then
-        echo "Error: Cannot connect to Nomad cluster"
-        exit 1
-      fi
-    # Set common service-specific variables (environment-specific vars set by extending jobs)
-    - |
-      export __SERVICE__="${SERVICE_NAME}"
-      export __IMAGE_NAME__="${CI_REGISTRY_IMAGE}/${SERVICE_NAME}"
-      export __IMAGE_TAG__="${CI_COMMIT_SHORT_SHA}"
-      export __DATACENTERS__="${NOMAD_DATACENTERS}"
-      export __NAMESPACE__="${NOMAD_NAMESPACE:-default}"
-      export __JOB_DRIVER__="${NOMAD_JOB_DRIVER}"
-      export __IMAGE_FORCE_PULL__="${NOMAD_IMAGE_FORCE_PULL}"
-      export __USERNAME__="${CI_REGISTRY_USER}"
-      export __PASSWORD__="${CI_REGISTRY_PASSWORD}"
+# Common before_script setup using YAML anchors
+# YAML anchors expand array items when used with *anchor_name in lists
+_setup_script: &setup_script
+  - apk add --no-cache gettext docker-cli curl
+  - |
+    if [ -z "$NOMAD_SERVER_ADDRESS" ] || [ -z "$NOMAD_SERVER_TOKEN" ]; then
+      echo "Error: NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN must be set"
+      exit 1
+    fi
+  - nomad version
+  - |
+    if ! nomad acl token self -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" > /dev/null 2>&1; then
+      echo "Error: Cannot connect to Nomad cluster"
+      exit 1
+    fi
+  - |
+    export __SERVICE__="${SERVICE_NAME}"
+    export __IMAGE_NAME__="${CI_REGISTRY_IMAGE}/${SERVICE_NAME}"
+    export __IMAGE_TAG__="${CI_COMMIT_SHORT_SHA}"
+    export __DATACENTERS__="${NOMAD_DATACENTERS}"
+    export __NAMESPACE__="${NOMAD_NAMESPACE:-default}"
+    export __JOB_DRIVER__="${NOMAD_JOB_DRIVER}"
+    export __IMAGE_FORCE_PULL__="${NOMAD_IMAGE_FORCE_PULL}"
+    export __USERNAME__="${CI_REGISTRY_USER}"
+    export __PASSWORD__="${CI_REGISTRY_PASSWORD}"
 
-# Helper template for routing setup (generates hostname and service tags)
-# Requires: NOMAD_ENVIRONMENT, __ENVIRONMENT__, __ENVIRONMENT_SANITIZED__ to be set
-.deploy-routing:
-  before_script:
-    # Generate hostname and service tags for Traefik routing
-    - |
-      # Determine if external access is needed
-      NEEDS_EXTERNAL_ACCESS="false"
-      
-      if [ -n "$NOMAD_EXTERNAL_ACCESS" ]; then
-        if [ "$NOMAD_EXTERNAL_ACCESS" = "true" ]; then
-          NEEDS_EXTERNAL_ACCESS="true"
-        fi
+_routing_script: &routing_script
+  - |
+    # Determine if external access is needed
+    NEEDS_EXTERNAL_ACCESS="false"
+    
+    if [ -n "$NOMAD_EXTERNAL_ACCESS" ]; then
+      if [ "$NOMAD_EXTERNAL_ACCESS" = "true" ]; then
+        NEEDS_EXTERNAL_ACCESS="true"
+      fi
+    else
+      # Defaults: Review Apps and frontend always need external access
+      if [ "$NOMAD_ENVIRONMENT" = "review" ] || [ "$SERVICE_NAME" = "frontend" ]; then
+        NEEDS_EXTERNAL_ACCESS="true"
+      fi
+    fi
+    
+    if [ "$NEEDS_EXTERNAL_ACCESS" = "true" ]; then
+      # Generate hostname based on environment
+      if [ "$NOMAD_ENVIRONMENT" = "review" ]; then
+        export __HOSTNAME__="${SERVICE_NAME}-${CI_COMMIT_REF_SLUG}.${NOMAD_DOMAIN:-example.com}"
       else
-        # Defaults: Review Apps and frontend always need external access
-        if [ "$NOMAD_ENVIRONMENT" = "review" ] || [ "$SERVICE_NAME" = "frontend" ]; then
-          NEEDS_EXTERNAL_ACCESS="true"
-        fi
+        export __HOSTNAME__="${SERVICE_NAME}-${NOMAD_ENVIRONMENT}.${NOMAD_DOMAIN:-example.com}"
+      fi
+      export NOMAD_ENVIRONMENT_URL="https://${__HOSTNAME__}"
+      
+      # Determine service type and port
+      if [ "$SERVICE_NAME" = "frontend" ]; then
+        SERVICE_TYPE="frontend"
+        PORT="80"
+      else
+        SERVICE_TYPE="backend"
+        PORT="__NOMAD_PORT_PLACEHOLDER__"
       fi
       
-      if [ "$NEEDS_EXTERNAL_ACCESS" = "true" ]; then
-        # Generate hostname based on environment
-        if [ "$NOMAD_ENVIRONMENT" = "review" ]; then
-          export __HOSTNAME__="${SERVICE_NAME}-${CI_COMMIT_REF_SLUG}.${NOMAD_DOMAIN:-example.com}"
-        else
-          export __HOSTNAME__="${SERVICE_NAME}-${NOMAD_ENVIRONMENT}.${NOMAD_DOMAIN:-example.com}"
-        fi
-        export NOMAD_ENVIRONMENT_URL="https://${__HOSTNAME__}"
-        
-        # Determine service type and port
-        if [ "$SERVICE_NAME" = "frontend" ]; then
-          SERVICE_TYPE="frontend"
-          PORT="80"
-        else
-          SERVICE_TYPE="backend"
-          PORT="__NOMAD_PORT_PLACEHOLDER__"
-        fi
-        
-        # Build Traefik tags
-        if [ "$SERVICE_TYPE" = "frontend" ]; then
-          export __SERVICE_TAGS__="[\"${SERVICE_TYPE}\",\"traefik.enable=true\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.rule=Host(\`${__HOSTNAME__}\`)\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.entrypoints=websecure\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.tls=true\",\"traefik.http.services.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.loadbalancer.server.port=${PORT}\"]"
-        else
-          export __SERVICE_TAGS__="[\"${SERVICE_TYPE}\",\"api\",\"traefik.enable=true\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.rule=Host(\`${__HOSTNAME__}\`) || PathPrefix(\`/api/${__ENVIRONMENT_SANITIZED__}\`)\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.entrypoints=websecure\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.tls=true\",\"traefik.http.services.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.loadbalancer.server.port=${PORT}\"]"
-        fi
+      # Build Traefik tags
+      if [ "$SERVICE_TYPE" = "frontend" ]; then
+        export __SERVICE_TAGS__="[\"${SERVICE_TYPE}\",\"traefik.enable=true\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.rule=Host(\`${__HOSTNAME__}\`)\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.entrypoints=websecure\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.tls=true\",\"traefik.http.services.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.loadbalancer.server.port=${PORT}\"]"
       else
-        # Internal access only via service discovery
-        export __HOSTNAME__=""
-        export NOMAD_ENVIRONMENT_URL=""
-        export __SERVICE_TAGS__='["api"]'
+        export __SERVICE_TAGS__="[\"${SERVICE_TYPE}\",\"api\",\"traefik.enable=true\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.rule=Host(\`${__HOSTNAME__}\`) || PathPrefix(\`/api/${__ENVIRONMENT_SANITIZED__}\`)\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.entrypoints=websecure\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.tls=true\",\"traefik.http.services.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.loadbalancer.server.port=${PORT}\"]"
       fi
+    else
+      # Internal access only via service discovery
+      export __HOSTNAME__=""
+      export NOMAD_ENVIRONMENT_URL=""
+      export __SERVICE_TAGS__='["api"]'
+    fi
 
 # Base deploy template (mirrors Auto DevOps .deploy structure)
 # This is the equivalent of Auto DevOps .deploy but for Nomad
@@ -290,7 +283,7 @@ stop_review_app:
 deploy:review:
   extends: .deploy
   before_script:
-    - !reference [.deploy-setup, before_script]
+    - *setup_script
     # Determine environment for Review Apps
     - |
       if [ -n "$CI_MERGE_REQUEST_IID" ]; then
@@ -303,7 +296,7 @@ deploy:review:
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - !reference [.deploy-routing, before_script]
+    - *routing_script
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_MERGE_REQUEST_IID'
       when: on_success
@@ -319,7 +312,7 @@ deploy:review:
 deploy:development:
   extends: .deploy
   before_script:
-    - !reference [.deploy-setup, before_script]
+    - *setup_script
     # Set environment for Development
     - |
       export NOMAD_ENVIRONMENT="development"
@@ -327,7 +320,7 @@ deploy:development:
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - !reference [.deploy-routing, before_script]
+    - *routing_script
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_COMMIT_BRANCH == "development"'
       when: on_success
@@ -340,7 +333,7 @@ deploy:development:
 deploy:staging:
   extends: .deploy
   before_script:
-    - !reference [.deploy-setup, before_script]
+    - *setup_script
     # Set environment for Staging
     - |
       export NOMAD_ENVIRONMENT="staging"
@@ -348,7 +341,7 @@ deploy:staging:
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - !reference [.deploy-routing, before_script]
+    - *routing_script
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
@@ -364,7 +357,7 @@ deploy:staging:
 .production:
   extends: .deploy
   before_script:
-    - !reference [.deploy-setup, before_script]
+    - *setup_script
     # Set environment for Production
     - |
       export NOMAD_ENVIRONMENT="production"
@@ -372,7 +365,7 @@ deploy:staging:
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - !reference [.deploy-routing, before_script]
+    - *routing_script
   environment:
     name: production
     url: ${NOMAD_ENVIRONMENT_URL:-}
