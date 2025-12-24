@@ -64,11 +64,9 @@ retag-backend:
     DOCKER_API_VERSION: "1.41"
     # DOCKER_TLS_CERTDIR: ""
     # Using Docker socket - no DinD service needed
-    # Using Docker socket - no DinD service needed
-  rules:
     - when: on_success
   script:
-    # Wait for DinD to be ready
+    # Wait for DinD/Docker daemon to be ready
     - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
     - ts=$(date -u +%Y%m%d-%H%M)
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"

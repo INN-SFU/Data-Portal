@@ -103,7 +103,7 @@ frontend-autodevops:
     - changes:
         - frontend/**/*
       when: on_success
-    - when: always  # <— temporary “override/fallback” to run every pipeline
+    - when: always  # <— temporary "override/fallback" to run every pipeline
 
 
 # Trigger Auto DevOps for the backend only when backend/ changes
@@ -117,5 +117,5 @@ backend-autodevops:
     - changes:
         - backend/**/*
       when: on_success    
-    - when: always   # <— temporary “override/fallback” so this job still runs
+    - when: always   # <— temporary "override/fallback" so this job still runs
 
