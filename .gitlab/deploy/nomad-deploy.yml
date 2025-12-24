@@ -270,7 +270,6 @@ prepare-nomad-scripts:
       artifacts: false
     - job: prepare-nomad-scripts
       artifacts: true
-  script: []
   after_script:
     - echo "===== Deployment job completed ====="
     - |
