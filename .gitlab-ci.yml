@@ -1,11 +1,14 @@
 
 variables:
   DOCKER_API_VERSION: "1.41"
-  DOCKER_TLS_CERTDIR: ""            # disable TLS cert generation inside DinD
-  DOCKER_HOST: tcp://docker:2375    # point client to the DinD service
+#   DOCKER_TLS_CERTDIR: ""            # disable TLS cert generation inside DinD
+#   DOCKER_HOST: tcp://docker:2375    # point client to the DinD service
 
-services:
-  - docker:27-dind
+# services:
+#   - docker:27-dind
+  # Using Docker socket - no DinD service needed
+  # DOCKER_HOST is not set - uses socket by default
+
 
 stages: [build, triggers]
 

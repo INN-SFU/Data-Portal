@@ -57,12 +57,14 @@ code_quality_ruff_check:
 retag-backend:
   stage: build
   image: docker:27-cli
-  services:
-    - docker:27-dind
+  # services:
+  #   - docker:27-dind
   variables:
-    DOCKER_HOST: tcp://docker:2375
+    # DOCKER_HOST: tcp://docker:2375
     DOCKER_API_VERSION: "1.41"
-    DOCKER_TLS_CERTDIR: ""
+    # DOCKER_TLS_CERTDIR: ""
+    # Using Docker socket - no DinD service needed
+    # Using Docker socket - no DinD service needed
   rules:
     - when: on_success
   script:
