@@ -1,5 +1,9 @@
 
 # Use native Auto DevOps jobs (Auto Build/Test/Security/Deploy)
+# Note: CodeClimate-based Code Quality is disabled via CODE_QUALITY_DISABLED variable
+# (set in root pipeline). This feature was deprecated in GitLab 17.3 and will be removed in 19.0.
+# We use direct tool integration instead (Ruff, ESLint, Bandit, MyPy).
+# See docs/code-quality-deprecation.md for details.
 include:
   - template: Auto-DevOps.gitlab-ci.yml
   - local: '/.gitlab/ci/ruff.yml'    # Ruff code quality check from common local library.
@@ -51,7 +55,7 @@ test-frontend:
       - frontend/frontend-test-report.xml
     when: always
 
-ruff-check-frontend:
+code_quality_ruff_check:
   extends: .ruff-check-template
   variables:
     RUFF_TARGET: frontend
