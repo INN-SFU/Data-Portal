@@ -3,37 +3,50 @@
 # Structure mirrors: https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Jobs/Deploy.gitlab-ci.yml
 #
 # Base template: .deploy (hidden job, similar to Auto DevOps)
-# Deploy jobs: deploy:review, deploy:development, deploy:staging, deploy:production
-# Stop job: stop_review_app (for Review Apps cleanup)
+# Deploy jobs: review, staging, production (mirrors Auto DevOps naming)
+# Additional: deploy:development (Nomad-specific, not in Auto DevOps)
+# Stop job: stop_review (for Review Apps cleanup, mirrors Auto DevOps)
 #
 # Staging deploys are disabled by default since continuous deployment to production
 # is enabled by default. If you prefer to automatically deploy to staging and only
 # manually promote to production, enable staging by setting STAGING_ENABLED.
 
-# Helper templates for reusable before_script sections
-# Note: These are designed to be extended, not used directly
-# Since extends doesn't merge arrays, we structure these as complete before_script sections
-# that can be inherited, then extended jobs can add to them
-
-# Common setup template: tools, connection verification, service variables
-.deploy-setup:
-  before_script:
-    # Install required tools
-    - apk add --no-cache gettext docker-cli curl
-    # Verify Nomad connection
+# Preparation job: Generate reusable helper scripts
+# Runs before all deploy jobs to create shared scripts, reducing duplication
+prepare-nomad-scripts:
+  stage: build
+  image: alpine:latest
+  script:
+    # Create nomad-setup.sh: Install tools, verify connection, set service variables
+    # Note: nomad CLI is already available in hashicorp/nomad:latest image
     - |
+      cat > nomad-setup.sh << 'SETUP_EOF'
+      #!/bin/sh
+      set -e
+      
+      # Install gettext for envsubst (not included in hashicorp/nomad image)
+      apk add --no-cache gettext > /dev/null 2>&1
+      
+      # Verify Nomad connection
       if [ -z "$NOMAD_SERVER_ADDRESS" ] || [ -z "$NOMAD_SERVER_TOKEN" ]; then
         echo "Error: NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN must be set"
         exit 1
       fi
-    - nomad version
-    - |
+      
+      # Verify nomad CLI is available (should be in hashicorp/nomad image)
+      if ! command -v nomad > /dev/null 2>&1; then
+        echo "Error: nomad CLI not found in image"
+        exit 1
+      fi
+      
+      nomad version
+      
       if ! nomad acl token self -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" > /dev/null 2>&1; then
         echo "Error: Cannot connect to Nomad cluster"
         exit 1
       fi
-    # Set common service-specific variables
-    - |
+      
+      # Set common service-specific variables
       export __SERVICE__="${SERVICE_NAME}"
       export __IMAGE_NAME__="${CI_REGISTRY_IMAGE}/${SERVICE_NAME}"
       export __IMAGE_TAG__="${CI_COMMIT_SHORT_SHA}"
@@ -43,12 +56,13 @@
       export __IMAGE_FORCE_PULL__="${NOMAD_IMAGE_FORCE_PULL}"
       export __USERNAME__="${CI_REGISTRY_USER}"
       export __PASSWORD__="${CI_REGISTRY_PASSWORD}"
-
-# Routing script template: Traefik configuration
-# Generates hostname and service tags based on environment and service type
-.routing-script:
-  before_script:
+      SETUP_EOF
+    # Create nomad-routing.sh: Generate hostname and Traefik tags
     - |
+      cat > nomad-routing.sh << 'ROUTING_EOF'
+      #!/bin/sh
+      set -e
+      
       # Determine if external access is needed
       NEEDS_EXTERNAL_ACCESS="false"
       
@@ -65,6 +79,7 @@
       
       if [ "$NEEDS_EXTERNAL_ACCESS" = "true" ]; then
         # Generate hostname based on environment
+        # For review, use branch name (CI_COMMIT_REF_SLUG) for hostname
         if [ "$NOMAD_ENVIRONMENT" = "review" ]; then
           export __HOSTNAME__="${SERVICE_NAME}-${CI_COMMIT_REF_SLUG}.${NOMAD_DOMAIN:-example.com}"
         else
@@ -93,39 +108,20 @@
         export NOMAD_ENVIRONMENT_URL=""
         export __SERVICE_TAGS__='["api"]'
       fi
-
-# Base deploy template with common configuration
-# Uses extends to compose before_script from helper templates
-# Note: This base job should not run directly - it's extended by environment-specific jobs
-.deploy:
-  extends:
-    - .deploy-setup
-  stage: deploy
-  image: 
-    name: hashicorp/nomad:latest
-    entrypoint: [""]
-  variables:
-    NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED:-true}"
-    NOMAD_DATACENTERS: "${NOMAD_DATACENTERS:-[\"dc1\"]}"
-    NOMAD_JOB_DRIVER: "${NOMAD_JOB_DRIVER:-docker}"
-    NOMAD_IMAGE_FORCE_PULL: "${NOMAD_IMAGE_FORCE_PULL:-true}"
-    # Per-service external access control (overrides environment-based defaults)
-    # Set to "true" to enable external access via Traefik, "false" to disable
-    # If not set, uses environment-based defaults (review=true, others=false for backend)
-    NOMAD_EXTERNAL_ACCESS: "${NOMAD_EXTERNAL_ACCESS:-}"
-  dependencies:
-    - build
-  # Note: before_script is inherited from .deploy-setup via extends
-  # Environment-specific jobs can extend .deploy and add to before_script
-  # Main deployment script (can be customized by extending jobs)
-  script:
+      ROUTING_EOF
+    # Create nomad-deploy.sh: Template substitution, validation, deployment, health check
     - |
+      cat > nomad-deploy.sh << 'DEPLOY_EOF'
+      #!/bin/sh
+      set -e
+      
+      # Check if deployment is enabled
       if [ "$NOMAD_DEPLOY_ENABLED" != "true" ]; then
         echo "Nomad deployment is disabled. Skipping..."
         exit 0
       fi
-    # Determine template file
-    - |
+      
+      # Determine template file
       if [ -z "$NOMAD_JOB_TEMPLATE" ]; then
         NOMAD_JOB_TEMPLATE=".gitlab/deploy/nomad-templates/${SERVICE_NAME}.template.nomad"
       fi
@@ -133,8 +129,8 @@
         echo "Error: Nomad job template not found: $NOMAD_JOB_TEMPLATE"
         exit 1
       fi
-    # Substitute variables in template
-    - |
+      
+      # Substitute variables in template
       # Determine variable list file
       if [ -z "$NOMAD_VARS_FILE" ]; then
         NOMAD_VARS_FILE=".gitlab/deploy/nomad-vars.txt"
@@ -160,8 +156,8 @@
       
       echo "===== Rendered Nomad job ====="
       cat "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
-    # Validate Nomad job
-    - |
+      
+      # Validate Nomad job
       echo "===== Validating Nomad job ====="
       nomad job validate \
         -address="$NOMAD_SERVER_ADDRESS" \
@@ -172,8 +168,8 @@
         cat "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
         exit 1
       }
-    # Deploy to Nomad
-    - |
+      
+      # Deploy to Nomad
       echo "===== Deploying to Nomad ====="
       nomad job run \
         -address="$NOMAD_SERVER_ADDRESS" \
@@ -181,9 +177,8 @@
         -namespace="$__NAMESPACE__" \
         -verbose \
         "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
-    # Wait for deployment to be healthy
-    # Ensure deployment is successful before marking job complete
-    - |
+      
+      # Wait for deployment to be healthy
       echo "===== Waiting for deployment to be healthy ====="
       MAX_WAIT=300
       WAIT_INTERVAL=10
@@ -242,7 +237,39 @@
       fi
       
       echo "===== Deployment successful and healthy ====="
-  # Common after_script for cleanup/notification (can be customized by extending jobs)
+      DEPLOY_EOF
+    # Make scripts executable
+    - chmod +x nomad-setup.sh nomad-routing.sh nomad-deploy.sh
+    - ls -la *.sh
+  artifacts:
+    paths:
+      - "*.sh"
+    expire_in: 1 hour
+  rules:
+    - if: '$NOMAD_DEPLOY_ENABLED == "true"'
+      when: on_success
+    - when: never
+
+# Base deploy template (mirrors Auto DevOps .auto-deploy pattern)
+.deploy:
+  stage: deploy
+  image: 
+    name: hashicorp/nomad:latest
+    entrypoint: [""]
+  variables:
+    NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED:-true}"
+    NOMAD_DATACENTERS: "${NOMAD_DATACENTERS:-[\"dc1\"]}"
+    NOMAD_JOB_DRIVER: "${NOMAD_JOB_DRIVER:-docker}"
+    NOMAD_IMAGE_FORCE_PULL: "${NOMAD_IMAGE_FORCE_PULL:-true}"
+    # Per-service external access control (overrides environment-based defaults)
+    # Set to "true" to enable external access via Traefik, "false" to disable
+    # If not set, uses environment-based defaults (review=true, others=false for backend)
+    NOMAD_EXTERNAL_ACCESS: "${NOMAD_EXTERNAL_ACCESS:-}"
+  dependencies:
+    - build
+  needs:
+    - job: prepare-nomad-scripts
+      artifacts: true
   after_script:
     - echo "===== Deployment job completed ====="
     - |
@@ -261,131 +288,14 @@
     - if: '$DEPLOY_DISABLED == "true"'
       when: never
 
-# Review App cleanup job (mirrors Auto DevOps stop_review_app pattern)
-stop_review_app:
-  extends: .deploy
-  stage: deploy
-  image:
-    name: hashicorp/nomad:latest
-    entrypoint: [""]
-  variables:
-    GIT_STRATEGY: none
-  script:
-    - apk add --no-cache gettext
-    - |
-      if [ -z "$NOMAD_SERVER_ADDRESS" ] || [ -z "$NOMAD_SERVER_TOKEN" ]; then
-        echo "Error: NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN must be set"
-        exit 1
-      fi
-    - |
-      # Determine environment name from CI_ENVIRONMENT_NAME
-      JOB_NAME="${SERVICE_NAME}-${CI_ENVIRONMENT_NAME}"
-      echo "Stopping Nomad job: $JOB_NAME"
-      nomad job stop \
-        -address="$NOMAD_SERVER_ADDRESS" \
-        -token="$NOMAD_SERVER_TOKEN" \
-        -namespace="${NOMAD_NAMESPACE:-default}" \
-        -purge \
-        "$JOB_NAME" || echo "Job $JOB_NAME not found or already stopped"
-  rules:
-    - if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS'
-      when: manual
-      allow_failure: true
-    - if: '$CI_ENVIRONMENT_NAME =~ /^review-/'
-      when: manual
-      allow_failure: true
-  when: manual
-  environment:
-    name: $CI_ENVIRONMENT_NAME
-    action: stop
-
-# Deploy job for Review Apps (mirrors Auto DevOps deploy:review pattern)
-deploy:review:
-  extends: .deploy
-  before_script:
-    # Include setup from .deploy-setup template (via extends)
-    - !reference [.deploy-setup, before_script]
-    # Environment-specific setup for Review Apps
-    # Determine environment for Review Apps
-    - |
-      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
-        export NOMAD_ENVIRONMENT="review"
-        export NOMAD_ENVIRONMENT_NAME="review-pr-${CI_MERGE_REQUEST_IID}"
-      else
-        export NOMAD_ENVIRONMENT="review"
-        export NOMAD_ENVIRONMENT_NAME="review-${CI_COMMIT_REF_SLUG}"
-      fi
-      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
-      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
-    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    # Include routing from .routing-script template
-    - !reference [.routing-script, before_script]
-  rules:
-    - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_MERGE_REQUEST_IID'
-      when: on_success
-    - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "development" && $CI_COMMIT_BRANCH != "staging"'
-      when: on_success
-  environment:
-    name: $NOMAD_ENVIRONMENT_NAME
-    url: ${NOMAD_ENVIRONMENT_URL:-}
-    on_stop: stop_review_app
-    auto_stop_in: 1 week
-
-# Deploy job for Development (mirrors Auto DevOps deploy:development pattern)
-deploy:development:
-  extends: .deploy
-  before_script:
-    # Include setup from .deploy-setup template (via extends)
-    - !reference [.deploy-setup, before_script]
-    # Environment-specific setup for Development
-    - |
-      export NOMAD_ENVIRONMENT="development"
-      export NOMAD_ENVIRONMENT_NAME="development"
-      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
-      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
-    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    # Include routing from .routing-script template
-    - !reference [.routing-script, before_script]
-  rules:
-    - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_COMMIT_BRANCH == "development"'
-      when: on_success
-  environment:
-    name: development
-    url: ${NOMAD_ENVIRONMENT_URL:-}
-
-# Deploy job for Staging (mirrors Auto DevOps deploy:staging pattern)
-# Staging deploys are disabled by default. Enable by setting STAGING_ENABLED.
-deploy:staging:
-  extends: .deploy
-  before_script:
-    # Include setup from .deploy-setup template (via extends)
-    - !reference [.deploy-setup, before_script]
-    # Environment-specific setup for Staging
-    - |
-      export NOMAD_ENVIRONMENT="staging"
-      export NOMAD_ENVIRONMENT_NAME="staging"
-      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
-      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
-    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    # Include routing from .routing-script template
-    - !reference [.routing-script, before_script]
-  rules:
-    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
-      when: never
-    - if: '$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH'
-      when: never
-    - if: '$STAGING_ENABLED'
-      when: on_success
-  environment:
-    name: staging
-    url: ${NOMAD_ENVIRONMENT_URL:-}
-
 # Production deploy template (mirrors Auto DevOps .production pattern)
-.production:
+# Uses YAML anchors for complete inheritance, following Auto DevOps pattern
+.production: &production_template
   extends: .deploy
-  before_script:
-    # Include setup from .deploy-setup template (via extends)
-    - !reference [.deploy-setup, before_script]
+  stage: production
+  script:
+    # Source helper scripts (setup, routing, deploy)
+    - source nomad-setup.sh
     # Environment-specific setup for Production
     - |
       export NOMAD_ENVIRONMENT="production"
@@ -393,18 +303,25 @@ deploy:staging:
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
     - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    # Include routing from .routing-script template
-    - !reference [.routing-script, before_script]
+    - source nomad-routing.sh
+    - source nomad-deploy.sh
   environment:
     name: production
     url: ${NOMAD_ENVIRONMENT_URL:-}
+  artifacts:
+    paths:
+      - "*.nomad"
+    expire_in: 1 week
+    when: always
 
-# Deploy job for Production (mirrors Auto DevOps deploy:production pattern)
+# Deploy job for Production (mirrors Auto DevOps production pattern)
 # Continuous deployment to production is enabled by default.
 # If STAGING_ENABLED is set, this job is disabled and production_manual is used instead.
 production:
-  extends: .production
+  <<: *production_template
   rules:
+    - if: '$CI_DEPLOY_FREEZE'
+      when: never
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
     - if: '$DEPLOY_DISABLED == "true"'
@@ -417,13 +334,161 @@ production:
 # Manual production deployment (used when STAGING_ENABLED is set)
 # Allows manual promotion from staging to production
 production_manual:
-  extends: .production
+  <<: *production_template
   allow_failure: false
   when: manual
   rules:
+    - if: '$CI_DEPLOY_FREEZE'
+      when: never
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
     - if: '$DEPLOY_DISABLED == "true"'
       when: never
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $STAGING_ENABLED'
       when: manual
+
+# Deploy job for Review Apps (mirrors Auto DevOps review pattern)
+review:
+  extends: .deploy
+  stage: review
+  script:
+    # Source helper scripts (setup, routing, deploy)
+    - source nomad-setup.sh
+    # Environment-specific setup for Review Apps
+    # Use Auto DevOps environment name format: review/$CI_COMMIT_REF_NAME
+    - |
+      export NOMAD_ENVIRONMENT="review"
+      export NOMAD_ENVIRONMENT_NAME="review/$CI_COMMIT_REF_NAME"
+      # For Nomad job naming, use sanitized version
+      export __ENVIRONMENT__="review-${CI_COMMIT_REF_SLUG}"
+      export __ENVIRONMENT_SANITIZED__="review-${CI_COMMIT_REF_SLUG}"
+    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+    - source nomad-routing.sh
+    - source nomad-deploy.sh
+  rules:
+    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
+      when: never
+    - if: '$DEPLOY_DISABLED == "true"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: never
+    - if: '$REVIEW_DISABLED'
+      when: never
+    - if: '$CI_COMMIT_TAG || $CI_COMMIT_BRANCH'
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    url: ${NOMAD_ENVIRONMENT_URL:-}
+    on_stop: stop_review
+    auto_stop_in: 1 week
+  artifacts:
+    paths:
+      - "*.nomad"
+    expire_in: 1 week
+    when: always
+
+# Deploy job for Development (mirrors Auto DevOps deploy:development pattern)
+# Note: Auto DevOps doesn't have a development job, but we keep it for Nomad-specific needs
+deploy:development:
+  extends: .deploy
+  stage: deploy
+  script:
+    # Source helper scripts (setup, routing, deploy)
+    - source nomad-setup.sh
+    # Environment-specific setup for Development
+    - |
+      export NOMAD_ENVIRONMENT="development"
+      export NOMAD_ENVIRONMENT_NAME="development"
+      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
+      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
+    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+    - source nomad-routing.sh
+    - source nomad-deploy.sh
+  rules:
+    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
+      when: never
+    - if: '$DEPLOY_DISABLED == "true"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == "development"'
+      when: on_success
+  environment:
+    name: development
+    url: ${NOMAD_ENVIRONMENT_URL:-}
+
+# Deploy job for Staging (mirrors Auto DevOps staging pattern)
+# Staging deploys are disabled by default. Enable by setting STAGING_ENABLED.
+staging:
+  extends: .deploy
+  stage: staging
+  script:
+    # Source helper scripts (setup, routing, deploy)
+    - source nomad-setup.sh
+    # Environment-specific setup for Staging
+    - |
+      export NOMAD_ENVIRONMENT="staging"
+      export NOMAD_ENVIRONMENT_NAME="staging"
+      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
+      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
+    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+    - source nomad-routing.sh
+    - source nomad-deploy.sh
+  rules:
+    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
+      when: never
+    - if: '$DEPLOY_DISABLED == "true"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH'
+      when: never
+    - if: '$STAGING_ENABLED'
+  environment:
+    name: staging
+    url: ${NOMAD_ENVIRONMENT_URL:-}
+
+# Review App cleanup job (mirrors Auto DevOps stop_review pattern)
+stop_review:
+  extends: .deploy
+  stage: cleanup
+  image:
+    name: hashicorp/nomad:latest
+    entrypoint: [""]
+  variables:
+    GIT_STRATEGY: none
+  script:
+    # Note: nomad CLI is already available in hashicorp/nomad:latest image
+    # No additional packages needed for stop_review job
+    - |
+      if [ -z "$NOMAD_SERVER_ADDRESS" ] || [ -z "$NOMAD_SERVER_TOKEN" ]; then
+        echo "Error: NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN must be set"
+        exit 1
+      fi
+    - |
+      # Determine environment name from CI_ENVIRONMENT_NAME
+      # Auto DevOps uses review/$CI_COMMIT_REF_NAME format, convert to Nomad job name
+      if echo "$CI_ENVIRONMENT_NAME" | grep -q "^review/"; then
+        # Extract branch name from review/$CI_COMMIT_REF_NAME
+        BRANCH_NAME=$(echo "$CI_ENVIRONMENT_NAME" | sed 's|^review/||')
+        JOB_NAME="${SERVICE_NAME}-review-$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')"
+      else
+        JOB_NAME="${SERVICE_NAME}-${CI_ENVIRONMENT_NAME}"
+      fi
+      echo "Stopping Nomad job: $JOB_NAME"
+      nomad job stop \
+        -address="$NOMAD_SERVER_ADDRESS" \
+        -token="$NOMAD_SERVER_TOKEN" \
+        -namespace="${NOMAD_NAMESPACE:-default}" \
+        -purge \
+        "$JOB_NAME" || echo "Job $JOB_NAME not found or already stopped"
+  rules:
+    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
+      when: never
+    - if: '$DEPLOY_DISABLED == "true"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: never
+    - if: '$REVIEW_DISABLED'
+      when: never
+    - if: '$CI_COMMIT_TAG || $CI_COMMIT_BRANCH'
+      when: manual
+  allow_failure: true
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    action: stop
