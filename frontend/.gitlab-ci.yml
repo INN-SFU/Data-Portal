@@ -13,13 +13,23 @@ include:
 variables:
   DOCKERFILE_PATH: frontend/Dockerfile
   AUTO_DEVOPS_BUILD_IMAGE_CONTEXT: frontend
-
+  
+  # Enable BuildKit for faster builds and better caching
+  DOCKER_BUILDKIT: "1"
+  BUILDKIT_PROGRESS: "plain"
+  
+  # Enable inline cache in images for future cache sources
+  # Note: BUILDKIT_INLINE_CACHE=1 is added as build-arg in AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS
+  # Local runner cache is used automatically by Docker if configured
+  # See docs/gitlab-runner-local-cache-config.md for runner configuration
+  
   # Add multiple image tags at build time (branch + short SHA)
-  # Auto DevOps will appended these to the docker build` as repeated --tag flags.
+  # Auto DevOps will append these to the docker build as repeated --tag flags.
   AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
     --tag ${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_SHA}
     --tag ${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_REF_SLUG}
     --tag ${CI_REGISTRY_IMAGE}/frontend:${CI_COMMIT_SHORT_SHA}
+    --build-arg BUILDKIT_INLINE_CACHE=1
 
 # Safety net test (kept until Auto Test/Herokuish consistently reliably detects tests)
 test-frontend:
