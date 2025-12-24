@@ -46,6 +46,8 @@ variables:
   # Disable Auto DevOps Kubernetes deployment (we use Nomad instead)
   # This prevents Auto DevOps from trying to deploy to Kubernetes
   DEPLOY_DISABLED: "${DEPLOY_DISABLED:-true}"
+  # Explicitly disable Auto DevOps review jobs to prevent job name conflicts
+  REVIEW_DISABLED: "true"
   
 # Safety net test (kept until Auto Test/Herokuish consistently reliably detects tests)
 test-backend:

@@ -363,9 +363,23 @@ production_manual:
       when: manual
 
 # Deploy job for Review Apps (mirrors Auto DevOps review pattern)
+# Note: Does not use 'extends' to avoid merge conflicts with Auto DevOps review job
 review:
-  extends: .deploy
   stage: review
+  image: 
+    name: hashicorp/nomad:latest
+    entrypoint: [""]
+  variables:
+    NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED:-true}"
+    NOMAD_DATACENTERS: "${NOMAD_DATACENTERS:-[\"dc1\"]}"
+    NOMAD_JOB_DRIVER: "${NOMAD_JOB_DRIVER:-docker}"
+    NOMAD_IMAGE_FORCE_PULL: "${NOMAD_IMAGE_FORCE_PULL:-true}"
+    NOMAD_EXTERNAL_ACCESS: "${NOMAD_EXTERNAL_ACCESS:-}"
+  needs:
+    - job: build
+      artifacts: false
+    - job: prepare-nomad-scripts
+      artifacts: true
   script:
     # Source helper scripts (setup, routing, deploy)
     - source nomad-setup.sh
@@ -400,6 +414,12 @@ review:
       - "*.nomad"
     expire_in: 1 week
     when: always
+  after_script:
+    - echo "===== Deployment job completed ====="
+    - |
+      if [ -n "$NOMAD_ENVIRONMENT_URL" ]; then
+        echo "Deployment URL: $NOMAD_ENVIRONMENT_URL"
+      fi
 
 # Deploy job for Development (mirrors Auto DevOps deploy:development pattern)
 # Note: Auto DevOps doesn't have a development job, but we keep it for Nomad-specific needs
