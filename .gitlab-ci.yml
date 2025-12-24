@@ -51,8 +51,7 @@ runner:
   script:
     - echo "✅ Runner is working!"
     - echo "Pipeline timestamp: ${PIPELINE_TIMESTAMP:-not set}"
-    # Wait for DinD/docker daemon to be ready
-    - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
+    - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done  # Wait for DinD/docker daemon to be ready
     - docker version
     - docker info
 
