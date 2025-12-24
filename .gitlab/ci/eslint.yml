@@ -17,9 +17,8 @@
       if [ -f "${ESLINT_TARGET}/package.json" ]; then
         cd ${ESLINT_TARGET}
         npm ci
-        # Install GitLab formatter if not already present
-        npm install eslint-formatter-gitlab 2>/dev/null || npm install eslint-formatter-gitlab || true
-        # Run ESLint with GitLab formatter
+        # Run ESLint with GitLab formatter (installed via devDependencies)
+        # Note: eslint-formatter-gitlab should be added to package.json with: npm install --save-dev eslint-formatter-gitlab
         npx eslint . --format gitlab --output-file ${CI_PROJECT_DIR}/${ESLINT_REPORT} || true
         cd ${CI_PROJECT_DIR}
       else
