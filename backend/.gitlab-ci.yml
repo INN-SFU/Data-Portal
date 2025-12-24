@@ -37,7 +37,7 @@ test-backend:
       - backend-test-report.xml
     when: always
 
-ruff-check-backend:
+code_quality_ruff_check:
   extends: .ruff-check-template
   variables:
     RUFF_TARGET: backend
