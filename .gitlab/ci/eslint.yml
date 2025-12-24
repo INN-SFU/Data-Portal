@@ -17,8 +17,10 @@
       if [ -f "${ESLINT_TARGET}/package.json" ]; then
         cd ${ESLINT_TARGET}
         npm ci
-        # Run ESLint with GitLab formatter (installed via devDependencies)
-        # Note: eslint-formatter-gitlab should be added to package.json with: npm install --save-dev eslint-formatter-gitlab
+        # Install latest GitLab formatter (supports ESLint 8/9)
+        # Try latest version first, fallback to legacy-peer-deps if needed
+        npm install eslint-formatter-gitlab@latest || npm install --legacy-peer-deps eslint-formatter-gitlab
+        # Run ESLint with GitLab formatter
         npx eslint . --format gitlab --output-file ${CI_PROJECT_DIR}/${ESLINT_REPORT} || true
         cd ${CI_PROJECT_DIR}
       else
