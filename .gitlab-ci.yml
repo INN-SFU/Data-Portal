@@ -33,8 +33,63 @@ runner:
       else
         echo "⚠️  DinD container not found - check service configuration"
       fi
+    - |
+      echo "🔍 Checking DinD container and cache mounts..."
+      DIND_CONTAINER=$(docker ps -q -f ancestor=docker:27-dind | head -n1)
+      if [ -n "$DIND_CONTAINER" ]; then
+        echo "✅ Found DinD container: $DIND_CONTAINER"
+        echo ""
+        echo "📋 ALL volume mounts in DinD container:"
+        docker inspect "$DIND_CONTAINER" --format '{{range .Mounts}}{{printf "%-10s %-50s -> %s\n" .Type .Source .Destination}}{{end}}' 2>/dev/null || echo "Could not inspect mounts"
+        echo ""
+        echo "🔍 Checking if /var/lib/docker is a mount point (CRITICAL):"
+        VAR_LIB_DOCKER_MOUNT=$(docker inspect "$DIND_CONTAINER" --format '{{range .Mounts}}{{if eq .Destination "/var/lib/docker"}}{{.Source}} -> {{.Destination}}{{end}}{{end}}' 2>/dev/null)
+        if [ -n "$VAR_LIB_DOCKER_MOUNT" ]; then
+          echo "  ✅ /var/lib/docker IS mounted: $VAR_LIB_DOCKER_MOUNT"
+          if echo "$VAR_LIB_DOCKER_MOUNT" | grep -q "dind-cache"; then
+            echo "  ✅ Mount source contains 'dind-cache' - configuration is correct!"
+          else
+            echo "  ⚠️  Mount source doesn't contain 'dind-cache' - may be using different path"
+          fi
+        else
+          echo "  ❌ /var/lib/docker is NOT mounted (using ephemeral storage)"
+          echo "  💡 This is why cache directories remain empty and [CACHED] doesn't appear"
+          echo "  💡 Fix: Ensure config.toml has [[runners.docker.services]] with volumes"
+        fi
+        echo ""
+        echo "💾 Checking /dind-cache in DinD (should exist if runner has it mounted):"
+        if docker exec "$DIND_CONTAINER" test -d /dind-cache 2>/dev/null; then
+          echo "  ✅ /dind-cache exists in DinD"
+          docker exec "$DIND_CONTAINER" ls -la /dind-cache 2>/dev/null | head -n 3 || echo "  (empty)"
+        else
+          echo "  ❌ /dind-cache does NOT exist in DinD"
+        fi
+        echo ""
+        echo "📊 Checking /var/lib/docker size in DinD:"
+        if docker exec "$DIND_CONTAINER" test -d /var/lib/docker 2>/dev/null; then
+          SIZE=$(docker exec "$DIND_CONTAINER" du -sh /var/lib/docker 2>/dev/null | cut -f1 || echo "unknown")
+          echo "  Size: $SIZE"
+          if [ "$SIZE" = "0" ] || [ "$SIZE" = "unknown" ]; then
+            echo "  ⚠️  Cache is empty - this is expected on first build"
+            echo "  💡 After second build, this should have content if cache is working"
+          fi
+        fi
+        echo ""
+        echo "💡 Troubleshooting:"
+        echo "   If /var/lib/docker is NOT mounted, check:"
+        echo "   1. config.toml has [[runners.docker.services]] (double brackets!)"
+        echo "   2. Service name matches exactly: docker:27-dind"
+        echo "   3. Volumes array: [\"/dind-cache:/var/lib/docker\"]"
+        echo "   4. Runner was restarted: docker compose restart runner"
+        echo "   5. Config syntax is valid: docker compose exec runner gitlab-runner verify"
+      else
+        echo "⚠️  DinD container not visible from job container (this is normal)"
+        echo "💡 Registry cache is working (you see 'importing cache manifest')"
+        echo "💡 Local cache requires service volumes in runner config.toml"
+      fi
 
-# Trigger Auto DevOps for the frontend only when frontend/ changes
+# Trigger Auto DevOps pipelines
+# Note: "when: always" ensures pipelines run even without file changes (temporary override)
 frontend-autodevops:
   stage: triggers
   trigger:
