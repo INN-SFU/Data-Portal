@@ -6,8 +6,8 @@ variables:
 
 # services:
 #   - docker:27-dind
-  # Using Docker socket - no DinD service needed
-  # DOCKER_HOST is not set - uses socket by default
+#   Using Docker socket - no DinD service needed
+#   DOCKER_HOST is not set - uses socket by default
 
 
 stages: [build, triggers]
@@ -49,9 +49,14 @@ runner:
     - job: generate-timestamp
       artifacts: true
   script:
-    - echo "✅ Runner is working!"
-    - echo "Pipeline timestamp: ${PIPELINE_TIMESTAMP:-not set}"
-    - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done  # Wait for DinD/docker daemon to be ready
+    - echo "Runner is working!"
+    - |
+      if [ -n "$PIPELINE_TIMESTAMP" ]; then
+        echo "Pipeline timestamp: $PIPELINE_TIMESTAMP"
+      else
+        echo "Pipeline timestamp: not set"
+      fi
+    - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
     - docker version
     - docker info
 
