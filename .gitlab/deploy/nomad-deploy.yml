@@ -1,10 +1,19 @@
 # Nomad Deployment Integration with Auto DevOps
-# This template extends Auto DevOps to deploy to Nomad instead of Kubernetes
-# Maintains compatibility with Auto DevOps and future Kubernetes support
+# This template provides Nomad deployment jobs following Auto DevOps patterns
+# Structure mirrors: https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Jobs/Deploy.gitlab-ci.yml
+#
+# Base template: .deploy (hidden job, similar to Auto DevOps)
+# Deploy jobs: deploy:review, deploy:development, deploy:staging, deploy:production
+# Stop job: stop_review_app (for Review Apps cleanup)
+#
+# Staging deploys are disabled by default since continuous deployment to production
+# is enabled by default. If you prefer to automatically deploy to staging and only
+# manually promote to production, enable staging by setting STAGING_ENABLED.
 
-# Base template that extends Auto DevOps deploy job
-.nomad-deploy-base:
-  extends: .deploy
+# Base deploy template (mirrors Auto DevOps .deploy structure)
+# This is the equivalent of Auto DevOps .deploy but for Nomad
+# Note: This base job should not run directly - it's extended by environment-specific jobs
+.deploy:
   stage: deploy
   image: 
     name: hashicorp/nomad:latest
@@ -18,6 +27,8 @@
     # Set to "true" to enable external access via Traefik, "false" to disable
     # If not set, uses environment-based defaults (review=true, others=false for backend)
     NOMAD_EXTERNAL_ACCESS: "${NOMAD_EXTERNAL_ACCESS:-}"
+  dependencies:
+    - build
   before_script:
     # Install required tools
     - apk add --no-cache gettext docker-cli curl
@@ -33,32 +44,9 @@
         echo "Error: Cannot connect to Nomad cluster"
         exit 1
       fi
-    # Determine environment
-    # Review Apps should be hyphenated: review-<branch-name> (not review/pr-123)
-    - |
-      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
-        export NOMAD_ENVIRONMENT="review"
-        export NOMAD_ENVIRONMENT_NAME="review-pr-${CI_MERGE_REQUEST_IID}"
-      elif [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
-        export NOMAD_ENVIRONMENT="production"
-        export NOMAD_ENVIRONMENT_NAME="production"
-      elif [ "$CI_COMMIT_BRANCH" = "development" ]; then
-        export NOMAD_ENVIRONMENT="development"
-        export NOMAD_ENVIRONMENT_NAME="development"
-      elif [ "$CI_COMMIT_BRANCH" = "staging" ]; then
-        export NOMAD_ENVIRONMENT="staging"
-        export NOMAD_ENVIRONMENT_NAME="staging"
-      else
-        export NOMAD_ENVIRONMENT="review"
-        export NOMAD_ENVIRONMENT_NAME="review-${CI_COMMIT_REF_SLUG}"
-      fi
-    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    # Set service-specific variables
+    # Set common service-specific variables (environment-specific vars set by extending jobs)
     - |
       export __SERVICE__="${SERVICE_NAME}"
-      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
-      # Environment names are already hyphenated (no slashes), so sanitized = original
-      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
       export __IMAGE_NAME__="${CI_REGISTRY_IMAGE}/${SERVICE_NAME}"
       export __IMAGE_TAG__="${CI_COMMIT_SHORT_SHA}"
       export __DATACENTERS__="${NOMAD_DATACENTERS}"
@@ -68,35 +56,24 @@
       export __USERNAME__="${CI_REGISTRY_USER}"
       export __PASSWORD__="${CI_REGISTRY_PASSWORD}"
     # Generate hostname and service tags for Traefik routing
-    # External access is controlled per-service via NOMAD_EXTERNAL_ACCESS variable
-    # If not set, uses environment-based defaults:
-    #   - Review Apps: external access enabled (for testing)
-    #   - Production/Staging/Development: external access disabled for backend (internal only)
-    #   - Frontend services: typically always need external access (set NOMAD_EXTERNAL_ACCESS=true)
+    # (NOMAD_ENVIRONMENT and __ENVIRONMENT__ must be set by extending jobs)
     - |
       # Determine if external access is needed
       NEEDS_EXTERNAL_ACCESS="false"
       
       if [ -n "$NOMAD_EXTERNAL_ACCESS" ]; then
-        # Explicitly set per service
         if [ "$NOMAD_EXTERNAL_ACCESS" = "true" ]; then
           NEEDS_EXTERNAL_ACCESS="true"
         fi
       else
-        # Use environment-based defaults
-        if [ "$NOMAD_ENVIRONMENT" = "review" ]; then
-          # Review Apps: enable external access by default (for testing)
-          NEEDS_EXTERNAL_ACCESS="true"
-        elif [ "$SERVICE_NAME" = "frontend" ]; then
-          # Frontend: typically always needs external access
+        # Defaults: Review Apps and frontend always need external access
+        if [ "$NOMAD_ENVIRONMENT" = "review" ] || [ "$SERVICE_NAME" = "frontend" ]; then
           NEEDS_EXTERNAL_ACCESS="true"
         fi
-        # Production/Staging/Development backend: internal only by default
       fi
       
-      # Generate hostname and service tags based on external access requirement
       if [ "$NEEDS_EXTERNAL_ACCESS" = "true" ]; then
-        # Generate hostname for external access
+        # Generate hostname based on environment
         if [ "$NOMAD_ENVIRONMENT" = "review" ]; then
           export __HOSTNAME__="${SERVICE_NAME}-${CI_COMMIT_REF_SLUG}.${NOMAD_DOMAIN:-example.com}"
         else
@@ -104,7 +81,7 @@
         fi
         export NOMAD_ENVIRONMENT_URL="https://${__HOSTNAME__}"
         
-        # Determine service type for tags
+        # Determine service type and port
         if [ "$SERVICE_NAME" = "frontend" ]; then
           SERVICE_TYPE="frontend"
           PORT="80"
@@ -113,11 +90,10 @@
           PORT="__NOMAD_PORT_PLACEHOLDER__"
         fi
         
-        # Build Traefik tags for external access
+        # Build Traefik tags
         if [ "$SERVICE_TYPE" = "frontend" ]; then
           export __SERVICE_TAGS__="[\"${SERVICE_TYPE}\",\"traefik.enable=true\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.rule=Host(\`${__HOSTNAME__}\`)\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.entrypoints=websecure\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.tls=true\",\"traefik.http.services.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.loadbalancer.server.port=${PORT}\"]"
         else
-          # Backend services: hostname and path-based routing
           export __SERVICE_TAGS__="[\"${SERVICE_TYPE}\",\"api\",\"traefik.enable=true\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.rule=Host(\`${__HOSTNAME__}\`) || PathPrefix(\`/api/${__ENVIRONMENT_SANITIZED__}\`)\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.entrypoints=websecure\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.tls=true\",\"traefik.http.services.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.loadbalancer.server.port=${PORT}\"]"
         fi
       else
@@ -133,8 +109,6 @@
         exit 0
       fi
     # Determine template file
-    # Template files use naming convention: *.template.nomad
-    # Generated files use: *.nomad
     - |
       if [ -z "$NOMAD_JOB_TEMPLATE" ]; then
         NOMAD_JOB_TEMPLATE=".gitlab/deploy/nomad-templates/${SERVICE_NAME}.template.nomad"
@@ -144,7 +118,6 @@
         exit 1
       fi
     # Substitute variables in template
-    # Use explicit variable list file (similar to backend.yaml approach)
     - |
       # Determine variable list file
       if [ -z "$NOMAD_VARS_FILE" ]; then
@@ -160,21 +133,17 @@
       SHELL_FORMAT_STRING=$(cat "$NOMAD_VARS_FILE" | awk '{printf "$%s ", $1}')
       
       echo "Substituting variables from: $NOMAD_VARS_FILE"
-      echo "Variables to substitute: $SHELL_FORMAT_STRING"
       echo "Template file: $NOMAD_JOB_TEMPLATE"
-      echo "Output file: ${SERVICE_NAME}-${NOMAD_ENVIRONMENT_NAME}.nomad"
-      echo "Service tags: $__SERVICE_TAGS__"
+      echo "Output file: ${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
       
-      # Perform substitution (same approach as backend.yaml)
-      envsubst "$SHELL_FORMAT_STRING" < "$NOMAD_JOB_TEMPLATE" > "${SERVICE_NAME}-${NOMAD_ENVIRONMENT_NAME}.nomad"
+      envsubst "$SHELL_FORMAT_STRING" < "$NOMAD_JOB_TEMPLATE" > "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
       
-      # Replace NOMAD_PORT_http placeholder with Nomad runtime variable (after envsubst to avoid substitution)
-      # Use sed with output redirection for Alpine Linux compatibility
-      sed 's/__NOMAD_PORT_PLACEHOLDER__/${NOMAD_PORT_http}/g' "${SERVICE_NAME}-${NOMAD_ENVIRONMENT_NAME}.nomad" > "${SERVICE_NAME}-${NOMAD_ENVIRONMENT_NAME}.nomad.tmp"
-      mv "${SERVICE_NAME}-${NOMAD_ENVIRONMENT_NAME}.nomad.tmp" "${SERVICE_NAME}-${NOMAD_ENVIRONMENT_NAME}.nomad"
+      # Replace NOMAD_PORT_http placeholder with Nomad runtime variable
+      sed 's/__NOMAD_PORT_PLACEHOLDER__/${NOMAD_PORT_http}/g' "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad" > "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad.tmp"
+      mv "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad.tmp" "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
       
       echo "===== Rendered Nomad job ====="
-      cat "${SERVICE_NAME}-${NOMAD_ENVIRONMENT_NAME}.nomad"
+      cat "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
     # Validate Nomad job
     - |
       echo "===== Validating Nomad job ====="
@@ -182,9 +151,9 @@
         -address="$NOMAD_SERVER_ADDRESS" \
         -token="$NOMAD_SERVER_TOKEN" \
         -namespace="$__NAMESPACE__" \
-        "${SERVICE_NAME}-${NOMAD_ENVIRONMENT_NAME}.nomad" || {
+        "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad" || {
         echo "===== Nomad job file ====="
-        cat "${SERVICE_NAME}-${NOMAD_ENVIRONMENT_NAME}.nomad"
+        cat "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
         exit 1
       }
     # Deploy to Nomad
@@ -195,12 +164,12 @@
         -token="$NOMAD_SERVER_TOKEN" \
         -namespace="$__NAMESPACE__" \
         -verbose \
-        "${SERVICE_NAME}-${NOMAD_ENVIRONMENT_NAME}.nomad"
+        "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
     # Wait for deployment to be healthy
-    # Auto DevOps compatibility: Ensure deployment is successful before marking job complete
+    # Ensure deployment is successful before marking job complete
     - |
       echo "===== Waiting for deployment to be healthy ====="
-      MAX_WAIT=300  # 5 minutes
+      MAX_WAIT=300
       WAIT_INTERVAL=10
       ELAPSED=0
       HEALTHY=false
@@ -262,21 +231,16 @@
       - "*.nomad"
     expire_in: 1 week
     when: always
+  # Base rules - should not run directly (extended by specific deploy jobs)
   rules:
-    - if: '$NOMAD_DEPLOY_ENABLED == "true"'
-      when: on_success
-  environment:
-    name: $NOMAD_ENVIRONMENT_NAME
-    url: ${NOMAD_ENVIRONMENT_URL:-}
-    on_stop: stop_nomad_review_app
-    auto_stop_in: 1 week
-    deployment_tier: $NOMAD_ENVIRONMENT
-    # Auto DevOps compatibility: ensure environment is tracked
-    # Each deployment creates/updates the environment in GitLab
+    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
+      when: never
+    - if: '$DEPLOY_DISABLED == "true"'
+      when: never
 
-# Review App cleanup job
-stop_nomad_review_app:
-  extends: .nomad-deploy-base
+# Review App cleanup job (mirrors Auto DevOps stop_review_app pattern)
+stop_review_app:
+  extends: .deploy
   stage: deploy
   image:
     name: hashicorp/nomad:latest
@@ -312,130 +276,118 @@ stop_nomad_review_app:
     name: $CI_ENVIRONMENT_NAME
     action: stop
 
-# Deploy job for Review Apps
-deploy:nomad:review:
-  extends: .nomad-deploy-base
-  rules:
-    - if: '$CI_MERGE_REQUEST_IID'
-      when: on_success
-    - if: '$CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "development" && $CI_COMMIT_BRANCH != "staging"'
-      when: on_success
-
-# Deploy job for Development
-deploy:nomad:development:
-  extends: .nomad-deploy-base
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "development"'
-      when: on_success
-
-# Deploy job for Staging
-deploy:nomad:staging:
-  extends: .nomad-deploy-base
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "staging"'
-      when: on_success
-
-# Deploy job for Production
-deploy:nomad:production:
-  extends: .nomad-deploy-base
-  rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      when: on_success
-
-# Promotion jobs (manual promotion between environments)
-# These allow promoting a specific image/commit from one environment to another
-.promote-nomad-base:
-  extends: .nomad-deploy-base
-  stage: deploy
-  when: manual
-  variables:
-    GIT_STRATEGY: none
+# Deploy job for Review Apps (mirrors Auto DevOps deploy:review pattern)
+deploy:review:
+  extends: .deploy
   before_script:
-    - apk add --no-cache gettext docker-cli curl
+    - !reference [.deploy, before_script]
+    # Determine environment for Review Apps
     - |
-      if [ -z "$NOMAD_SERVER_ADDRESS" ] || [ -z "$NOMAD_SERVER_TOKEN" ]; then
-        echo "Error: NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN must be set"
-        exit 1
+      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
+        export NOMAD_ENVIRONMENT="review"
+        export NOMAD_ENVIRONMENT_NAME="review-pr-${CI_MERGE_REQUEST_IID}"
+      else
+        export NOMAD_ENVIRONMENT="review"
+        export NOMAD_ENVIRONMENT_NAME="review-${CI_COMMIT_REF_SLUG}"
       fi
-    # For promotion, use the target environment
-    - |
-      export NOMAD_ENVIRONMENT="${PROMOTE_TO_ENVIRONMENT}"
-      export NOMAD_ENVIRONMENT_NAME="${PROMOTE_TO_ENVIRONMENT}"
-      export __ENVIRONMENT_SANITIZED__="${PROMOTE_TO_ENVIRONMENT}"
-    # Set service-specific variables
-    - |
-      export __SERVICE__="${SERVICE_NAME}"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
-      export __IMAGE_NAME__="${CI_REGISTRY_IMAGE}/${SERVICE_NAME}"
-      # Use promoted image tag (defaults to current commit if not specified)
-      export __IMAGE_TAG__="${PROMOTE_IMAGE_TAG:-${CI_COMMIT_SHORT_SHA}}"
-      export __DATACENTERS__="${NOMAD_DATACENTERS}"
-      export __NAMESPACE__="${NOMAD_NAMESPACE:-default}"
-      export __JOB_DRIVER__="${NOMAD_JOB_DRIVER}"
-      export __IMAGE_FORCE_PULL__="${NOMAD_IMAGE_FORCE_PULL}"
-      export __USERNAME__="${CI_REGISTRY_USER}"
-      export __PASSWORD__="${CI_REGISTRY_PASSWORD}"
-    # Generate hostname and service tags (same logic as deploy)
-    - |
-      NEEDS_EXTERNAL_ACCESS="false"
-      if [ -n "$NOMAD_EXTERNAL_ACCESS" ]; then
-        if [ "$NOMAD_EXTERNAL_ACCESS" = "true" ]; then
-          NEEDS_EXTERNAL_ACCESS="true"
-        fi
-      else
-        if [ "$NOMAD_ENVIRONMENT" = "review" ]; then
-          NEEDS_EXTERNAL_ACCESS="true"
-        elif [ "$SERVICE_NAME" = "frontend" ]; then
-          NEEDS_EXTERNAL_ACCESS="true"
-        fi
-      fi
-      
-      if [ "$NEEDS_EXTERNAL_ACCESS" = "true" ]; then
-        export __HOSTNAME__="${SERVICE_NAME}-${NOMAD_ENVIRONMENT}.${NOMAD_DOMAIN:-example.com}"
-        export NOMAD_ENVIRONMENT_URL="https://${__HOSTNAME__}"
-        
-        if [ "$SERVICE_NAME" = "frontend" ]; then
-          SERVICE_TYPE="frontend"
-          PORT="80"
-        else
-          SERVICE_TYPE="backend"
-          PORT="__NOMAD_PORT_PLACEHOLDER__"
-        fi
-        
-        if [ "$SERVICE_TYPE" = "frontend" ]; then
-          export __SERVICE_TAGS__="[\"${SERVICE_TYPE}\",\"traefik.enable=true\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.rule=Host(\`${__HOSTNAME__}\`)\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.entrypoints=websecure\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.tls=true\",\"traefik.http.services.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.loadbalancer.server.port=${PORT}\"]"
-        else
-          export __SERVICE_TAGS__="[\"${SERVICE_TYPE}\",\"api\",\"traefik.enable=true\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.rule=Host(\`${__HOSTNAME__}\`) || PathPrefix(\`/api/${__ENVIRONMENT_SANITIZED__}\`)\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.entrypoints=websecure\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.tls=true\",\"traefik.http.services.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.loadbalancer.server.port=${PORT}\"]"
-        fi
-      else
-        export __HOSTNAME__=""
-        export NOMAD_ENVIRONMENT_URL=""
-        export __SERVICE_TAGS__='["api"]'
-      fi
+      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
+    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+  rules:
+    - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_MERGE_REQUEST_IID'
+      when: on_success
+    - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH && $CI_COMMIT_BRANCH != "development" && $CI_COMMIT_BRANCH != "staging"'
+      when: on_success
+  environment:
+    name: $NOMAD_ENVIRONMENT_NAME
+    url: ${NOMAD_ENVIRONMENT_URL:-}
+    on_stop: stop_review_app
+    auto_stop_in: 1 week
 
-# Promote to Staging (manual)
-promote:nomad:staging:
-  extends: .promote-nomad-base
-  variables:
-    PROMOTE_TO_ENVIRONMENT: "staging"
+# Deploy job for Development (mirrors Auto DevOps deploy:development pattern)
+deploy:development:
+  extends: .deploy
+  before_script:
+    - !reference [.deploy, before_script]
+    # Set environment for Development
+    - |
+      export NOMAD_ENVIRONMENT="development"
+      export NOMAD_ENVIRONMENT_NAME="development"
+      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
+      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
+    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+  rules:
+    - if: '$NOMAD_DEPLOY_ENABLED == "true" && $CI_COMMIT_BRANCH == "development"'
+      when: on_success
+  environment:
+    name: development
+    url: ${NOMAD_ENVIRONMENT_URL:-}
+
+# Deploy job for Staging (mirrors Auto DevOps deploy:staging pattern)
+# Staging deploys are disabled by default. Enable by setting STAGING_ENABLED.
+deploy:staging:
+  extends: .deploy
+  before_script:
+    - !reference [.deploy, before_script]
+    # Set environment for Staging
+    - |
+      export NOMAD_ENVIRONMENT="staging"
+      export NOMAD_ENVIRONMENT_NAME="staging"
+      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
+      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
+    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+  rules:
+    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH'
+      when: never
+    - if: '$STAGING_ENABLED'
+      when: on_success
   environment:
     name: staging
     url: ${NOMAD_ENVIRONMENT_URL:-}
-    deployment_tier: staging
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "development" || $CI_COMMIT_BRANCH == "staging"'
-      when: manual
 
-# Promote to Production (manual)
-promote:nomad:production:
-  extends: .promote-nomad-base
-  variables:
-    PROMOTE_TO_ENVIRONMENT: "production"
+# Production deploy template (mirrors Auto DevOps .production pattern)
+.production: &production_template
+  extends: .deploy
+  before_script:
+    - !reference [.deploy, before_script]
+    # Set environment for Production
+    - |
+      export NOMAD_ENVIRONMENT="production"
+      export NOMAD_ENVIRONMENT_NAME="production"
+      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
+      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
+    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
   environment:
     name: production
     url: ${NOMAD_ENVIRONMENT_URL:-}
-    deployment_tier: production
-  rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_BRANCH == "staging"'
-      when: manual
 
+# Deploy job for Production (mirrors Auto DevOps deploy:production pattern)
+# Continuous deployment to production is enabled by default.
+# If STAGING_ENABLED is set, this job is disabled and production_manual is used instead.
+production:
+  <<: *production_template
+  rules:
+    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
+      when: never
+    - if: '$DEPLOY_DISABLED == "true"'
+      when: never
+    - if: '$STAGING_ENABLED'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: on_success
+
+# Manual production deployment (used when STAGING_ENABLED is set)
+# Allows manual promotion from staging to production
+production_manual:
+  <<: *production_template
+  allow_failure: false
+  when: manual
+  rules:
+    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
+      when: never
+    - if: '$DEPLOY_DISABLED == "true"'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $STAGING_ENABLED'
+      when: manual
