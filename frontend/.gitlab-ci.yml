@@ -91,7 +91,7 @@ retag-frontend:
     # Use shared pipeline timestamp (set in root pipeline's generate-timestamp job)
     # Note: Fallback is handled in the parent job, so PIPELINE_TIMESTAMP is always set
     - ts="$PIPELINE_TIMESTAMP"
-    - |
+    - | 
       echo "Using pipeline timestamp: $ts"
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
 
