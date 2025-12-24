@@ -45,9 +45,10 @@ test-frontend:
     JEST_JUNIT_OUTPUT_NAME: "frontend-test-report.xml"
   before_script:
     - cd frontend
+    - npm install
     - npm install --save-dev jest-junit
   script:
-    - npm test -- --reporters=default --reporters=jest-junit || echo "Tests failed or not detected by Auto DevOps"
+    - npm test -- --watchAll=false --reporters=default --reporters=jest-junit || echo "Tests failed or not detected by Auto DevOps"
   artifacts:
     reports:
       junit: frontend/frontend-test-report.xml
