@@ -39,10 +39,10 @@ test-backend:
     - cd backend
     - pip install -r requirements.txt
   script:
-    - pytest -q --junit-xml=../backend-test-report.xml || echo "Tests failed or not detected by Auto DevOps"
+    - pytest -q --junit-xml=backend-test-report.xml || echo "Tests failed or not detected by Auto DevOps"
   artifacts:
     reports:
-      junit: ../backend-test-report.xml
+      junit: backend/backend-test-report.xml
     paths:
       - backend-test-report.xml
     when: always
