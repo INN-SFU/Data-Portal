@@ -265,9 +265,9 @@ prepare-nomad-scripts:
     # Set to "true" to enable external access via Traefik, "false" to disable
     # If not set, uses environment-based defaults (review=true, others=false for backend)
     NOMAD_EXTERNAL_ACCESS: "${NOMAD_EXTERNAL_ACCESS:-}"
-  dependencies:
-    - build
   needs:
+    - job: build
+      artifacts: false
     - job: prepare-nomad-scripts
       artifacts: true
   after_script:
