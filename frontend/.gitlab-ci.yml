@@ -73,6 +73,9 @@ code_quality_eslint_check:
 retag-frontend:
   stage: build
   image: docker:27-cli
+  needs:
+    - job: build
+      artifacts: false
   # services:
   #   - docker:27-dind
   variables:
