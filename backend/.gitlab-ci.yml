@@ -59,8 +59,12 @@ retag-backend:
   stage: build
   image: docker:27-cli
   needs:
+    # Make build dependency optional because Auto DevOps may not create the build job
+    # in certain conditions (e.g., only/except rules, branch conditions). This allows
+    # the retag job to run when build exists, and skip gracefully when it doesn't.
     - job: build
       artifacts: false
+      optional: true
   # services:
   #   - docker:27-dind
   variables:
