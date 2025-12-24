@@ -60,8 +60,9 @@ retag-backend:
   image: docker:27-cli
   needs:
     # Make build dependency optional because Auto DevOps may not create the build job
-    # in certain conditions (e.g., only/except rules, branch conditions). This allows
-    # the retag job to run when build exists, and skip gracefully when it doesn't.
+    # in certain conditions (e.g., only/except rules, branch conditions). However,
+    # we enforce that retag only runs when build has completed by checking build job
+    # status in the script below.
     - job: build
       artifacts: false
       optional: true
@@ -83,24 +84,22 @@ retag-backend:
     - | 
       echo "Using pipeline timestamp: $ts"
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-
-    # Pull the image built by Auto DevOps (SHA or fallback to branch tag)
-    # Try Auto DevOps tags. Stop at first success.
-    # - docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" || docker pull "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}" || true
+    # Pull the image built by Auto DevOps and verify build completed
+    # Try Auto DevOps tags. Stop at first success. Only retag if image was successfully pulled.
     - |
       SOURCE_IMAGE=""
       for tag in "${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHORT_SHA}" \
-                 "${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHA}" \
-                 "${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_REF_SLUG}"; do
+                 "${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHA}"; do
         echo "Trying to pull: $tag"
         if docker pull "$tag" 2>/dev/null; then
           SOURCE_IMAGE="$tag"
-          echo "Using source image: $SOURCE_IMAGE"
+          echo "Build job completed - successfully pulled image: $SOURCE_IMAGE"
           break
         fi
       done
       if [ -z "$SOURCE_IMAGE" ]; then
-        echo "Error: image not found in registry (checked Auto DevOps tags)."
+        echo "Error: Build job did not complete or image not found in registry."
+        echo "Retag job requires build job to complete successfully."
         exit 1
       fi
 
