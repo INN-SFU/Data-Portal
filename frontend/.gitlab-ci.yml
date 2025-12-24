@@ -73,7 +73,9 @@ retag-frontend:
   script:
     # Wait for DinD/Docker daemon to be ready
     - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
-    - ts=$(date -u +%Y%m%d-%H%M)
+    # Use shared pipeline timestamp (set in root pipeline)
+    - ts="${PIPELINE_TIMESTAMP:-$(date -u +%Y%m%d-%H%M)}"
+    - echo "Using pipeline timestamp: $ts"
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
 
     # Pull the image built by Auto DevOps (SHA or fallback to branch tag)
