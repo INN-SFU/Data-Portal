@@ -64,6 +64,7 @@ retag-backend:
     DOCKER_API_VERSION: "1.41"
     # DOCKER_TLS_CERTDIR: ""
     # Using Docker socket - no DinD service needed
+  rules:
     - when: on_success
   script:
     # Wait for DinD/Docker daemon to be ready
