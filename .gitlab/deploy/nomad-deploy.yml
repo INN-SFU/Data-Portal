@@ -348,7 +348,7 @@ deploy:staging:
     url: ${NOMAD_ENVIRONMENT_URL:-}
 
 # Production deploy template (mirrors Auto DevOps .production pattern)
-.production: &production_template
+.production:
   extends: .deploy
   before_script:
     - !reference [.deploy, before_script]
@@ -367,7 +367,7 @@ deploy:staging:
 # Continuous deployment to production is enabled by default.
 # If STAGING_ENABLED is set, this job is disabled and production_manual is used instead.
 production:
-  <<: *production_template
+  extends: .production
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
@@ -381,7 +381,7 @@ production:
 # Manual production deployment (used when STAGING_ENABLED is set)
 # Allows manual promotion from staging to production
 production_manual:
-  <<: *production_template
+  extends: .production
   allow_failure: false
   when: manual
   rules:

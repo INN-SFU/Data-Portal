@@ -42,6 +42,14 @@ variables:
   NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED:-true}"
   NOMAD_EXTERNAL_ACCESS: "true"  # Frontend always needs external access
   
+  # Enable staging deployment (requires manual promotion to production)
+  # When enabled: staging deploys automatically, production requires manual promotion
+  STAGING_ENABLED: "${STAGING_ENABLED:-true}"
+  
+  # Disable Auto DevOps Kubernetes deployment (we use Nomad instead)
+  # This prevents Auto DevOps from trying to deploy to Kubernetes
+  DEPLOY_DISABLED: "${DEPLOY_DISABLED:-true}"
+  
 # Safety net test (kept until Auto Test/Herokuish consistently reliably detects tests)
 test-frontend:
   stage: test
