@@ -69,6 +69,7 @@ export default function UserManagement() {
     e.preventDefault();
     setErr('');
     if (!username) return setErr('Username is required.');
+    if (!email) return setErr('Email is required');
     try {
       await apiCreateUser({
         username,
@@ -127,7 +128,7 @@ export default function UserManagement() {
           </label>
 
           <label className="um-field">
-            <span>Email</span>
+            <span>Email *</span>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" />
           </label>
 
