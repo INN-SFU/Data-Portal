@@ -152,6 +152,10 @@ async def create_user(
         password="default_password"
     )
 
+    # Check if email field is present
+    if not user_data.email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
     # Check if user exists
     try:
         if user_manager.get_user_uuid(user_create.username):
