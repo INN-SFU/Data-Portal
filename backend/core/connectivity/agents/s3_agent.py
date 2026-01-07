@@ -1,8 +1,8 @@
-import os
 import re
 import logging
 import boto3
 import treelib
+from pathlib import Path
 
 from typing import List, Tuple
 from core.connectivity import AbstractStorageAgent
@@ -47,7 +47,7 @@ class S3StorageAgent(AbstractStorageAgent):
         for bucket in self.fetch_all_buckets():
             self._add_file_to_tree(bucket)
             for obj in self.fetch_all_bucket_keys(bucket):
-                self._add_file_to_tree(os.path.join(bucket, obj))
+                self._add_file_to_tree(str(Path(bucket) / obj))
 
     def fetch_all_buckets(self) -> List[str]:
         resp = self.s3_client.list_buckets()
@@ -167,7 +167,7 @@ class S3StorageAgent(AbstractStorageAgent):
         for bucket in self.fetch_all_buckets():
             current_files.add(bucket)
             for obj in self.fetch_all_bucket_keys(bucket):
-                current_files.add(os.path.join(bucket, obj))
+                current_files.add(str(Path(bucket) / obj))
 
         # Get cached files from tree
         cached_files = set(
