@@ -2,7 +2,7 @@ import re
 import logging
 import boto3
 import treelib
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from typing import List, Tuple
 from core.connectivity import AbstractStorageAgent
@@ -47,7 +47,8 @@ class S3StorageAgent(AbstractStorageAgent):
         for bucket in self.fetch_all_buckets():
             self._add_file_to_tree(bucket)
             for obj in self.fetch_all_bucket_keys(bucket):
-                self._add_file_to_tree(str(Path(bucket) / obj))
+                # Use forward slash for S3 paths
+                self._add_file_to_tree((Path(bucket) / obj).as_posix())
 
     def fetch_all_buckets(self) -> List[str]:
         resp = self.s3_client.list_buckets()
@@ -85,6 +86,8 @@ class S3StorageAgent(AbstractStorageAgent):
             return [url], [resource]
 
         # READ: treat resource as regex, full‐match
+        # Normalize backslashes to forward slashes for portability
+        resource = PureWindowsPath(resource).as_posix()
         pattern = re.compile(resource)
         all_paths = [
             n.identifier
@@ -167,7 +170,8 @@ class S3StorageAgent(AbstractStorageAgent):
         for bucket in self.fetch_all_buckets():
             current_files.add(bucket)
             for obj in self.fetch_all_bucket_keys(bucket):
-                current_files.add(str(Path(bucket) / obj))
+                # Use forward slash for S3 paths
+                current_files.add((Path(bucket) / obj).as_posix())
 
         # Get cached files from tree
         cached_files = set(
