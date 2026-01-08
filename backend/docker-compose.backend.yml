@@ -16,6 +16,8 @@ services:
       KEYCLOAK_ADMIN_CLIENT_ID: ams-portal-admin
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
+      KEYCLOAK_ADMIN_CLIENT_SECRET_FILE: /run/secrets/kc_admin_client_secret
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
       # Token issuer must match the URL in JWT tokens (frontend accesses via localhost)
       KEYCLOAK_TOKEN_ISSUER: http://localhost:8080/realms/ams-portal
       # External issuer for smoke tests (how tokens are actually issued)
@@ -31,8 +33,8 @@ services:
       API_VERSION: "0_1"
 
       # Casbin/data paths
-      ENFORCER_MODEL: /app/core/settings/managers/policies/casbin/model.conf
-      ENFORCER_POLICY: /app/core/settings/managers/policies/casbin/policy.csv
+      ENFORCER_MODEL: /app/core/management/managers/policies/casbin/model.conf
+      ENFORCER_POLICY: /app/core/management/managers/policies/casbin/policy.csv
       USER_POLICIES: /app/data/policies
       INSTANCE_CONFIGS: /app/data/configs
 
