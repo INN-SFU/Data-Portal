@@ -2,7 +2,7 @@ import re
 import logging
 import boto3
 import treelib
-from pathlib import Path, PureWindowsPath
+from pathlib import Path
 
 from typing import List, Tuple
 from core.connectivity import AbstractStorageAgent
@@ -87,7 +87,7 @@ class S3StorageAgent(AbstractStorageAgent):
 
         # READ: treat resource as regex, full‐match
         # Normalize backslashes to forward slashes for portability
-        resource = PureWindowsPath(resource).as_posix()
+        resource = Path(resource).as_posix()
         pattern = re.compile(resource)
         all_paths = [
             n.identifier
