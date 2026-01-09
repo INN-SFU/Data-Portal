@@ -93,7 +93,7 @@ def regular_user(auth_headers):
     user_info = {
         "username": "regular_user",
         "email": "regular_user@example.com",
-        "password": "password",
+        "password": "default_password",
         "roles": ["user"]
     }
     
@@ -242,14 +242,25 @@ def test_get_nonexistent_user(auth_headers):
     assert r.status_code == 404, f"Expected 404 for non-existent user, got {r.status_code}: {r.text[:500]}"
 
 
-def test_get_current_user_info(auth_headers):
-    """Test /api/users/me endpoint for current user info."""
+def test_get_current_user_info_admin(auth_headers):
+    """Test /api/users/me endpoint for admin user info."""
     url = f"{backend_base()}/api/users/me"
     r = requests.get(url, headers=auth_headers, timeout=10)
     assert r.status_code == 200, f"Expected 200 for /me endpoint, got {r.status_code}: {r.text[:500]}"
 
     data = r.json()
     assert data["username"] == "admin", f"Expected admin user, got: {data}"
+    assert "uuid" in data, f"Expected uuid in response: {data}"
+    assert "email" in data, f"Expected email in response: {data}"
+
+def test_get_current_user_info_regular(regular_user_headers, regular_user):
+    """Test /api/users/me endpoint for regular user info."""
+    url = f"{backend_base()}/api/users/me"
+    r = requests.get(url, headers=regular_user_headers, timeout=10)
+    assert r.status_code == 200, f"Expected 200 for /me endpoint, got {r.status_code}: {r.text[:500]}"
+
+    data = r.json()
+    assert data["username"] == regular_user["username"], f"Expected regular user, got: {data}"
     assert "uuid" in data, f"Expected uuid in response: {data}"
     assert "email" in data, f"Expected email in response: {data}"
 
