@@ -19,7 +19,6 @@ from pathlib import Path
 import pytest
 import requests
 
-
 # --- Config helpers ----------------------------------------------------------
 
 def env(name: str, default: str | None = None) -> str:
@@ -37,7 +36,6 @@ def kc_realm() -> str:
 def backend_base() -> str:
     return os.getenv("BACKEND_BASE_URL", "http://localhost:8000")
 
-
 # --- Token helpers -----------------------------------------------------------
 
 def read_admin_client_secret() -> str:
@@ -49,15 +47,15 @@ def read_admin_client_secret() -> str:
         raise RuntimeError("Client secret file is empty")
     return secret
 
-def get_admin_token(timeout=10) -> str:
-    """Get admin user token via password grant."""
+def get_keycloak_token(username: str, password: str, timeout=10) -> str:
+    """Get Keycloak user token via password grant."""
     token_url = f"{kc_base()}/realms/{kc_realm()}/protocol/openid-connect/token"
     ui_client_id = os.getenv("KEYCLOAK_UI_CLIENT_ID", "ams-portal-ui")
     data = {
         "grant_type": "password",
         "client_id": ui_client_id,
-        "username": "admin",
-        "password": "admin123",
+        "username": username,
+        "password": password,
     }
     r = requests.post(token_url, data=data, timeout=timeout)
     try:
@@ -71,6 +69,9 @@ def get_admin_token(timeout=10) -> str:
         pytest.fail(f"No access_token in response: {json.dumps(payload)[:500]}")
     return token
 
+def get_admin_token(timeout=10) -> str:
+    """Get admin user token."""
+    return get_keycloak_token("admin", "admin123", timeout=timeout)
 
 # --- Test fixtures -----------------------------------------------------------
 
@@ -83,6 +84,38 @@ def admin_token():
 def auth_headers(admin_token):
     """Provide authorization headers with admin token."""
     return {"Authorization": f"Bearer {admin_token}"}
+
+@pytest.fixture
+def regular_user(auth_headers):
+    """Create a temporary regular user for testing."""
+    url = f"{backend_base()}/api/users/"
+
+    user_info = {
+        "username": "regular_user",
+        "email": "regular_user@example.com",
+        "password": "password",
+        "roles": ["user"]
+    }
+    
+    # Create the user
+    r = requests.post(url, json=user_info, headers=auth_headers, timeout=10)
+    if r.status_code != 201:
+        pytest.fail(f"Failed to create regular test user: {r.status_code}: {r.text[:500]}")
+    
+    yield user_info
+    
+    # Cleanup: delete the test user
+    requests.delete(f"{url}{user_info["username"]}", headers=auth_headers, timeout=5)
+
+@pytest.fixture
+def regular_user_token(regular_user):
+    """Provide token for regular user."""
+    return get_keycloak_token(regular_user["username"], regular_user["password"])
+
+@pytest.fixture
+def regular_user_headers(regular_user_token):
+    """Provide authorization headers with regular user token."""
+    return {"Authorization": f"Bearer {regular_user_token}"}
 
 
 # --- User CRUD Tests ---------------------------------------------------------
@@ -374,3 +407,81 @@ def test_create_user_empty_username(auth_headers):
 
     r = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
     assert r.status_code in [400, 422], f"Expected 400/422 for empty username, got {r.status_code}"
+
+
+# --- 403 Forbidden Tests -----------------------------------------------------
+
+def test_list_users_forbidden(regular_user_headers):
+    """Test that regular user cannot list all users (403 forbidden)."""
+    url = f"{backend_base()}/api/users/"
+    r = requests.get(url, headers=regular_user_headers, timeout=10)
+    assert r.status_code == 403, f"Regular user should get 403 when listing users, got {r.status_code}: {r.text[:500]}"
+
+
+def test_create_user_forbidden(regular_user_headers):
+    """Test that regular user cannot create users (403 forbidden)."""
+    url = f"{backend_base()}/api/users/"
+
+    new_user = {
+        "username": "forbidden_user",
+        "email": "forbidden@example.com",
+        "roles": ["user"]
+    }
+
+    r = requests.post(url, json=new_user, headers=regular_user_headers, timeout=10)
+    assert r.status_code == 403, f"Regular user should get 403 when creating users, got {r.status_code}: {r.text[:500]}"
+
+
+def test_delete_user_forbidden(regular_user_headers, auth_headers):
+    """Test that regular user cannot delete other users (403 forbidden)."""
+    # First create a user as admin
+    url = f"{backend_base()}/api/users/"
+    username = "testuser_forbidden_delete"
+    new_user = {
+        "username": username,
+        "email": "testuser_forbidden_delete@example.com",
+        "roles": ["user"]
+    }
+
+    try:
+        r_create = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
+        assert r_create.status_code == 201, f"Admin user creation failed: {r_create.status_code}"
+
+        # Try to delete as regular user
+        url_delete = f"{backend_base()}/api/users/{username}"
+        r = requests.delete(url_delete, headers=regular_user_headers, timeout=10)
+        assert r.status_code == 403, f"Regular user should get 403 when deleting other users, got {r.status_code}: {r.text[:500]}"
+    finally:
+        # Cleanup: delete the test user as admin
+        requests.delete(f"{url}{username}", headers=auth_headers, timeout=5)
+
+
+def test_get_user_forbidden(regular_user_headers, auth_headers):
+    """Test that regular user cannot get other user details (403 forbidden)."""
+    # First create a user as admin
+    url = f"{backend_base()}/api/users/"
+    username = "testuser_forbidden_get"
+    new_user = {
+        "username": username,
+        "email": "testuser_forbidden_get@example.com",
+        "roles": ["user"]
+    }
+
+    try:
+        r_create = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
+        assert r_create.status_code == 201, f"Admin user creation failed: {r_create.status_code}"
+
+        # Try to get user details as regular user
+        url_get = f"{backend_base()}/api/users/{username}"
+        r = requests.get(url_get, headers=regular_user_headers, timeout=10)
+        assert r.status_code == 403, f"Regular user should get 403 when getting other user details, got {r.status_code}: {r.text[:500]}"
+    finally:
+        # Cleanup: delete the test user as admin
+        requests.delete(f"{url}{username}", headers=auth_headers, timeout=5)
+
+
+def test_dashboard_forbidden(regular_user_headers):
+    """Test that regular user cannot access user management dashboard (403 forbidden)."""
+    url = f"{backend_base()}/api/users/dashboard"
+    r = requests.get(url, headers=regular_user_headers, timeout=10)
+    assert r.status_code == 403, f"Regular user should get 403 when accessing dashboard, got {r.status_code}: {r.text[:500]}"
