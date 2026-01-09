@@ -90,7 +90,7 @@ export default function EndpointCard({
 
           // Ask backend for presigned URL(s)
           const { data } = await http.put("/assets/upload", null, {
-            params: { access_point: endpointName, resource },
+            params: { instance_name: endpointName, resource },
             headers,
           });
 
