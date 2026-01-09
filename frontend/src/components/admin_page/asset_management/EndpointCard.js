@@ -126,7 +126,7 @@ export default function EndpointCard({
         const headers = await authHeaders();
 
         // Ask backend for presigned DELETE URL
-        const { data } = await http.delete("/api/assets/delete", {
+        const { data } = await http.delete("/assets/delete", {
           params: { instance_name: endpointName, resource },
           headers,
         });
