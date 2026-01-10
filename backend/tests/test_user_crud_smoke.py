@@ -306,6 +306,42 @@ def test_delete_user_without_auth():
     r = requests.delete(url, timeout=5)
     assert r.status_code == 401, f"Expected 401 without auth, got {r.status_code}"
 
+def test_delete_self_as_regular_user(auth_headers):
+    """Test that regular user can delete their own account."""
+    url = f"{backend_base()}/api/users/"
+    new_user = {
+        "username": "testuser_delete_self",
+        "email": "testuser_delete_self@example.com",
+        "roles": ["user"],
+        "password": "default_password"
+    }
+
+    try:
+        # First create a user as admin
+        r_create = requests.post(url, json=new_user, headers=auth_headers, timeout=10)
+        assert r_create.status_code == 201, f"User creation failed: {r_create.status_code}: {r_create.text[:500]}"
+
+        # Get token for the user
+        user_token = get_keycloak_token(new_user["username"], new_user["password"])
+        user_headers = {"Authorization": f"Bearer {user_token}"}
+
+        # User deletes their own account
+        url_delete = f"{backend_base()}/api/users/{new_user["username"]}"
+        r_delete = requests.delete(url_delete, headers=user_headers, timeout=10)
+        assert r_delete.status_code == 200, f"User should be able to delete own account, got {r_delete.status_code}: {r_delete.text[:500]}"
+
+        data = r_delete.json()
+        assert data.get("success") is True, f"Expected success=True, got: {data}"
+        assert "details" in data, f"Expected details in response: {data}"
+        assert data["details"]["username"] == new_user["username"], f"Username mismatch in response: {data}"
+
+        # Verify user is gone
+        r_verify = requests.get(f"{url}{new_user["username"]}", headers=auth_headers, timeout=10)
+        assert r_verify.status_code == 404, f"User should be deleted, got {r_verify.status_code}"
+    finally:
+        # Cleanup on failure: delete the test user as admin if it still exists
+        requests.delete(f"{url}{new_user["username"]}", headers=auth_headers, timeout=5)
+
 
 # --- User Management Dashboard Tests -----------------------------------------
 
