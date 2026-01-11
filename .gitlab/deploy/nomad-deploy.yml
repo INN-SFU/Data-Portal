@@ -33,7 +33,7 @@ prepare-nomad-scripts:
     - |
       cat > nomad-setup.sh << 'SETUP_EOF'
       #!/bin/sh
-      set -e
+      set -eo pipefail
       
       # Install gettext for envsubst (not included in hashicorp/nomad image)
       apk add --no-cache gettext > /dev/null 2>&1
@@ -72,7 +72,7 @@ prepare-nomad-scripts:
     - |
       cat > nomad-routing.sh << 'ROUTING_EOF'
       #!/bin/sh
-      set -e
+      set -eo pipefail
       
       # Determine if external access is needed
       NEEDS_EXTERNAL_ACCESS="false"
@@ -124,7 +124,7 @@ prepare-nomad-scripts:
     - |
       cat > nomad-deploy.sh << 'DEPLOY_EOF'
       #!/bin/sh
-      set -e
+      set -eo pipefail
       
       # Check if deployment is enabled
       if [ "$NOMAD_DEPLOY_ENABLED" != "true" ]; then
