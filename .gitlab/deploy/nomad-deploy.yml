@@ -323,82 +323,6 @@ prepare-nomad-scripts:
     # - if: '$DEPLOY_DISABLED == "true"'
     #   when: never
 
-# Production deploy template (mirrors Auto DevOps .production pattern)
-# Uses extends instead of YAML anchors for better compatibility with GitLab CI
-# NOTE: Renamed to .nomad-production to avoid conflict with Auto DevOps .production template
-.nomad-production:
-  extends: .deploy
-  stage: production
-  script:
-    # Source helper scripts (setup, routing, deploy)
-    # Environment-specific setup for Production
-    - |
-      source ./nomad-setup.sh
-      export NOMAD_ENVIRONMENT="production"
-      export NOMAD_ENVIRONMENT_NAME="production"
-      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
-      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
-      echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-      source ./nomad-routing.sh
-      source ./nomad-deploy.sh
-    # Note: Auto DevOps has "auto-deploy delete canary" here
-    # For Nomad, canary allocations are part of the same job and are promoted automatically
-    # If manual canary cleanup is needed, it can be added here
-  environment:
-    name: production
-    url: ${NOMAD_ENVIRONMENT_URL:-}
-  artifacts:
-    paths:
-      - "*.nomad"
-    expire_in: 1 week
-    when: always
-
-# Deploy job for Production (mirrors Auto DevOps production pattern)
-# Continuous deployment to production is enabled by default.
-# If STAGING_ENABLED is set, this job is disabled and production_manual is used instead.
-# NOTE: Renamed to nomad:production to avoid conflict with Auto DevOps production job
-nomad:production:
-  extends: .nomad-production
-  rules:
-    - if: '$CI_DEPLOY_FREEZE'
-      when: never
-    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
-      when: never
-    - if: '$DEPLOY_DISABLED == "true"'
-      when: never
-    - if: '$STAGING_ENABLED'
-      when: never
-    - if: '$CANARY_ENABLED'
-      when: never
-    - if: '$INCREMENTAL_ROLLOUT_ENABLED'
-      when: never
-    - if: '$INCREMENTAL_ROLLOUT_MODE'
-      when: never
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      when: on_success
-
-# Manual production deployment (used when STAGING_ENABLED is set)
-# Allows manual promotion from staging to production
-production_manual:
-  extends: .nomad-production
-  allow_failure: false
-  when: manual
-  rules:
-    - if: '$CI_DEPLOY_FREEZE'
-      when: never
-    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
-      when: never
-    - if: '$DEPLOY_DISABLED == "true"'
-      when: never
-    - if: '$INCREMENTAL_ROLLOUT_ENABLED'
-      when: never
-    - if: '$INCREMENTAL_ROLLOUT_MODE'
-      when: never
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $STAGING_ENABLED'
-      when: manual
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CANARY_ENABLED'
-      when: manual
-
 # Deploy job for Review Apps (mirrors Auto DevOps review pattern)
 # Note: Does not use 'extends' to avoid merge conflicts with Auto DevOps review job
 review:
@@ -482,38 +406,54 @@ review:
         echo "Deployment URL: $NOMAD_ENVIRONMENT_URL"
       fi
 
-# Deploy job for Development (mirrors Auto DevOps deploy:development pattern)
-# Note: Auto DevOps doesn't have a development job, but we keep it for Nomad-specific needs
-deploy:development:
+# Review App cleanup job (mirrors Auto DevOps stop_review pattern)
+stop_review:
   extends: .deploy
-  stage: deploy
+  stage: cleanup
+  image:
+    name: hashicorp/nomad:latest
+    entrypoint: [""]
+  variables:
+    GIT_STRATEGY: none
   script:
-    # Source helper scripts (setup, routing, deploy)
-    # Environment-specific setup for Development
+    # Note: nomad CLI is already available in hashicorp/nomad:latest image
+    # No additional packages needed for stop_review job
     - |
-      source ./nomad-setup.sh
-      export NOMAD_ENVIRONMENT="development"
-      export NOMAD_ENVIRONMENT_NAME="development"
-      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
-      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
-      echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-      source ./nomad-routing.sh
-      source ./nomad-deploy.sh
-  artifacts:
-    paths:
-      - "*.nomad"
-    expire_in: 1 week
-    when: always
+      if [ -z "$NOMAD_SERVER_ADDRESS" ] || [ -z "$NOMAD_SERVER_TOKEN" ]; then
+        echo "Error: NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN must be set"
+        exit 1
+      fi
+      # Determine environment name from CI_ENVIRONMENT_NAME
+      # Auto DevOps uses review/$CI_COMMIT_REF_NAME format, convert to Nomad job name
+      if echo "$CI_ENVIRONMENT_NAME" | grep -q "^review/"; then
+        # Extract branch name from review/$CI_COMMIT_REF_NAME
+        BRANCH_NAME=$(echo "$CI_ENVIRONMENT_NAME" | sed 's|^review/||')
+        JOB_NAME="${SERVICE_NAME}-review-$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')"
+      else
+        JOB_NAME="${SERVICE_NAME}-${CI_ENVIRONMENT_NAME}"
+      fi
+      echo "Stopping Nomad job: $JOB_NAME"
+      nomad job stop \
+        -address="$NOMAD_SERVER_ADDRESS" \
+        -token="$NOMAD_SERVER_TOKEN" \
+        -namespace="${NOMAD_NAMESPACE:-default}" \
+        -purge \
+        "$JOB_NAME" || echo "Job $JOB_NAME not found or already stopped"
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
     - if: '$DEPLOY_DISABLED == "true"'
       when: never
-    - if: '$CI_COMMIT_BRANCH == "development"'
-      when: on_success
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: never
+    - if: '$REVIEW_DISABLED'
+      when: never
+    - if: '$CI_COMMIT_TAG || $CI_COMMIT_BRANCH'
+      when: manual
+  allow_failure: true
   environment:
-    name: development
-    url: ${NOMAD_ENVIRONMENT_URL:-}
+    name: review/$CI_COMMIT_REF_NAME
+    action: stop
 
 # Deploy job for Staging (mirrors Auto DevOps staging pattern)
 # Staging deploys are disabled by default. Enable by setting STAGING_ENABLED.
@@ -591,6 +531,83 @@ canary:
   environment:
     name: production
     url: ${NOMAD_ENVIRONMENT_URL:-}
+
+# Production deploy template (mirrors Auto DevOps .production pattern)
+# Uses extends instead of YAML anchors for better compatibility with GitLab CI
+# NOTE: Renamed to .nomad-production to avoid conflict with Auto DevOps .production template
+.nomad-production:
+  extends: .deploy
+  stage: production
+  script:
+    # Source helper scripts (setup, routing, deploy)
+    # Environment-specific setup for Production
+    - |
+      source ./nomad-setup.sh
+      export NOMAD_ENVIRONMENT="production"
+      export NOMAD_ENVIRONMENT_NAME="production"
+      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
+      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
+      echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+      source ./nomad-routing.sh
+      source ./nomad-deploy.sh
+    # Note: Auto DevOps has "auto-deploy delete canary" here
+    # For Nomad, canary allocations are part of the same job and are promoted automatically
+    # If manual canary cleanup is needed, it can be added here
+  environment:
+    name: production
+    url: ${NOMAD_ENVIRONMENT_URL:-}
+  artifacts:
+    paths:
+      - "*.nomad"
+    expire_in: 1 week
+    when: always
+
+# Deploy job for Production (mirrors Auto DevOps production pattern)
+# Continuous deployment to production is enabled by default.
+# If STAGING_ENABLED is set, this job is disabled and production_manual is used instead.
+# NOTE: Renamed to nomad:production to avoid conflict with Auto DevOps production job
+nomad:production:
+  extends: .nomad-production
+  rules:
+    - if: '$CI_DEPLOY_FREEZE'
+      when: never
+    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
+      when: never
+    - if: '$DEPLOY_DISABLED == "true"'
+      when: never
+    - if: '$STAGING_ENABLED'
+      when: never
+    - if: '$CANARY_ENABLED'
+      when: never
+    - if: '$INCREMENTAL_ROLLOUT_ENABLED'
+      when: never
+    - if: '$INCREMENTAL_ROLLOUT_MODE'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: on_success
+
+# Manual production deployment (used when STAGING_ENABLED is set)
+# Allows manual promotion from staging to production
+production_manual:
+  extends: .nomad-production
+  allow_failure: false
+  when: manual
+  rules:
+    - if: '$CI_DEPLOY_FREEZE'
+      when: never
+    - if: '$NOMAD_DEPLOY_ENABLED != "true"'
+      when: never
+    - if: '$DEPLOY_DISABLED == "true"'
+      when: never
+    - if: '$INCREMENTAL_ROLLOUT_ENABLED'
+      when: never
+    - if: '$INCREMENTAL_ROLLOUT_MODE'
+      when: never
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $STAGING_ENABLED'
+      when: manual
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CANARY_ENABLED'
+      when: manual
+
 
 # This job implements incremental rollout on for every push to the default branch.
 
@@ -705,51 +722,35 @@ rollout 100%:
     - .nomad-production
   allow_failure: false
 
-# Review App cleanup job (mirrors Auto DevOps stop_review pattern)
-stop_review:
+# Deploy job for Development (mirrors Auto DevOps deploy:development pattern)
+# Note: Auto DevOps doesn't have a development job, but we keep it for Nomad-specific needs
+deploy:development:
   extends: .deploy
-  stage: cleanup
-  image:
-    name: hashicorp/nomad:latest
-    entrypoint: [""]
-  variables:
-    GIT_STRATEGY: none
+  stage: deploy
   script:
-    # Note: nomad CLI is already available in hashicorp/nomad:latest image
-    # No additional packages needed for stop_review job
+    # Source helper scripts (setup, routing, deploy)
+    # Environment-specific setup for Development
     - |
-      if [ -z "$NOMAD_SERVER_ADDRESS" ] || [ -z "$NOMAD_SERVER_TOKEN" ]; then
-        echo "Error: NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN must be set"
-        exit 1
-      fi
-      # Determine environment name from CI_ENVIRONMENT_NAME
-      # Auto DevOps uses review/$CI_COMMIT_REF_NAME format, convert to Nomad job name
-      if echo "$CI_ENVIRONMENT_NAME" | grep -q "^review/"; then
-        # Extract branch name from review/$CI_COMMIT_REF_NAME
-        BRANCH_NAME=$(echo "$CI_ENVIRONMENT_NAME" | sed 's|^review/||')
-        JOB_NAME="${SERVICE_NAME}-review-$(echo "$BRANCH_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-\|-$//g')"
-      else
-        JOB_NAME="${SERVICE_NAME}-${CI_ENVIRONMENT_NAME}"
-      fi
-      echo "Stopping Nomad job: $JOB_NAME"
-      nomad job stop \
-        -address="$NOMAD_SERVER_ADDRESS" \
-        -token="$NOMAD_SERVER_TOKEN" \
-        -namespace="${NOMAD_NAMESPACE:-default}" \
-        -purge \
-        "$JOB_NAME" || echo "Job $JOB_NAME not found or already stopped"
+      source ./nomad-setup.sh
+      export NOMAD_ENVIRONMENT="development"
+      export NOMAD_ENVIRONMENT_NAME="development"
+      export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
+      export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
+      echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+      source ./nomad-routing.sh
+      source ./nomad-deploy.sh
+  artifacts:
+    paths:
+      - "*.nomad"
+    expire_in: 1 week
+    when: always
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
     - if: '$DEPLOY_DISABLED == "true"'
       when: never
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      when: never
-    - if: '$REVIEW_DISABLED'
-      when: never
-    - if: '$CI_COMMIT_TAG || $CI_COMMIT_BRANCH'
-      when: manual
-  allow_failure: true
+    - if: '$CI_COMMIT_BRANCH == "development"'
+      when: on_success
   environment:
-    name: review/$CI_COMMIT_REF_NAME
-    action: stop
+    name: development
+    url: ${NOMAD_ENVIRONMENT_URL:-}
