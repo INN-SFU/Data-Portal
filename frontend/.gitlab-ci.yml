@@ -5,7 +5,8 @@
 # We use direct tool integration instead (Ruff, ESLint, Bandit, MyPy).
 # See docs/code-quality-deprecation.md for details.
 include:
-  - template: Auto-DevOps.gitlab-ci.yml
+  # - template: Auto-DevOps.gitlab-ci.yml
+  - local: '/.gitlab/Auto-DevOps.gitlab-ci.yml' # local copy of the Auto DevOps template for customizations
   - local: '/.gitlab/ci/ruff.yml'    # Ruff code quality check from common local library.
   - local: '/.gitlab/ci/eslint.yml'   # ESLint code quality check from common local library.
   - local: '/.gitlab/deploy/nomad-deploy.yml'  # Nomad deployment integration with Auto DevOps
