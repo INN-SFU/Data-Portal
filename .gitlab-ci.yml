@@ -1,6 +1,6 @@
 
-# variables:
-#   DOCKER_API_VERSION: "1.41"
+#### variables:
+####   DOCKER_API_VERSION: "1.41"
 #   DOCKER_TLS_CERTDIR: ""            # disable TLS cert generation inside DinD
 #   DOCKER_HOST: tcp://docker:2375    # point client to the DinD service
 
@@ -18,7 +18,7 @@
   # better control and are the recommended approach going forward.
   # 
   # To re-enable (not recommended), remove this variable or set it to "false".
-  # CODE_QUALITY_DISABLED: "true"
+  #### CODE_QUALITY_DISABLED: "true"
 
 
 # stages: [build, triggers]
