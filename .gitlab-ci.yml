@@ -168,6 +168,9 @@ variables:
   DEPLOY_DISABLED: "${DEPLOY_DISABLED:-true}"
   # Explicitly disable Auto DevOps review jobs to prevent job name conflicts
   REVIEW_DISABLED: "true"
+  # Disable Helm/Kubernetes jobs (not needed for Nomad deployment)
+  MIGRATE_HELM_2TO3: "false"
+  CLEANUP_HELM_2TO3: "false"
   
 # Safety net test (kept until Auto Test/Herokuish consistently reliably detects tests)
 test-backend:
