@@ -38,12 +38,17 @@ prepare-nomad-scripts:
       echo "===== Starting nomad-setup.sh ====="
       
       # Install gettext for envsubst (not included in hashicorp/nomad image)
-      echo "Installing gettext..."
-      if ! apk add --no-cache gettext 2>&1; then
-        echo "Error: Failed to install gettext"
-        exit 1
+      # hashicorp/nomad:latest is Ubuntu-based, use apt-get
+      if ! command -v envsubst > /dev/null 2>&1; then
+        echo "Installing gettext-base..."
+        if ! apt-get update -qq && apt-get install -y -qq gettext-base 2>&1; then
+          echo "Error: Failed to install gettext-base"
+          exit 1
+        fi
+        echo "✓ gettext-base installed"
+      else
+        echo "✓ gettext (envsubst) already available"
       fi
-      echo "✓ gettext installed"
       
       # Verify Nomad connection variables
       echo "Checking NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN..."
