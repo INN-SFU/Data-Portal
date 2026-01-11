@@ -395,6 +395,18 @@ review:
       artifacts: false
     - job: prepare-nomad-scripts
       artifacts: true
+  before_script:
+    # Verify artifacts are downloaded and in the expected location
+    - |
+      echo "===== Artifact Verification (before_script) ====="
+      echo "Working directory: $(pwd)"
+      echo "CI_PROJECT_DIR: ${CI_PROJECT_DIR:-not set}"
+      echo "Listing all files:"
+      find . -name "nomad-*.sh" -type f 2>/dev/null || echo "No nomad-*.sh files found anywhere"
+      echo "Files in current directory:"
+      ls -la || echo "ls failed"
+      echo "Files matching *.sh:"
+      ls -la *.sh 2>&1 || echo "No *.sh files in current directory"
   script:
     # Source helper scripts (setup, routing, deploy)
     - |
