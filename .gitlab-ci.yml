@@ -166,9 +166,11 @@ variables:
   
   # Disable Auto DevOps Kubernetes deployment (we use Nomad instead)
   # This prevents Auto DevOps from trying to deploy to Kubernetes
+  # NOTE: This only disables Auto DevOps deploy jobs, NOT Nomad deploy jobs
+  # Nomad jobs check NOMAD_DEPLOY_ENABLED, not DEPLOY_DISABLED
   DEPLOY_DISABLED: "${DEPLOY_DISABLED:-true}"
   # Explicitly disable Auto DevOps review jobs to prevent job name conflicts
-  REVIEW_DISABLED: "true"
+  # REVIEW_DISABLED: "true"
   # Disable Helm/Kubernetes jobs (not needed for Nomad deployment)
   MIGRATE_HELM_2TO3: "false"
   CLEANUP_HELM_2TO3: "false"

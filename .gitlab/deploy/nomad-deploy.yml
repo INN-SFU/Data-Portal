@@ -293,11 +293,13 @@ prepare-nomad-scripts:
     expire_in: 1 week
     when: always
   # Base rules - should not run directly (extended by specific deploy jobs)
+  # NOTE: DEPLOY_DISABLED is only for Auto DevOps Kubernetes deployment, not Nomad
+  # Nomad jobs should only check NOMAD_DEPLOY_ENABLED
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
-    - if: '$DEPLOY_DISABLED == "true"'
-      when: never
+    # - if: '$DEPLOY_DISABLED == "true"'
+    #   when: never
 
 # Production deploy template (mirrors Auto DevOps .production pattern)
 # Uses extends instead of YAML anchors for better compatibility with GitLab CI
