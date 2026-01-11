@@ -467,6 +467,11 @@ deploy:development:
       echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
       source nomad-routing.sh || exit 1
       source nomad-deploy.sh || exit 1
+  artifacts:
+    paths:
+      - "*.nomad"
+    expire_in: 1 week
+    when: always
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
@@ -495,6 +500,11 @@ staging:
       echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
       source nomad-routing.sh || exit 1
       source nomad-deploy.sh || exit 1
+  artifacts:
+    paths:
+      - "*.nomad"
+    expire_in: 1 week
+    when: always
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
@@ -530,6 +540,11 @@ canary:
       source nomad-routing.sh || exit 1
       # Use canary deployment script (similar to nomad-deploy.sh but with canary support)
       source nomad-deploy.sh || exit 1
+  artifacts:
+    paths:
+      - "*.nomad"
+    expire_in: 1 week
+    when: always
   rules:
     - if: '$CI_DEPLOY_FREEZE'
       when: never
