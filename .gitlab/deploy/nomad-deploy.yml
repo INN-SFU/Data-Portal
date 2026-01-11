@@ -448,6 +448,10 @@ review:
   after_script:
     - echo "===== Deployment job completed ====="
     - |
+      echo "Current working directory: $(pwd)"
+      echo "Found .nomad files:"
+      ls -la *.nomad 2>&1 || echo "No *.nomad files found"
+    - |
       if [ -n "$NOMAD_ENVIRONMENT_URL" ]; then
         echo "Deployment URL: $NOMAD_ENVIRONMENT_URL"
       fi
