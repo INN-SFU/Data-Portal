@@ -155,18 +155,19 @@ prepare-nomad-scripts:
       # Build substitution string from variable list file (using awk like backend.yaml)
       SHELL_FORMAT_STRING=$(cat "$NOMAD_VARS_FILE" | awk '{printf "$%s ", $1}')
       
+      NOMAD_OUTPUT_FILE="${CI_PROJECT_DIR}/${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
       echo "Substituting variables from: $NOMAD_VARS_FILE"
       echo "Template file: $NOMAD_JOB_TEMPLATE"
-      echo "Output file: ${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
+      echo "Output file: $NOMAD_OUTPUT_FILE"
       
-      envsubst "$SHELL_FORMAT_STRING" < "$NOMAD_JOB_TEMPLATE" > "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
+      envsubst "$SHELL_FORMAT_STRING" < "$NOMAD_JOB_TEMPLATE" > "$NOMAD_OUTPUT_FILE"
       
       # Replace NOMAD_PORT_http placeholder with Nomad runtime variable
-      sed 's/__NOMAD_PORT_PLACEHOLDER__/${NOMAD_PORT_http}/g' "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad" > "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad.tmp"
-      mv "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad.tmp" "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
+      sed 's/__NOMAD_PORT_PLACEHOLDER__/${NOMAD_PORT_http}/g' "$NOMAD_OUTPUT_FILE" > "${NOMAD_OUTPUT_FILE}.tmp"
+      mv "${NOMAD_OUTPUT_FILE}.tmp" "$NOMAD_OUTPUT_FILE"
       
       echo "===== Rendered Nomad job ====="
-      cat "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
+      cat "$NOMAD_OUTPUT_FILE"
       
       # Validate Nomad job
       echo "===== Validating Nomad job ====="
@@ -174,9 +175,9 @@ prepare-nomad-scripts:
         -address="$NOMAD_SERVER_ADDRESS" \
         -token="$NOMAD_SERVER_TOKEN" \
         -namespace="$__NAMESPACE__" \
-        "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad" || {
+        "$NOMAD_OUTPUT_FILE" || {
         echo "===== Nomad job file ====="
-        cat "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
+        cat "$NOMAD_OUTPUT_FILE"
         exit 1
       }
       
@@ -187,7 +188,7 @@ prepare-nomad-scripts:
         -token="$NOMAD_SERVER_TOKEN" \
         -namespace="$__NAMESPACE__" \
         -verbose \
-        "${SERVICE_NAME}-${__ENVIRONMENT__}.nomad"
+        "$NOMAD_OUTPUT_FILE"
       
       # Wait for deployment to be healthy
       echo "===== Waiting for deployment to be healthy ====="
