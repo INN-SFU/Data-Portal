@@ -423,8 +423,8 @@ review:
       export __ENVIRONMENT__="review-${CI_COMMIT_REF_SLUG}"
       export __ENVIRONMENT_SANITIZED__="review-${CI_COMMIT_REF_SLUG}"
       echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-      source ./nomad-routing.sh || exit 1
-      source ./nomad-deploy.sh || exit 1
+    - source ./nomad-routing.sh || exit 1
+    - source ./nomad-deploy.sh || exit 1
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
