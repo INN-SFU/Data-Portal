@@ -296,9 +296,9 @@ prepare-nomad-scripts:
   stage: production
   script:
     # Source helper scripts (setup, routing, deploy)
-    - source nomad-setup.sh
     # Environment-specific setup for Production
     - |
+      source nomad-setup.sh
       export NOMAD_ENVIRONMENT="production"
       export NOMAD_ENVIRONMENT_NAME="production"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
@@ -430,16 +430,16 @@ deploy:development:
   stage: deploy
   script:
     # Source helper scripts (setup, routing, deploy)
-    - source nomad-setup.sh
     # Environment-specific setup for Development
     - |
+      source nomad-setup.sh
       export NOMAD_ENVIRONMENT="development"
       export NOMAD_ENVIRONMENT_NAME="development"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
-    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - source nomad-routing.sh
-    - source nomad-deploy.sh
+      echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+      source nomad-routing.sh
+      source nomad-deploy.sh
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
@@ -458,16 +458,16 @@ staging:
   stage: staging
   script:
     # Source helper scripts (setup, routing, deploy)
-    - source nomad-setup.sh
     # Environment-specific setup for Staging
     - |
+      source nomad-setup.sh
       export NOMAD_ENVIRONMENT="staging"
       export NOMAD_ENVIRONMENT_NAME="staging"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
-    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - source nomad-routing.sh
-    - source nomad-deploy.sh
+      echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+      source nomad-routing.sh
+      source nomad-deploy.sh
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
@@ -489,9 +489,9 @@ canary:
   allow_failure: true
   script:
     # Source helper scripts (setup, routing, deploy)
-    - source nomad-setup.sh
     # Environment-specific setup for Canary (deploys to production with canary strategy)
     - |
+      source nomad-setup.sh
       export NOMAD_ENVIRONMENT="production"
       export NOMAD_ENVIRONMENT_NAME="production"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
@@ -499,10 +499,10 @@ canary:
       # Set canary percentage (50% for canary job)
       export NOMAD_CANARY_COUNT="1"
       export ROLLOUT_PERCENTAGE="50"
-    - echo "Deploying canary to environment: $NOMAD_ENVIRONMENT_NAME"
-    - source nomad-routing.sh
-    # Use canary deployment script (similar to nomad-deploy.sh but with canary support)
-    - source nomad-deploy.sh
+      echo "Deploying canary to environment: $NOMAD_ENVIRONMENT_NAME"
+      source nomad-routing.sh
+      # Use canary deployment script (similar to nomad-deploy.sh but with canary support)
+      source nomad-deploy.sh
   rules:
     - if: '$CI_DEPLOY_FREEZE'
       when: never
@@ -524,9 +524,9 @@ canary:
   extends: .deploy
   script:
     # Source helper scripts (setup, routing, deploy)
-    - source nomad-setup.sh
     # Environment-specific setup for Rollout (deploys to production with percentage)
     - |
+      source nomad-setup.sh
       export NOMAD_ENVIRONMENT="production"
       export NOMAD_ENVIRONMENT_NAME="production"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
@@ -534,10 +534,10 @@ canary:
       # ROLLOUT_PERCENTAGE is set by the extending job
       # Calculate canary count based on percentage (simplified: use 1 canary for now)
       export NOMAD_CANARY_COUNT="1"
-    - echo "Deploying rollout (${ROLLOUT_PERCENTAGE}%) to environment: $NOMAD_ENVIRONMENT_NAME"
-    - source nomad-routing.sh
-    # Use rollout deployment script (similar to nomad-deploy.sh but with percentage support)
-    - source nomad-deploy.sh
+      echo "Deploying rollout (${ROLLOUT_PERCENTAGE}%) to environment: $NOMAD_ENVIRONMENT_NAME"
+      source nomad-routing.sh
+      # Use rollout deployment script (similar to nomad-deploy.sh but with percentage support)
+      source nomad-deploy.sh
   environment:
     name: production
     url: ${NOMAD_ENVIRONMENT_URL:-}
@@ -648,7 +648,6 @@ stop_review:
         echo "Error: NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN must be set"
         exit 1
       fi
-    - |
       # Determine environment name from CI_ENVIRONMENT_NAME
       # Auto DevOps uses review/$CI_COMMIT_REF_NAME format, convert to Nomad job name
       if echo "$CI_ENVIRONMENT_NAME" | grep -q "^review/"; then
