@@ -1,3 +1,14 @@
+
+# Simple root-level smoke test job (optional)
+runner:
+  stage: deploy
+  tags:
+    - inn-runner-docker   # Replace with the tag you set during runner registration
+  image: docker:27-cli    # Matches the executor image you configured
+  script:
+    - echo "Deploy stage is triggered!"
+
+
 # Nomad Deployment Integration with Auto DevOps
 # This template provides Nomad deployment jobs following Auto DevOps patterns
 # Structure mirrors: https://gitlab.com/gitlab-org/gitlab/blob/master/lib/gitlab/ci/templates/Jobs/Deploy.gitlab-ci.yml
