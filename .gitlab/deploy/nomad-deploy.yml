@@ -313,14 +313,14 @@ prepare-nomad-scripts:
     # Source helper scripts (setup, routing, deploy)
     # Environment-specific setup for Production
     - |
-      source ./nomad-setup.sh
+      bash ./nomad-setup.sh
       export NOMAD_ENVIRONMENT="production"
       export NOMAD_ENVIRONMENT_NAME="production"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
       echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-      source ./nomad-routing.sh
-      source ./nomad-deploy.sh
+      bash ./nomad-routing.sh
+      bash ./nomad-deploy.sh
     # Note: Auto DevOps has "auto-deploy delete canary" here
     # For Nomad, canary allocations are part of the same job and are promoted automatically
     # If manual canary cleanup is needed, it can be added here
@@ -413,7 +413,7 @@ review:
   script:
     # Source helper scripts (setup, routing, deploy)
     # Use explicit paths to ensure files are found
-    - source ./nomad-setup.sh
+    - bash ./nomad-setup.sh
     - |
       # Environment-specific setup for Review Apps
       # Use Auto DevOps environment name format: review/$CI_COMMIT_REF_NAME
@@ -423,8 +423,8 @@ review:
       export __ENVIRONMENT__="review-${CI_COMMIT_REF_SLUG}"
       export __ENVIRONMENT_SANITIZED__="review-${CI_COMMIT_REF_SLUG}"
       echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - source ./nomad-routing.sh    
-    - source ./nomad-deploy.sh  
+    - bash ./nomad-routing.sh    
+    - bash ./nomad-deploy.sh  
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED != "true"'
       when: never
@@ -465,14 +465,14 @@ deploy:development:
     # Source helper scripts (setup, routing, deploy)
     # Environment-specific setup for Development
     - |
-      source ./nomad-setup.sh
+      bash ./nomad-setup.sh
       export NOMAD_ENVIRONMENT="development"
       export NOMAD_ENVIRONMENT_NAME="development"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
       echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-      source ./nomad-routing.sh
-      source ./nomad-deploy.sh
+      bash ./nomad-routing.sh
+      bash ./nomad-deploy.sh
   artifacts:
     paths:
       - "*.nomad"
@@ -498,14 +498,14 @@ staging:
     # Source helper scripts (setup, routing, deploy)
     # Environment-specific setup for Staging
     - |
-      source ./nomad-setup.sh
+      bash ./nomad-setup.sh
       export NOMAD_ENVIRONMENT="staging"
       export NOMAD_ENVIRONMENT_NAME="staging"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
       echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-      source ./nomad-routing.sh
-      source ./nomad-deploy.sh
+      bash ./nomad-routing.sh
+      bash ./nomad-deploy.sh
   artifacts:
     paths:
       - "*.nomad"
@@ -534,7 +534,7 @@ canary:
     # Source helper scripts (setup, routing, deploy)
     # Environment-specific setup for Canary (deploys to production with canary strategy)
     - |
-      source ./nomad-setup.sh
+      bash ./nomad-setup.sh
       export NOMAD_ENVIRONMENT="production"
       export NOMAD_ENVIRONMENT_NAME="production"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
@@ -543,9 +543,9 @@ canary:
       export NOMAD_CANARY_COUNT="1"
       export ROLLOUT_PERCENTAGE="50"
       echo "Deploying canary to environment: $NOMAD_ENVIRONMENT_NAME"
-      source ./nomad-routing.sh
+      bash ./nomad-routing.sh
       # Use canary deployment script (similar to nomad-deploy.sh but with canary support)
-      source ./nomad-deploy.sh
+      bash ./nomad-deploy.sh
   artifacts:
     paths:
       - "*.nomad"
@@ -574,7 +574,7 @@ canary:
     # Source helper scripts (setup, routing, deploy)
     # Environment-specific setup for Rollout (deploys to production with percentage)
     - |
-      source ./nomad-setup.sh
+      bash ./nomad-setup.sh
       export NOMAD_ENVIRONMENT="production"
       export NOMAD_ENVIRONMENT_NAME="production"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
@@ -583,9 +583,9 @@ canary:
       # Calculate canary count based on percentage (simplified: use 1 canary for now)
       export NOMAD_CANARY_COUNT="1"
       echo "Deploying rollout (${ROLLOUT_PERCENTAGE}%) to environment: $NOMAD_ENVIRONMENT_NAME"
-      source ./nomad-routing.sh
+      bash ./nomad-routing.sh
       # Use rollout deployment script (similar to nomad-deploy.sh but with percentage support)
-      source ./nomad-deploy.sh
+      bash ./nomad-deploy.sh
   environment:
     name: production
     url: ${NOMAD_ENVIRONMENT_URL:-}
