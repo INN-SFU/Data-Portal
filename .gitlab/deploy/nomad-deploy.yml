@@ -413,8 +413,8 @@ review:
   script:
     # Source helper scripts (setup, routing, deploy)
     # Use explicit paths to ensure files are found
+    - source ./nomad-setup.sh || exit 1
     - |
-      source ./nomad-setup.sh || exit 1
       # Environment-specific setup for Review Apps
       # Use Auto DevOps environment name format: review/$CI_COMMIT_REF_NAME
       export NOMAD_ENVIRONMENT="review"
