@@ -35,27 +35,45 @@ prepare-nomad-scripts:
       #!/bin/sh
       set -eo pipefail
       
-      # Install gettext for envsubst (not included in hashicorp/nomad image)
-      apk add --no-cache gettext > /dev/null 2>&1
+      echo "===== Starting nomad-setup.sh ====="
       
-      # Verify Nomad connection
-      if [ -z "$NOMAD_SERVER_ADDRESS" ] || [ -z "$NOMAD_SERVER_TOKEN" ]; then
-        echo "Error: NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN must be set"
+      # Install gettext for envsubst (not included in hashicorp/nomad image)
+      echo "Installing gettext..."
+      if ! apk add --no-cache gettext 2>&1; then
+        echo "Error: Failed to install gettext"
         exit 1
       fi
+      echo "✓ gettext installed"
+      
+      # Verify Nomad connection variables
+      echo "Checking NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN..."
+      if [ -z "$NOMAD_SERVER_ADDRESS" ]; then
+        echo "Error: NOMAD_SERVER_ADDRESS is not set"
+        exit 1
+      fi
+      if [ -z "$NOMAD_SERVER_TOKEN" ]; then
+        echo "Error: NOMAD_SERVER_TOKEN is not set"
+        exit 1
+      fi
+      echo "✓ Nomad connection variables are set"
       
       # Verify nomad CLI is available (should be in hashicorp/nomad image)
+      echo "Checking for nomad CLI..."
       if ! command -v nomad > /dev/null 2>&1; then
         echo "Error: nomad CLI not found in image"
         exit 1
       fi
+      echo "✓ nomad CLI found"
       
+      echo "Nomad version:"
       nomad version
       
-      if ! nomad acl token self -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" > /dev/null 2>&1; then
-        echo "Error: Cannot connect to Nomad cluster"
+      echo "Verifying Nomad connection..."
+      if ! nomad acl token self -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" 2>&1; then
+        echo "Error: Cannot connect to Nomad cluster at $NOMAD_SERVER_ADDRESS"
         exit 1
       fi
+      echo "✓ Connected to Nomad cluster"
       
       # Set common service-specific variables
       export __SERVICE__="${SERVICE_NAME}"
@@ -67,6 +85,8 @@ prepare-nomad-scripts:
       export __IMAGE_FORCE_PULL__="${NOMAD_IMAGE_FORCE_PULL}"
       export __USERNAME__="${CI_REGISTRY_USER}"
       export __PASSWORD__="${CI_REGISTRY_PASSWORD}"
+      
+      echo "===== nomad-setup.sh completed successfully ====="
       SETUP_EOF
     # Create nomad-routing.sh: Generate hostname and Traefik tags
     - |
@@ -413,7 +433,13 @@ review:
   script:
     # Source helper scripts (setup, routing, deploy)
     # Use explicit paths to ensure files are found
-    - source ./nomad-setup.sh
+    - |
+      echo "===== Sourcing nomad-setup.sh ====="
+      if ! source ./nomad-setup.sh; then
+        echo "Error: Failed to source nomad-setup.sh (exit code: $?)"
+        exit 1
+      fi
+      echo "===== nomad-setup.sh sourced successfully ====="
     - |
       # Environment-specific setup for Review Apps
       # Use Auto DevOps environment name format: review/$CI_COMMIT_REF_NAME
