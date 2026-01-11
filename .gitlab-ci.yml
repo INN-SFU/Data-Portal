@@ -21,7 +21,7 @@
   # CODE_QUALITY_DISABLED: "true"
 
 
-stages: [build, triggers]
+# stages: [build, triggers]
 
 # Generate shared timestamp once for entire pipeline
 # This timestamp is used by all downstream jobs for consistent image tagging
