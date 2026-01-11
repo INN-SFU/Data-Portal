@@ -1,6 +1,6 @@
 
 # Simple root-level smoke test job (optional)
-runner:
+deploy-test:
   stage: deploy
   tags:
     - inn-runner-docker   # Replace with the tag you set during runner registration
