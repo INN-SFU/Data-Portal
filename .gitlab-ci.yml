@@ -18,7 +18,7 @@
   # better control and are the recommended approach going forward.
   # 
   # To re-enable (not recommended), remove this variable or set it to "false".
-  CODE_QUALITY_DISABLED: "true"
+  # CODE_QUALITY_DISABLED: "true"
 
 
 stages: [build, triggers]
@@ -130,6 +130,7 @@ include:
 # Tell Auto DevOps to build from backend/
 variables:
   DOCKER_API_VERSION: "1.41"
+  CODE_QUALITY_DISABLED: "true"
 
   DOCKERFILE_PATH: backend/Dockerfile
   AUTO_DEVOPS_BUILD_IMAGE_CONTEXT: backend
