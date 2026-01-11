@@ -37,17 +37,30 @@ prepare-nomad-scripts:
       
       echo "===== Starting nomad-setup.sh ====="
       
-      # Install gettext for envsubst (not included in hashicorp/nomad image)
-      # hashicorp/nomad:latest is Ubuntu-based, use apt-get
+      # Install envsubst binary (not included in hashicorp/nomad image)
       if ! command -v envsubst > /dev/null 2>&1; then
-        echo "Installing gettext-base..."
-        if ! apt-get update -qq && apt-get install -y -qq gettext-base 2>&1; then
-          echo "Error: Failed to install gettext-base"
+        echo "Installing envsubst binary..."
+        # Download the binary to the current directory
+        if ! curl -L "https://github.com/allex/envsubst/releases/download/v1.0.4/envsubst-$(uname -s)-$(uname -m)" -o envsubst 2>&1; then
+          echo "Error: Failed to download envsubst binary"
           exit 1
         fi
-        echo "✓ gettext-base installed"
+        # Make the binary executable
+        chmod +x envsubst
+        # Move to a location in PATH (try /usr/local/bin with or without sudo)
+        if [ -w /usr/local/bin ]; then
+          mv envsubst /usr/local/bin/envsubst
+          echo "✓ envsubst installed to /usr/local/bin"
+        elif command -v sudo > /dev/null 2>&1; then
+          sudo mv envsubst /usr/local/bin/envsubst
+          echo "✓ envsubst installed to /usr/local/bin (using sudo)"
+        else
+          # Use current directory and add to PATH
+          export PATH="$PWD:$PATH"
+          echo "✓ envsubst installed to current directory (added to PATH)"
+        fi
       else
-        echo "✓ gettext (envsubst) already available"
+        echo "✓ envsubst already available"
       fi
       
       # Verify Nomad connection variables
