@@ -290,7 +290,8 @@ prepare-nomad-scripts:
 
 # Production deploy template (mirrors Auto DevOps .production pattern)
 # Uses YAML anchors for complete inheritance, following Auto DevOps pattern
-.production: &production_template
+# NOTE: Renamed to .nomad-production to avoid conflict with Auto DevOps .production template
+.nomad-production: &nomad_production_template
   extends: .deploy
   stage: production
   script:
@@ -322,7 +323,7 @@ prepare-nomad-scripts:
 # If STAGING_ENABLED is set, this job is disabled and production_manual is used instead.
 # NOTE: Renamed to nomad:production to avoid conflict with Auto DevOps production job
 nomad:production:
-  <<: *production_template
+  <<: *nomad_production_template
   rules:
     - if: '$CI_DEPLOY_FREEZE'
       when: never
@@ -344,7 +345,7 @@ nomad:production:
 # Manual production deployment (used when STAGING_ENABLED is set)
 # Allows manual promotion from staging to production
 production_manual:
-  <<: *production_template
+  <<: *nomad_production_template
   allow_failure: false
   when: manual
   rules:
@@ -603,7 +604,7 @@ timed rollout 50%:
 
 timed rollout 100%:
   <<: *timed_rollout_template
-  <<: *production_template
+  <<: *nomad_production_template
   stage: incremental rollout 100%
   variables:
     ROLLOUT_PERCENTAGE: 100
@@ -625,7 +626,7 @@ rollout 50%:
 
 rollout 100%:
   <<: *manual_rollout_template
-  <<: *production_template
+  <<: *nomad_production_template
   allow_failure: false
 
 # Review App cleanup job (mirrors Auto DevOps stop_review pattern)
