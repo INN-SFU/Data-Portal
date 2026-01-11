@@ -257,6 +257,7 @@ prepare-nomad-scripts:
     paths:
       - "*.sh"
     expire_in: 1 hour
+    when: always  # Always save artifacts, even if job fails (needed by downstream jobs)
   rules:
     - if: '$NOMAD_DEPLOY_ENABLED == "true"'
       when: on_success
