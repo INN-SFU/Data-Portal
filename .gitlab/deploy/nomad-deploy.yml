@@ -303,9 +303,9 @@ prepare-nomad-scripts:
       export NOMAD_ENVIRONMENT_NAME="production"
       export __ENVIRONMENT__="${NOMAD_ENVIRONMENT_NAME}"
       export __ENVIRONMENT_SANITIZED__="${NOMAD_ENVIRONMENT_NAME}"
-    - echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
-    - source nomad-routing.sh
-    - source nomad-deploy.sh
+      echo "Deploying to environment: $NOMAD_ENVIRONMENT_NAME"
+      source nomad-routing.sh
+      source nomad-deploy.sh
     # Note: Auto DevOps has "auto-deploy delete canary" here
     # For Nomad, canary allocations are part of the same job and are promoted automatically
     # If manual canary cleanup is needed, it can be added here
