@@ -403,10 +403,13 @@ review:
       echo "CI_PROJECT_DIR: ${CI_PROJECT_DIR:-not set}"
       echo "Listing all files:"
       find . -name "nomad-*.sh" -type f 2>/dev/null || echo "No nomad-*.sh files found anywhere"
+      find . -name "*.nomad" -type f 2>/dev/null || echo "No *.nomad files found anywhere"
       echo "Files in current directory:"
       ls -la || echo "ls failed"
       echo "Files matching *.sh:"
       ls -la *.sh 2>&1 || echo "No *.sh files in current directory"
+      echo "Files matching *.nomad:"
+      ls -la *.nomad 2>&1 || echo "No *.nomad files in current directory"
   script:
     # Source helper scripts (setup, routing, deploy)
     - |
