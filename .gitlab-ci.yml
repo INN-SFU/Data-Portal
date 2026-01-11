@@ -131,8 +131,8 @@ include:
 variables:
   DOCKER_API_VERSION: "1.41"
   CODE_QUALITY_DISABLED: "true"
-  ##
-  
+  ####
+
   DOCKERFILE_PATH: backend/Dockerfile
   AUTO_DEVOPS_BUILD_IMAGE_CONTEXT: backend
   
