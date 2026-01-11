@@ -320,7 +320,8 @@ prepare-nomad-scripts:
 # Deploy job for Production (mirrors Auto DevOps production pattern)
 # Continuous deployment to production is enabled by default.
 # If STAGING_ENABLED is set, this job is disabled and production_manual is used instead.
-production:
+# NOTE: Renamed to nomad:production to avoid conflict with Auto DevOps production job
+nomad:production:
   <<: *production_template
   rules:
     - if: '$CI_DEPLOY_FREEZE'
