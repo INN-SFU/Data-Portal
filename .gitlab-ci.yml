@@ -1,6 +1,6 @@
 
-variables:
-  DOCKER_API_VERSION: "1.41"
+# variables:
+#   DOCKER_API_VERSION: "1.41"
 #   DOCKER_TLS_CERTDIR: ""            # disable TLS cert generation inside DinD
 #   DOCKER_HOST: tcp://docker:2375    # point client to the DinD service
 
@@ -129,6 +129,8 @@ include:
 
 # Tell Auto DevOps to build from backend/
 variables:
+  DOCKER_API_VERSION: "1.41"
+
   DOCKERFILE_PATH: backend/Dockerfile
   AUTO_DEVOPS_BUILD_IMAGE_CONTEXT: backend
   
