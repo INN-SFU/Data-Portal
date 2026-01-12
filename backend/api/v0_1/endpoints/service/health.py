@@ -5,6 +5,7 @@ Health check and environment validation endpoints.
 import os
 import logging
 import asyncio
+from pathlib import Path
 from typing import Dict, List, Any
 from datetime import datetime, timezone
 
@@ -142,7 +143,7 @@ async def detailed_health_check():
         # File system access
         try:
             root_dir = os.getenv('ROOT_DIRECTORY')
-            if root_dir and os.path.exists(root_dir) and os.access(root_dir, os.R_OK):
+            if root_dir and Path(root_dir).exists() and os.access(root_dir, os.R_OK):
                 checks["filesystem"] = {
                     "status": "healthy",
                     "message": "File system accessible"
@@ -238,8 +239,8 @@ async def validate_environment():
                 overall_valid = False
                 continue
                 
-            full_path = os.path.join(os.getenv('ROOT_DIRECTORY', ''), file_path)
-            if os.path.exists(full_path) and os.access(full_path, os.R_OK):
+            full_path = Path(os.getenv('ROOT_DIRECTORY', '')) / file_path
+            if full_path.exists() and os.access(full_path, os.R_OK):
                 checks.append({
                     "check": name,
                     "status": "pass",
@@ -269,8 +270,8 @@ async def validate_environment():
                 overall_valid = False
                 continue
             
-            full_path = os.path.join(os.getenv('ROOT_DIRECTORY', ''), dir_path)
-            if os.path.exists(full_path) and os.access(full_path, os.R_OK):
+            full_path = Path(os.getenv('ROOT_DIRECTORY', '')) / dir_path
+            if full_path.exists() and os.access(full_path, os.R_OK):
                 checks.append({
                     "check": f"{name} directory",
                     "status": "pass",
@@ -285,12 +286,9 @@ async def validate_environment():
                 overall_valid = False
         
         # Secrets validation
-        secrets_file = os.path.join(
-            os.getenv('ROOT_DIRECTORY', ''), 
-            'core/settings/security/.secrets'
-        )
+        secrets_file = Path(os.getenv('ROOT_DIRECTORY', '')) / 'core/settings/security/.secrets'
         
-        if os.path.exists(secrets_file):
+        if secrets_file.exists():
             try:
                 with open(secrets_file, 'r') as f:
                     content = f.read()
