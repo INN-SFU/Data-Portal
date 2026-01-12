@@ -1,4 +1,13 @@
 
+# Default variables for Nomad deployment jobs
+# These can be overridden in individual jobs or in calling .gitlab-ci.yml files
+variables:
+  NOMAD_DEPLOY_ENABLED: "true"
+  NOMAD_DATACENTERS: '["dc1"]'
+  NOMAD_JOB_DRIVER: "docker"
+  NOMAD_IMAGE_FORCE_PULL: "true"
+  # NOMAD_EXTERNAL_ACCESS: ""  # Leave unset to use environment-based defaults
+
 # Simple root-level smoke test job (optional)
 deploy-test:
   stage: deploy
@@ -304,15 +313,16 @@ prepare-nomad-scripts:
   image: 
     name: hashicorp/nomad:latest
     entrypoint: [""]
-  variables:
-    NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED:-true}"
-    NOMAD_DATACENTERS: "${NOMAD_DATACENTERS:-[\"dc1\"]}"
-    NOMAD_JOB_DRIVER: "${NOMAD_JOB_DRIVER:-docker}"
-    NOMAD_IMAGE_FORCE_PULL: "${NOMAD_IMAGE_FORCE_PULL:-true}"
-    # Per-service external access control (overrides environment-based defaults)
-    # Set to "true" to enable external access via Traefik, "false" to disable
-    # If not set, uses environment-based defaults (review=true, others=false for backend)
-    NOMAD_EXTERNAL_ACCESS: "${NOMAD_EXTERNAL_ACCESS:-}"
+  # variables:
+  #   # Variables are inherited from top-level defaults
+  #   NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED}"
+  #   NOMAD_DATACENTERS: "${NOMAD_DATACENTERS}"
+  #   NOMAD_JOB_DRIVER: "${NOMAD_JOB_DRIVER}"
+  #   NOMAD_IMAGE_FORCE_PULL: "${NOMAD_IMAGE_FORCE_PULL}"
+  #   # Per-service external access control (overrides environment-based defaults)
+  #   # Set to "true" to enable external access via Traefik, "false" to disable
+  #   # If not set, uses environment-based defaults (review=true, others=false for backend)
+  #   NOMAD_EXTERNAL_ACCESS: "${NOMAD_EXTERNAL_ACCESS}"
   needs:
     - job: build
       artifacts: false
@@ -345,12 +355,13 @@ review:
   image: 
     name: hashicorp/nomad:latest
     entrypoint: [""]
-  variables:
-    NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED:-true}"
-    NOMAD_DATACENTERS: "${NOMAD_DATACENTERS:-[\"dc1\"]}"
-    NOMAD_JOB_DRIVER: "${NOMAD_JOB_DRIVER:-docker}"
-    NOMAD_IMAGE_FORCE_PULL: "${NOMAD_IMAGE_FORCE_PULL:-true}"
-    NOMAD_EXTERNAL_ACCESS: "${NOMAD_EXTERNAL_ACCESS:-}"
+    # variables:
+    # # Variables are inherited from top-level defaults
+    #   NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED}"
+    #   NOMAD_DATACENTERS: "${NOMAD_DATACENTERS}"
+    #   NOMAD_JOB_DRIVER: "${NOMAD_JOB_DRIVER}"
+    #   NOMAD_IMAGE_FORCE_PULL: "4{NOMAD_IMAGE_FORCE_PULL}"
+    #   NOMAD_EXTERNAL_ACCESS: ${NOMAD_EXTERNAL_ACCESS}
   needs:
     - job: build
       artifacts: false
