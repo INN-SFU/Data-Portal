@@ -360,6 +360,12 @@ review:
     # Verify artifacts from prepare-nomad-scripts are available
     - |
       echo "===== Checking for artifacts ====="
+      echo $NOMAD_IMAGE_FORCE_PULL
+      echo $NOMAD_DEPLOY_ENABLED
+      echo $NOMAD_DATACENTERS
+      echo $NOMAD_JOB_DRIVER
+      echo $NOMAD_IMAGE_FORCE_PULL
+      echo $NOMAD_EXTERNAL_ACCESS
       echo "Working directory: $(pwd)"
       echo "Found .sh files:"
       ls -la *.sh 2>&1 || echo "No *.sh files found"
