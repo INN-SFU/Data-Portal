@@ -101,11 +101,11 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
         network_mode = "bridge"
         
         # Registry authentication (if needed)
-        # auth {
-        #   username       = "${__USERNAME__}"
-        #   password       = "${__PASSWORD__}"
-        #   server_address = "${CI_REGISTRY}"
-        # }
+        auth {
+          username       = "${__USERNAME__}"
+          password       = "${__PASSWORD__}"
+          server_address = "${CI_REGISTRY}"
+        }
       }
 
       # Environment variables (service-specific templates should extend this)
