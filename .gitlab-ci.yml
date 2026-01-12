@@ -108,6 +108,13 @@ runner:
     - docker version
     - docker info
 
+
+# Include matrix service CI configuration
+# All jobs run in the same pipeline scope (no child pipelines)
+include:
+  - local: '.gitlab/backend-ci.yml'
+  - local: '.gitlab/frontend-ci.yml'
+
 # Trigger Auto DevOps pipelines
 # Note: "when: always" ensures pipelines run even without file changes (temporary override)
 
