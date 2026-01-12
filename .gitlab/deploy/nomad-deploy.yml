@@ -53,7 +53,7 @@ prepare-nomad-scripts:
       if ! command -v envsubst > /dev/null 2>&1; then
         echo "Installing envsubst binary..."
         # Download the binary to the current directory
-        if ! wget -O envsubst "https://github.com/allex/envsubst/releases/download/v1.0.4/envsubst-$(uname -s)-$(uname -m)" 2>&1; then
+        if ! wget -O envsubst "https://github.com/a8m/envsubst/releases/download/v1.4.3/envsubst-$(uname -s)-$(uname -m)" 2>&1; then
           echo "Error: Failed to download envsubst binary"
           exit 1
         fi
