@@ -1,0 +1,99 @@
+# Shared matrix jobs for backend and frontend services
+# This file contains common jobs that can be parallelized using GitLab's matrix feature
+# Service-specific jobs (tests, ESLint) remain in their respective service files
+
+# Matrix configuration anchor for reuse
+.services_matrix: &services_matrix
+  parallel:
+    matrix:
+      - SERVICE_NAME: [backend, frontend]
+
+# Ruff code quality check (common to both services)
+code_quality_ruff_check:
+  extends: .ruff-check-template
+  <<: *services_matrix
+  variables:
+    RUFF_TARGET: "${SERVICE_NAME}"
+    RUFF_REPORT: "${SERVICE_NAME}-code-quality-report.json"
+
+# Post-build: add timestamp tag and branch-specific 'latest' tags
+# Generic retag job template (YAML anchor) - reused by service-specific jobs
+.retag_job_base: &retag_job_base
+  stage: build
+  image: docker:27-cli
+  needs:
+    # Make build dependency optional because Auto DevOps may not create the build job
+    # in certain conditions (e.g., only/except rules, branch conditions). However,
+    # we enforce that retag only runs when build has completed by checking build job
+    # status in the script below.
+    - job: build
+      artifacts: false
+      optional: true
+  variables:
+    DOCKER_API_VERSION: "1.41"
+  script:
+    # Wait for DinD/Docker daemon to be ready
+    - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
+    # Use shared pipeline timestamp (set in root pipeline's generate-timestamp job)
+    # Note: Fallback is provided in case this runs standalone or timestamp is not set
+    - ts="${PIPELINE_TIMESTAMP:-20000101-0001}"
+    - | 
+      echo "Using pipeline timestamp: $ts"
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    # Pull the image built by Auto DevOps and verify build completed
+    # Try Auto DevOps tags. Stop at first success. Only retag if image was successfully pulled.
+    - |
+      SOURCE_IMAGE=""
+      tag="${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}-ci:${CI_COMMIT_SHORT_SHA}"
+      echo "Trying to pull: $tag"
+      if docker pull "$tag" 2>/dev/null; then
+          SOURCE_IMAGE="$tag"
+          echo "Build job completed - successfully pulled image: $SOURCE_IMAGE"
+          break
+        fi
+      done
+      if [ -z "$SOURCE_IMAGE" ]; then
+        echo "Error: Build job did not complete or image not found in registry."
+        echo "Retag job requires build job to complete successfully."
+        exit 1
+      fi
+
+    # Tag with timestamp (e.g., backend:20251222-2357 or frontend:20251222-2357)
+    - docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${ts}"
+    - docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${CI_COMMIT_SHORT_SHA}"
+    - docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${CI_COMMIT_REF_SLUG}"
+    - docker push --all-tags "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}"
+
+    # 'latest' for default branch (usually main)
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:latest"
+        docker push "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:latest"
+      fi
+
+    # 'latest-dev' for development branch
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "development" ]; then
+        docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:latest-dev"
+        docker push "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:latest-dev"
+      fi
+
+# Backend-specific retag job - runs only when backend files change
+retag:backend:
+  <<: *retag_job_base
+  variables:
+    SERVICE_CHANGED: "backend"
+  rules:
+    - changes:
+        - backend/**/*
+      when: on_success
+
+# Frontend-specific retag job - runs only when frontend files change
+retag:frontend:
+  <<: *retag_job_base
+  variables:
+    SERVICE_CHANGED: "frontend"
+  rules:
+    - changes:
+        - frontend/**/*
+      when: on_success
