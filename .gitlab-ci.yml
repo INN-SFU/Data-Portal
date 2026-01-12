@@ -111,55 +111,55 @@ runner:
 
 # Include matrix service CI configuration
 # All jobs run in the same pipeline scope (no child pipelines)
-include:
-  - local: '.gitlab/backend-ci.yml'
-  - local: '.gitlab/frontend-ci.yml'
+# include:
+#   - local: '.gitlab/backend-ci.yml'
+#   - local: '.gitlab/frontend-ci.yml'
 
-# Trigger Auto DevOps pipelines
-# Note: "when: always" ensures pipelines run even without file changes (temporary override)
+Trigger Auto DevOps pipelines
+Note: "when: always" ensures pipelines run even without file changes (temporary override)
 
-# Trigger Auto DevOps for the frontend only when frontend/ changes
-# frontend-autodevops:
-#   stage: triggers
-#   needs:
-#     - job: generate-timestamp
-#       artifacts: true
-#   trigger:
-#     include:
-#       - local: 'frontend/.gitlab-ci.yml'
-#     strategy: depend  # Wait for child pipeline to complete and fail if it fails
-#   variables:
-#     # Pass shared timestamp to child pipeline
-#     PIPELINE_TIMESTAMP: "${PIPELINE_TIMESTAMP}"
-#     # Disable deprecated CodeClimate-based Code Quality (inherited from parent)
-#     CODE_QUALITY_DISABLED: "${CODE_QUALITY_DISABLED}"
-#   rules:
-#     - changes:
-#         - frontend/**/*
-#       when: on_success
-#     - when: always  # <— temporary "override/fallback" to run every pipeline
+Trigger Auto DevOps for the frontend only when frontend/ changes
+frontend-autodevops:
+  stage: triggers
+  needs:
+    - job: generate-timestamp
+      artifacts: true
+  trigger:
+    include:
+      - local: 'frontend/.gitlab-ci.yml'
+    strategy: depend  # Wait for child pipeline to complete and fail if it fails
+  variables:
+    # Pass shared timestamp to child pipeline
+    PIPELINE_TIMESTAMP: "${PIPELINE_TIMESTAMP}"
+    # Disable deprecated CodeClimate-based Code Quality (inherited from parent)
+    CODE_QUALITY_DISABLED: "${CODE_QUALITY_DISABLED}"
+  rules:
+    - changes:
+        - frontend/**/*
+      when: on_success
+    - when: always  # <— temporary "override/fallback" to run every pipeline
 
 
-# Trigger Auto DevOps for the backend only when backend/ changes
-# backend-autodevops:
-#   stage: triggers
-#   needs:
-#     - job: generate-timestamp
-#       artifacts: true
-#   trigger:
-#     include:
-#       - local: 'backend/.gitlab-ci.yml'
-#     strategy: depend  # Wait for child pipeline to complete and fail if it fails
-#   variables:
-#     # Pass shared timestamp to child pipeline
-#     PIPELINE_TIMESTAMP: "${PIPELINE_TIMESTAMP}"
-#     # Disable deprecated CodeClimate-based Code Quality (inherited from parent)
-#     CODE_QUALITY_DISABLED: "${CODE_QUALITY_DISABLED}"
-#   rules:
-#     - changes:
-#         - backend/**/*
-#       when: on_success    
-#     - when: always   # <— temporary "override/fallback" so this job still runs
+Trigger Auto DevOps for the backend only when backend/ changes
+backend-autodevops:
+  stage: triggers
+  needs:
+    - job: generate-timestamp
+      artifacts: true
+  trigger:
+    include:
+      - local: 'backend/.gitlab-ci.yml'
+    strategy: depend  # Wait for child pipeline to complete and fail if it fails
+  variables:
+    # Pass shared timestamp to child pipeline
+    PIPELINE_TIMESTAMP: "${PIPELINE_TIMESTAMP}"
+    # Disable deprecated CodeClimate-based Code Quality (inherited from parent)
+    CODE_QUALITY_DISABLED: "${CODE_QUALITY_DISABLED}"
+  rules:
+    - changes:
+        - backend/**/*
+      when: on_success    
+    - when: always   # <— temporary "override/fallback" so this job still runs
 
 
 
