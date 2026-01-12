@@ -31,12 +31,11 @@ variables:
   # Local runner cache is used automatically by Docker if configured
   # See docs/gitlab-runner-local-cache-config.md for runner configuration
   
-  # Add multiple image tags at build time (branch + short SHA)
+  # Add multiple image tags at build time
   # Auto DevOps will append these to the docker build as repeated --tag flags.
-    # --tag ${CI_REGISTRY_IMAGE}/frontend-ci:${CI_COMMIT_SHA}
-    # --tag ${CI_REGISTRY_IMAGE}/frontend-ci:${CI_COMMIT_REF_SLUG}
+  # Tag with 'ci' for retag job to pull and verify commit SHA
   AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
-    --tag ${CI_REGISTRY_IMAGE}/frontend-ci:${CI_COMMIT_SHORT_SHA}
+    --tag ${CI_REGISTRY_IMAGE}/frontend:ci
     --build-arg BUILDKIT_INLINE_CACHE=1
 
   # Nomad deployment configuration

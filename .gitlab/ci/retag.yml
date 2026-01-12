@@ -22,23 +22,34 @@
     - | 
       echo "Using pipeline timestamp: $ts"
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-    # Pull the image built by Auto DevOps and verify build completed
-    # Try Auto DevOps tags. Stop at first success. Only retag if image was successfully pulled.
+    # Pull the image tagged with 'ci' and verify commit SHA matches
     - |
       SOURCE_IMAGE=""
-      tag="${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}-ci:${CI_COMMIT_SHORT_SHA}"
-      echo "Trying to pull: $tag"
-      if docker pull "$tag" 2>/dev/null; then
-        SOURCE_IMAGE="$tag"
-        echo "Build job completed - successfully pulled image: $SOURCE_IMAGE"
-      fi
-      if [ -z "$SOURCE_IMAGE" ]; then
-        echo "Error: Build job did not complete or image not found in registry."
-        echo "Retag job requires build job to complete successfully."
+      ci_tag="${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:ci"
+      echo "Pulling image with 'ci' tag: $ci_tag"
+      if docker pull "$ci_tag" 2>/dev/null; then
+        SOURCE_IMAGE="$ci_tag"
+        echo "Successfully pulled image: $SOURCE_IMAGE"
+        
+        # Extract commit SHA from image labels and verify it matches current commit
+        IMAGE_COMMIT_SHA=$(docker inspect "$SOURCE_IMAGE" --format='{{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null || \
+                          docker inspect "$SOURCE_IMAGE" --format='{{index .Config.Labels "CI_COMMIT_SHA"}}' 2>/dev/null || \
+                          docker inspect "$SOURCE_IMAGE" --format='{{index .Config.Labels "vcs.ref"}}' 2>/dev/null || \
+                          echo "")
+        
+        if [ -z "$IMAGE_COMMIT_SHA" ] || [ "$IMAGE_COMMIT_SHA" != "$CI_COMMIT_SHA" ]; then
+          [ -z "$IMAGE_COMMIT_SHA" ] && echo "Error: Could not extract commit SHA from image labels."
+          [ -n "$IMAGE_COMMIT_SHA" ] && echo "Error: Image commit SHA ($IMAGE_COMMIT_SHA) does not match current commit ($CI_COMMIT_SHA)"
+          exit 1
+        fi
+      else
+        echo "Error: Failed to pull image with 'ci' tag: $ci_tag"
+        echo "Build job may not have completed or image not found in registry."
         exit 1
       fi
 
-    # Tag with timestamp (e.g., backend:20251222-2357 or frontend:20251222-2357)
+    # Tag with timestamp and other tags
+    # e.g., backend:20251222-2357 or frontend:20251222-2357
     - docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${ts}"
     - docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${CI_COMMIT_SHORT_SHA}"
     - docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${CI_COMMIT_REF_SLUG}"
@@ -57,4 +68,5 @@
         docker push "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:latest-dev"
       fi
 
+    # Push all new tags for the -ci image
     - docker push --all-tags "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}"
