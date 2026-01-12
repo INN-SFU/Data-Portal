@@ -7,8 +7,8 @@ variables:
   NOMAD_JOB_DRIVER: "docker"
   NOMAD_IMAGE_FORCE_PULL: "true"
   # NOMAD_EXTERNAL_ACCESS: ""  # Leave unset to use environment-based defaults
-  NOMAD_RESOURCE_CPU: 1000
-  NOMAD_RESOURCE_MEMORY: 1024
+  # NOMAD_RESOURCE_CPU: 1000
+  # NOMAD_RESOURCE_MEMORY: 1024
 
 # Simple root-level smoke test job (optional)
 deploy-test:
