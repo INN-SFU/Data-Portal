@@ -126,8 +126,8 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
 
       # Resources
       resources {
-        cpu    = ${__RESOURCE_CPU__:-1000}
-        memory = ${__RESOURCE_MEMORY__:-1024}
+        cpu    = ${__RESOURCE_CPU__} # ${__RESOURCE_CPU__:-1000} # envsubst will only ever replace references to environment variables in the form of ${VAR} or $VAR. Special shell features like ${VAR:-default} are not supported.
+        memory = ${__RESOURCE_MEMORY__} # ${__RESOURCE_MEMORY__:-1024}
       }
 
       # Restart policy
