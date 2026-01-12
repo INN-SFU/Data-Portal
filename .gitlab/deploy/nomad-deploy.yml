@@ -111,18 +111,6 @@ prepare-nomad-scripts:
       echo "✓ Connected to Nomad cluster"
       
       # Set common service-specific variables
-      export __SERVICE__="${SERVICE_NAME}"
-      export __IMAGE_NAME__="${CI_REGISTRY_IMAGE}/${SERVICE_NAME}"
-      export __IMAGE_TAG__="${CI_COMMIT_SHORT_SHA}"
-      export __DATACENTERS__="${NOMAD_DATACENTERS}"
-      export __NAMESPACE__="${NOMAD_NAMESPACE:-default}"
-      export __JOB_DRIVER__="${NOMAD_JOB_DRIVER}"
-      export __IMAGE_FORCE_PULL__="${NOMAD_IMAGE_FORCE_PULL}"
-      export __USERNAME__="${CI_REGISTRY_USER}"
-      export __PASSWORD__="${CI_REGISTRY_PASSWORD}"
-      export __RESOURCE_CPU__="${NOMAD_RESOURCE_CPU}"
-      export __RESOURCE_MEMORY__="${NOMAD_RESOURCE_MEMORY}"
-      export __COUNT__="${NOMAD_COUNT}"
       echo "===== nomad-setup.sh completed successfully ====="
       SETUP_EOF
     # Create nomad-routing.sh: Generate hostname and Traefik tags
