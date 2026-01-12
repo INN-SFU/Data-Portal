@@ -50,88 +50,38 @@ prepare-nomad-scripts:
       echo "===== Starting nomad-setup.sh ====="
       
       # Install GNU gettext-base envsubst binary (not included in hashicorp/nomad image)
-      # Download from pkgs.org - gettext-base package
       if ! command -v envsubst > /dev/null 2>&1; then
         echo "Installing GNU gettext-base envsubst binary..."
         
-        # Determine architecture
+        # Determine architecture (assume correct)
         ARCH=$(uname -m)
-        case "$ARCH" in
-          x86_64|amd64)
-            DEB_ARCH="amd64"
-            ;;
-          aarch64|arm64)
-            DEB_ARCH="arm64"
-            ;;
-          *)
-            echo "Warning: Unknown architecture $ARCH, trying amd64"
-            DEB_ARCH="amd64"
-            ;;
-        esac
+        [ "$ARCH" = "x86_64" ] && DEB_ARCH="amd64" || DEB_ARCH="arm64"
         
         # Download gettext-base .deb package from Debian repository
-        # Using Debian Bookworm (stable) repository
         GETTEXT_VERSION="0.21-4"
         DEB_URL="http://ftp.debian.org/debian/pool/main/g/gettext/gettext-base_${GETTEXT_VERSION}_${DEB_ARCH}.deb"
         
-        echo "Downloading gettext-base package for $DEB_ARCH..."
-        if ! wget -O /tmp/gettext-base.deb "$DEB_URL" 2>&1; then
-          echo "Error: Failed to download gettext-base package from $DEB_URL"
-          exit 1
-        fi
-        
-        # Extract envsubst binary from .deb package
-        # .deb files are ar archives containing data.tar.xz
-        echo "Extracting envsubst binary from package..."
         cd /tmp
+        wget -O gettext-base.deb "$DEB_URL" || exit 1
         
-        # Extract .deb (it's an ar archive)
-        if command -v ar > /dev/null 2>&1; then
-          ar x gettext-base.deb data.tar.xz 2>/dev/null || ar x gettext-base.deb data.tar.gz 2>/dev/null || ar x gettext-base.deb data.tar 2>/dev/null
+        # Extract .deb and envsubst binary (assume ar and xz are available)
+        ar x gettext-base.deb data.tar.xz || exit 1
+        xz -dc data.tar.xz | tar -x ./usr/bin/envsubst || exit 1
+        
+        # Install to PATH (try /usr/local/bin first, fallback to current directory)
+        chmod +x ./usr/bin/envsubst
+        if [ -w /usr/local/bin ]; then
+          mv ./usr/bin/envsubst /usr/local/bin/envsubst
         else
-          # Fallback: try to extract directly (some systems have different tools)
-          echo "Warning: ar command not found, trying alternative extraction"
+          mkdir -p "$PWD/bin"
+          mv ./usr/bin/envsubst "$PWD/bin/envsubst"
+          export PATH="$PWD/bin:$PATH"
         fi
         
-        # Extract the tar archive
-        if [ -f data.tar.xz ] && command -v xz > /dev/null 2>&1; then
-          xz -dc data.tar.xz | tar -x ./usr/bin/envsubst 2>/dev/null
-        elif [ -f data.tar.gz ] && command -v gzip > /dev/null 2>&1; then
-          gzip -dc data.tar.gz | tar -x ./usr/bin/envsubst 2>/dev/null
-        elif [ -f data.tar ]; then
-          tar -xf data.tar ./usr/bin/envsubst 2>/dev/null
-        else
-          echo "Error: Could not extract envsubst from package"
-          exit 1
-        fi
-        
-        # Move envsubst to a location in PATH
-        if [ -f ./usr/bin/envsubst ]; then
-          chmod +x ./usr/bin/envsubst
-          if [ -w /usr/local/bin ]; then
-            mv ./usr/bin/envsubst /usr/local/bin/envsubst
-            echo "✓ envsubst installed to /usr/local/bin"
-          elif command -v sudo > /dev/null 2>&1; then
-            sudo mv ./usr/bin/envsubst /usr/local/bin/envsubst
-            echo "✓ envsubst installed to /usr/local/bin (using sudo)"
-          else
-            # Use current directory and add to PATH
-            mkdir -p "$PWD/bin"
-            mv ./usr/bin/envsubst "$PWD/bin/envsubst"
-            export PATH="$PWD/bin:$PATH"
-            echo "✓ envsubst installed to $PWD/bin (added to PATH)"
-          fi
-          # Cleanup
-          rm -f /tmp/gettext-base.deb /tmp/data.tar* 2>/dev/null
-        else
-          echo "Error: envsubst binary not found in extracted package"
-          exit 1
-        fi
-      else
-        echo "✓ uname -m already available"
+        rm -f /tmp/gettext-base.deb /tmp/data.tar.xz
       fi
       
-      envsubst --version
+      echo "✓ envsubst: $(envsubst --version 2>&1 | head -1)"
 
       # Verify Nomad connection variables
       echo "Checking NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN..."
