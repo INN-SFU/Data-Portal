@@ -33,9 +33,9 @@ variables:
   
   # Add multiple image tags at build time (branch + short SHA)
   # Auto DevOps will append these to the docker build as repeated --tag flags.
-  AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
     # --tag ${CI_REGISTRY_IMAGE}/frontend-ci:${CI_COMMIT_SHA}
     # --tag ${CI_REGISTRY_IMAGE}/frontend-ci:${CI_COMMIT_REF_SLUG}
+  AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
     --tag ${CI_REGISTRY_IMAGE}/frontend-ci:${CI_COMMIT_SHORT_SHA}
     --build-arg BUILDKIT_INLINE_CACHE=1
 
