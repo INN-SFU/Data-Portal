@@ -128,9 +128,11 @@ prepare-nomad-scripts:
           exit 1
         fi
       else
-        echo "✓ envsubst already available"
+        echo "✓ uname -m already available"
       fi
       
+      envsubst --version
+
       # Verify Nomad connection variables
       echo "Checking NOMAD_SERVER_ADDRESS and NOMAD_SERVER_TOKEN..."
       if [ -z "$NOMAD_SERVER_ADDRESS" ] || [ -z "$NOMAD_SERVER_TOKEN" ]; then
