@@ -71,7 +71,7 @@ def get_keycloak_token(username: str, password: str, timeout=10) -> str:
 
 def get_admin_token(timeout=10) -> str:
     """Get admin user token."""
-    return get_keycloak_token("admin", "admin123", timeout=timeout)
+    return get_keycloak_token(env("KEYCLOAK_ADMIN", "a"), env("KEYCLOAK_ADMIN_PASSWORD", "a"), timeout=timeout)
 
 # --- Test fixtures -----------------------------------------------------------
 
