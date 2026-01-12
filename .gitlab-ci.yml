@@ -115,7 +115,7 @@ runner:
 #   - local: '.gitlab/backend-ci.yml'
 #   - local: '.gitlab/frontend-ci.yml'
 
-Trigger Auto DevOps pipelines
+# Trigger Auto DevOps pipelines
 Note: "when: always" ensures pipelines run even without file changes (temporary override)
 
 Trigger Auto DevOps for the frontend only when frontend/ changes
@@ -140,7 +140,7 @@ frontend-autodevops:
     - when: always  # <— temporary "override/fallback" to run every pipeline
 
 
-Trigger Auto DevOps for the backend only when backend/ changes
+# Trigger Auto DevOps for the backend only when backend/ changes
 backend-autodevops:
   stage: triggers
   needs:
