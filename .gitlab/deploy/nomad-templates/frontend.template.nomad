@@ -81,7 +81,7 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
       check {
         type     = "http"
         port     = "http"
-        path     = "/"
+        path     = "/ready"
         interval = "10s"
         timeout  = "2s"
         method   = "GET"
