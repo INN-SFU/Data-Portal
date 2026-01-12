@@ -79,8 +79,9 @@ prepare-nomad-scripts:
         fi
         
         rm -f /tmp/gettext-base.deb /tmp/data.tar.xz
+        cd -
       fi
-      
+
       echo "✓ envsubst: $(envsubst --version 2>&1 | head -1)"
 
       # Verify Nomad connection variables
