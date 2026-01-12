@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Union
 from uuid import UUID
 
@@ -19,9 +20,7 @@ class InstanceManager(AbstractInstanceManager):
     def save_configuration(self) -> bool:
 
         for instance in self.instances:
-            instance_config_json = os.path.join(
-                self._configuration_files, f"{str(instance.uuid)}.json"
-            )
+            instance_config_json = Path(self._configuration_files) / f"{str(instance.uuid)}.json"
 
             # Get the configuration of the instance
             config = instance.config(secrets=True)
@@ -32,11 +31,9 @@ class InstanceManager(AbstractInstanceManager):
         return True
 
     def delete_configuration(self, instance: Instance) -> bool:
-        instance_config_json = os.path.join(
-            self._configuration_files, f"{instance.uuid.__str__()}.json"
-        )
+        instance_config_json = Path(self._configuration_files) / f"{instance.uuid.__str__()}.json"
 
-        if os.path.exists(instance_config_json):
-            os.remove(instance_config_json)
+        if instance_config_json.exists():
+            instance_config_json.unlink()
 
         return True

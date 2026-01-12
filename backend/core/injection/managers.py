@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from fastapi import HTTPException, status
 from core.management.instances import AbstractInstanceManager
 from core.management.users import AbstractUserManager
@@ -82,7 +83,7 @@ def get_instance_manager() -> AbstractInstanceManager:
 
         # Load instance configurations if available
         instance_configs_dir = os.getenv("INSTANCE_CONFIGS")
-        if instance_configs_dir and os.path.exists(instance_configs_dir):
+        if instance_configs_dir and Path(instance_configs_dir).exists():
             import json
             from uuid import UUID
             from core.connectivity import agent_factory
