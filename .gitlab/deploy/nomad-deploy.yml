@@ -212,9 +212,9 @@ prepare-nomad-scripts:
       # Pattern matches: ${__VAR_NAME__}
       # Only these variables will be replaced; all others remain unchanged
       
-      # GNU gettext envsubst format
+      # GNU gettext envsubst format: '${VAR1} ${VAR2} ${VAR3}'
+      # Format string must contain variables with ${} wrapper
       SHELL_FORMAT_STRING=$(grep -oE '\$\{__[A-Z_]+__\}' "$NOMAD_JOB_TEMPLATE" | \
-        sed -E 's/\$\{__([A-Z_]+)__\}/__\1__/' | \
         sort -u | \
         awk '{printf "%s ", $1}')
       
