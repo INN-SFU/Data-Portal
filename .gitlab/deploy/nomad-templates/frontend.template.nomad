@@ -50,7 +50,7 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
   }
 
   group "${__SERVICE__}-${__ENVIRONMENT__}" {
-    count = ${__COUNT__:-1}
+    count = ${__COUNT__} # ${__COUNT__:-1} # envsubst will only ever replace references to environment variables in the form of ${VAR} or $VAR. Special shell features like ${VAR:-default} are not supported.
 
     network {
       port "http" {
@@ -124,8 +124,8 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
 
       # Resources
       resources {
-        cpu    = ${__RESOURCE_CPU__:-500} # envsubst will only ever replace references to environment variables in the form of ${VAR} or $VAR. Special shell features like ${VAR:-default} are not supported.
-        memory = ${__RESOURCE_MEMORY__:-512}
+        cpu    = ${__RESOURCE_CPU__} # ${__RESOURCE_CPU__:-500} # envsubst will only ever replace references to environment variables in the form of ${VAR} or $VAR. Special shell features like ${VAR:-default} are not supported.
+        memory = ${__RESOURCE_MEMORY__} # ${__RESOURCE_MEMORY__:-512}
       }
 
       # Restart policy
