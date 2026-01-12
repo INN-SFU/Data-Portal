@@ -1,6 +1,7 @@
 import logging
 import os
 from abc import ABC
+from pathlib import Path
 
 from uuid import UUID
 from casbin import Enforcer
@@ -36,7 +37,7 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
 
         # Load all user policies to enforcer
         for uuid in uuids:
-            policy_file = os.path.join(self.user_policies_folder, uuid.__str__() + '.policies')
+            policy_file = Path(self.user_policies_folder) / (uuid.__str__() + '.policies')
 
             try:
                 with open(policy_file, 'r') as f:
@@ -56,7 +57,7 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
         """
 
         user_uuid = user_uuid.__str__()
-        user_policy_file = os.path.join(self.user_policies_folder, user_uuid + '.policies')
+        user_policy_file = Path(self.user_policies_folder) / (user_uuid + '.policies')
         with open(user_policy_file, 'w') as f:
             for policy in self.enforcer.get_filtered_policy(0, user_uuid):
                 f.write(f"p, {', '.join(policy)}\n")
@@ -67,7 +68,7 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
         Write a user policy to a file.
         """
         # Retrieve the users policy file
-        user_policy_file = os.path.join(self.user_policies_folder, user_uuid + '.policies')
+        user_policy_file = Path(self.user_policies_folder) / (user_uuid + '.policies')
         # Write the policy
         with open(user_policy_file, 'a') as f:
             f.write(f"p, {user_uuid}, {instance_uuid}, {resource}, {action}\n")
@@ -227,10 +228,10 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
         """
 
         # Create a new user policy file
-        user_policy_file = os.path.join(self.user_policies_folder, user_uuid.__str__() + '.policies')
+        user_policy_file = Path(self.user_policies_folder) / (user_uuid.__str__() + '.policies')
 
         # Check if the file exists
-        if os.path.exists(user_policy_file):
+        if user_policy_file.exists():
             raise FileExistsError('The user policy file already exists.')
 
         with open(user_policy_file, 'w') as f:
@@ -245,8 +246,8 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
         """
 
         # Delete the user policies
-        user_policy_file = os.path.join(self.user_policies_folder, user_uuid.__str__() + '.policies')
-        os.remove(user_policy_file)
+        user_policy_file = Path(self.user_policies_folder) / (user_uuid.__str__() + '.policies')
+        user_policy_file.unlink()
 
         # Remove user policies from enforcer
         self.enforcer.remove_filtered_policy(0, user_uuid)
