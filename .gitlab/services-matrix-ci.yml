@@ -22,7 +22,7 @@ code_quality_ruff_check:
 # Post-build: add timestamp tag and branch-specific 'latest' tags
 # Backend-specific retag job - runs only when backend files change
 retag:backend:
-  <<: *retag_job_base
+  extends: .retag_job_base
   variables:
     SERVICE_CHANGED: "backend"
   rules:
@@ -32,7 +32,7 @@ retag:backend:
 
 # Frontend-specific retag job - runs only when frontend files change
 retag:frontend:
-  <<: *retag_job_base
+  extends: .retag_job_base
   variables:
     SERVICE_CHANGED: "frontend"
   rules:

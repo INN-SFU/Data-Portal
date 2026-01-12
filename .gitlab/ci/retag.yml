@@ -1,6 +1,6 @@
-# Generic retag job template (YAML anchor) - reused by service-specific jobs
+# Generic retag job template - reused by service-specific jobs via extends
 # This template handles retagging Docker images with timestamp and branch-specific tags
-.retag_job_base: &retag_job_base
+.retag_job_base:
   stage: build
   image: docker:27-cli
   needs:

@@ -90,7 +90,7 @@ code_quality_eslint_check:
 # Post-build: add timestamp tag and branch-specific 'latest' tags
 # Frontend-specific retag job - runs only when frontend files change
 retag-frontend:
-  <<: *retag_job_base
+  extends: .retag_job_base
   variables:
     SERVICE_CHANGED: "frontend"
   rules:
