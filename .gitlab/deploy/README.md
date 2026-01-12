@@ -18,7 +18,7 @@ This integration allows you to:
 ```
 .gitlab/deploy/
 ├── README.md                    # This file
-├── nomad-deploy.yml             # Reusable GitLab CI templates for Nomad deployment
+├── Deploy.nomad.gitlab-ci             # Reusable GitLab CI templates for Nomad deployment
 ├── nomad-templates/             # Nomad job specification templates
 │   ├── base-service.template.nomad      # Base template for any service
 │   ├── frontend.template.nomad       # Frontend-specific template
@@ -74,7 +74,7 @@ Include the deployment template in your service's `.gitlab-ci.yml`:
 ```yaml
 include:
   - template: Auto-DevOps.gitlab-ci.yml
-  - local: '/.gitlab/deploy/nomad-deploy.yml'
+  - local: '/.gitlab/deploy/Deploy.nomad.gitlab-ci'
 
 variables:
   NOMAD_DEPLOY_ENABLED: "true"

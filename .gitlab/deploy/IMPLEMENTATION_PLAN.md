@@ -46,7 +46,7 @@ This document outlines the plan to integrate HashiCorp Nomad with GitLab Auto De
 
 ```
 .gitlab/deploy/
-├── nomad-deploy.yml              # Main CI template (extends Auto DevOps)
+├── Deploy.nomad.gitlab-ci              # Main CI template (extends Auto DevOps)
 ├── nomad-templates/              # Nomad job specs
 │   ├── base-service.template.nomad   # Base template
 │   ├── frontend.template.nomad        # Frontend template

@@ -120,7 +120,7 @@ include:
   # - template: Auto-DevOps.gitlab-ci.yml
   - local: '/.gitlab/Auto-DevOps.gitlab-ci.yml' # local copy of the Auto DevOps template for customizations
   - local: '/.gitlab/ci/ruff.yml'    # Ruff code quality check from common local library.
-  - local: '/.gitlab/deploy/nomad-deploy.yml'  # Nomad deployment integration with Auto DevOps
+  - local: '/.gitlab/deploy/Deploy.nomad.gitlab-ci.yml'  # Nomad deployment integration with Auto DevOps
 
 # # Route jobs to the runner that mounts /var/run/docker.sock
 # default:
