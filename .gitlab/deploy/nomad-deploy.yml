@@ -213,8 +213,6 @@ prepare-nomad-scripts:
       # Only these variables will be replaced; all others remain unchanged
       
       # GNU gettext envsubst format
-      # Go-based a8m/envsubst format: '$VAR1 $VAR2 $VAR3'
-      # Each variable must be prefixed with $ in the format string
       SHELL_FORMAT_STRING=$(grep -oE '\$\{__[A-Z_]+__\}' "$NOMAD_JOB_TEMPLATE" | \
         sed -E 's/\$\{__([A-Z_]+)__\}/__\1__/' | \
         sort -u | \
@@ -225,6 +223,20 @@ prepare-nomad-scripts:
       fi
       
       echo "Substituting variables: $SHELL_FORMAT_STRING"
+      echo $__SERVICE__
+      echo $__ENVIRONMENT__
+      echo $__ENVIRONMENT_SANITIZED__
+      echo $__IMAGE_NAME__
+      echo $__IMAGE_TAG__
+      echo $__DATACENTERS__
+      echo $__NAMESPACE__
+      echo $__JOB_DRIVER__
+      echo $__IMAGE_FORCE_PULL__
+      echo $__USERNAME__
+      echo $__PASSWORD__
+      echo $__HOSTNAME__
+      echo $__SERVICE_TAGS__
+      echo $__DATA_SERVICE__
       echo "Note: Other variables (e.g., \${NOMAD_PORT_http}, \${meta.role}) will remain unchanged"
       # GNU gettext envsubst format
       envsubst "$SHELL_FORMAT_STRING" < "$NOMAD_JOB_TEMPLATE" > "$NOMAD_OUTPUT_FILE"      
