@@ -202,10 +202,14 @@ prepare-nomad-scripts:
       # Extract all ${__*__} patterns, get unique variable names (with __ prefix/suffix)
       # Pattern matches: ${__VAR_NAME__}
       # Only these variables will be replaced; all others remain unchanged
+      
+      # GNU gettext envsubst format
+      # Go-based a8m/envsubst format: '$VAR1 $VAR2 $VAR3'
+      # Each variable must be prefixed with $ in the format string
       SHELL_FORMAT_STRING=$(grep -oE '\$\{__[A-Z_]+__\}' "$NOMAD_JOB_TEMPLATE" | \
         sed -E 's/\$\{__([A-Z_]+)__\}/__\1__/' | \
         sort -u | \
-        awk '{printf "$%s ", $1}')
+        awk '{printf "%s ", $1}')
       
       if [ -z "$SHELL_FORMAT_STRING" ]; then
         echo "Warning: No __*__ variables found in template"
@@ -213,7 +217,11 @@ prepare-nomad-scripts:
       
       echo "Substituting variables: $SHELL_FORMAT_STRING"
       echo "Note: Other variables (e.g., \${NOMAD_PORT_http}, \${meta.role}) will remain unchanged"
-      envsubst "$SHELL_FORMAT_STRING" < "$NOMAD_JOB_TEMPLATE" > "$NOMAD_OUTPUT_FILE"      
+      # GNU gettext envsubst format
+      # envsubst "$SHELL_FORMAT_STRING" < "$NOMAD_JOB_TEMPLATE" > "$NOMAD_OUTPUT_FILE"      
+      
+      # Go-based a8m/envsubst: format string must be single-quoted with $ prefix for each variable
+      cat "$NOMAD_JOB_TEMPLATE" | envsubst "$SHELL_FORMAT_STRING" > "$NOMAD_OUTPUT_FILE"
 
       echo "===== Rendered Nomad job ====="
       cat "$NOMAD_OUTPUT_FILE"
