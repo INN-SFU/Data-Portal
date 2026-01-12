@@ -168,6 +168,7 @@ include:
 #   # - template: Auto-DevOps.gitlab-ci.yml
 #   - local: '/.gitlab/Auto-DevOps.gitlab-ci.yml' # local copy of the Auto DevOps template for customizations
 #   - local: '/.gitlab/ci/ruff.yml'    # Ruff code quality check from common local library.
+#   - local: '/.gitlab/ci/retag.yml'   # Retag job template
 #   - local: '/.gitlab/deploy/Deploy.nomad.gitlab-ci.yml'  # Nomad deployment integration with Auto DevOps
 
 # # # Route jobs to the runner that mounts /var/run/docker.sock
@@ -247,68 +248,13 @@ include:
 #     RUFF_REPORT: backend-code-quality-report.json
 
 # # Post-build: add timestamp tag and branch-specific 'latest' tags
+#
+# # Backend-specific retag job - runs only when backend files change
 # retag-backend:
-#   stage: build
-#   image: docker:27-cli
-#   needs:
-#     # Make build dependency optional because Auto DevOps may not create the build job
-#     # in certain conditions (e.g., only/except rules, branch conditions). However,
-#     # we enforce that retag only runs when build has completed by checking build job
-#     # status in the script below.
-#     - job: build
-#       artifacts: false
-#       optional: true
-#   # services:
-#   #   - docker:27-dind
+#   extends: .retag_job_base
 #   variables:
-#     # DOCKER_HOST: tcp://docker:2375
-#     DOCKER_API_VERSION: "1.41"
-#     # DOCKER_TLS_CERTDIR: ""
-#     # Using Docker socket - no DinD service needed
+#     SERVICE_CHANGED: "backend"
 #   rules:
-#     - when: on_success
-#   script:
-#     # Wait for DinD/Docker daemon to be ready
-#     - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
-#     # Use shared pipeline timestamp (set in root pipeline's generate-timestamp job)
-#     # Note: Fallback is handled in the parent job, so PIPELINE_TIMESTAMP is always set
-#     - ts="${PIPELINE_TIMESTAMP:-20000101-0001}"
-#     - | 
-#       echo "Using pipeline timestamp: $ts"
-#     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-#     # Pull the image built by Auto DevOps and verify build completed
-#     # Try Auto DevOps tags. Stop at first success. Only retag if image was successfully pulled.
-#     - |
-#       SOURCE_IMAGE=""
-#       for tag in "${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHORT_SHA}" \
-#                  "${CI_REGISTRY_IMAGE}/backend:${CI_COMMIT_SHA}"; do
-#         echo "Trying to pull: $tag"
-#         if docker pull "$tag" 2>/dev/null; then
-#           SOURCE_IMAGE="$tag"
-#           echo "Build job completed - successfully pulled image: $SOURCE_IMAGE"
-#           break
-#         fi
-#       done
-#       if [ -z "$SOURCE_IMAGE" ]; then
-#         echo "Error: Build job did not complete or image not found in registry."
-#         echo "Retag job requires build job to complete successfully."
-#         exit 1
-#       fi
-
-#     # Tag with timestamp (e.g., backend:20251222-2357)
-#     - docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/backend:${ts}"
-#     - docker push "${CI_REGISTRY_IMAGE}/backend:${ts}"
-
-#     # 'latest' for default branch (usually main)
-#     - |
-#       if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
-#         docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/backend:latest"
-#         docker push "${CI_REGISTRY_IMAGE}/backend:latest"
-#       fi
-
-#     # 'latest-dev' for development branch
-#     - |
-#       if [ "$CI_COMMIT_BRANCH" = "development" ]; then
-#         docker tag "$SOURCE_IMAGE" "${CI_REGISTRY_IMAGE}/backend:latest-dev"
-#         docker push "${CI_REGISTRY_IMAGE}/backend:latest-dev"
-#       fi
+#     - changes:
+#         - backend/**/*
+#       when: on_success
