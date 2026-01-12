@@ -273,11 +273,11 @@ prepare-nomad-scripts:
       
       echo "Substituting variables: $SHELL_FORMAT_STRING"
       echo "Note: Other variables (e.g., \${NOMAD_PORT_http}, \${meta.role}) will remain unchanged"
-      # GNU gettext envsubst format
+      GNU gettext envsubst format
       # envsubst "$SHELL_FORMAT_STRING" < "$NOMAD_JOB_TEMPLATE" > "$NOMAD_OUTPUT_FILE"      
       
       # Go-based a8m/envsubst: format string must be single-quoted with $ prefix for each variable
-      cat "$NOMAD_JOB_TEMPLATE" | envsubst "$SHELL_FORMAT_STRING" > "$NOMAD_OUTPUT_FILE"
+      # cat "$NOMAD_JOB_TEMPLATE" | envsubst "$SHELL_FORMAT_STRING" > "$NOMAD_OUTPUT_FILE"
 
       echo "===== Rendered Nomad job ====="
       cat "$NOMAD_OUTPUT_FILE"
