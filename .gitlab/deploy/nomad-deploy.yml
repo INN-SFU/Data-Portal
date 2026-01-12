@@ -7,6 +7,8 @@ variables:
   NOMAD_JOB_DRIVER: "docker"
   NOMAD_IMAGE_FORCE_PULL: "true"
   # NOMAD_EXTERNAL_ACCESS: ""  # Leave unset to use environment-based defaults
+  NOMAD_RESOURCE_CPU: 1000
+  NOMAD_RESOURCE_MEMORY: 1024
 
 # Simple root-level smoke test job (optional)
 deploy-test:
@@ -108,7 +110,9 @@ prepare-nomad-scripts:
       export __IMAGE_FORCE_PULL__="${NOMAD_IMAGE_FORCE_PULL}"
       export __USERNAME__="${CI_REGISTRY_USER}"
       export __PASSWORD__="${CI_REGISTRY_PASSWORD}"
-      
+      export __RESOURCE_CPU__="${NOMAD_RESOURCE_CPU}"
+      export __RESOURCE_MEMORY__="${NOMAD_RESOURCE_MEMORY}"
+
       echo "===== nomad-setup.sh completed successfully ====="
       SETUP_EOF
     # Create nomad-routing.sh: Generate hostname and Traefik tags
@@ -210,7 +214,7 @@ prepare-nomad-scripts:
       echo "Substituting variables: $SHELL_FORMAT_STRING"
       echo "Note: Other variables (e.g., \${NOMAD_PORT_http}, \${meta.role}) will remain unchanged"
       envsubst "$SHELL_FORMAT_STRING" < "$NOMAD_JOB_TEMPLATE" > "$NOMAD_OUTPUT_FILE"      
-      
+
       echo "===== Rendered Nomad job ====="
       cat "$NOMAD_OUTPUT_FILE"
       
