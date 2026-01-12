@@ -71,25 +71,25 @@ runner:
 # Note: "when: always" ensures pipelines run even without file changes (temporary override)
 
 # Trigger Auto DevOps for the frontend only when frontend/ changes
-frontend-autodevops:
-  stage: triggers
-  needs:
-    - job: generate-timestamp
-      artifacts: true
-  trigger:
-    include:
-      - local: 'frontend/.gitlab-ci.yml'
-    strategy: depend  # Wait for child pipeline to complete and fail if it fails
-  variables:
-    # Pass shared timestamp to child pipeline
-    PIPELINE_TIMESTAMP: "${PIPELINE_TIMESTAMP}"
-    # Disable deprecated CodeClimate-based Code Quality (inherited from parent)
-    CODE_QUALITY_DISABLED: "${CODE_QUALITY_DISABLED}"
-  rules:
-    - changes:
-        - frontend/**/*
-      when: on_success
-    - when: always  # <— temporary "override/fallback" to run every pipeline
+# frontend-autodevops:
+#   stage: triggers
+#   needs:
+#     - job: generate-timestamp
+#       artifacts: true
+#   trigger:
+#     include:
+#       - local: 'frontend/.gitlab-ci.yml'
+#     strategy: depend  # Wait for child pipeline to complete and fail if it fails
+#   variables:
+#     # Pass shared timestamp to child pipeline
+#     PIPELINE_TIMESTAMP: "${PIPELINE_TIMESTAMP}"
+#     # Disable deprecated CodeClimate-based Code Quality (inherited from parent)
+#     CODE_QUALITY_DISABLED: "${CODE_QUALITY_DISABLED}"
+#   rules:
+#     - changes:
+#         - frontend/**/*
+#       when: on_success
+#     - when: always  # <— temporary "override/fallback" to run every pipeline
 
 
 # # # Trigger Auto DevOps for the backend only when backend/ changes
