@@ -98,8 +98,8 @@ retag-backend:
     # Wait for DinD/Docker daemon to be ready
     - until docker info >/dev/null 2>&1; do echo "Waiting for Docker daemon..."; sleep 2; done
     # Use shared pipeline timestamp (set in root pipeline's generate-timestamp job)
-    # Note: Fallback is handled in the parent job, so PIPELINE_TIMESTAMP is always set
-    - ts="$PIPELINE_TIMESTAMP"
+    # Note: Fallback is provided in case this runs standalone or timestamp is not set
+    - ts="${PIPELINE_TIMESTAMP:-20000101-0001}"
     - | 
       echo "Using pipeline timestamp: $ts"
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
