@@ -87,7 +87,8 @@ prepare-nomad-scripts:
       nomad version
       
       echo "Verifying Nomad connection..."
-      if ! nomad acl token self -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" 2>&1; then
+      # if ! nomad acl token self -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" 2>&1; then
+      if ! nomad status -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" 2>&1; then
         echo "Error: Cannot connect to Nomad cluster at $NOMAD_SERVER_ADDRESS"
         exit 1
       fi
