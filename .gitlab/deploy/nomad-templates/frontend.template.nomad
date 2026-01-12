@@ -54,7 +54,7 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
 
     network {
       port "http" {
-        static = 80  # Frontend typically uses port 80
+        # Dynamic port allocation for frontend
       }
     }
 
