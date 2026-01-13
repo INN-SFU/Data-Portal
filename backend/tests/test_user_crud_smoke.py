@@ -71,7 +71,7 @@ def get_keycloak_token(username: str, password: str, timeout=10) -> str:
 
 def get_admin_token(timeout=10) -> str:
     """Get admin user token."""
-    return get_keycloak_token(env("KEYCLOAK_ADMIN", "a"), env("KEYCLOAK_ADMIN_PASSWORD", "a"), timeout=timeout)
+    return get_keycloak_token(env("KEYCLOAK_ADMIN", "admin"), env("KEYCLOAK_ADMIN_PASSWORD", "admin123"), timeout=timeout)
 
 # --- Test fixtures -----------------------------------------------------------
 
@@ -249,7 +249,7 @@ def test_get_current_user_info_admin(auth_headers):
     assert r.status_code == 200, f"Expected 200 for /me endpoint, got {r.status_code}: {r.text[:500]}"
 
     data = r.json()
-    assert data["username"] == "admin", f"Expected admin user, got: {data}"
+    assert data["username"] == env("KEYCLOAK_ADMIN", "admin"), f"Expected admin user, got: {data}"
     assert "uuid" in data, f"Expected uuid in response: {data}"
     assert "email" in data, f"Expected email in response: {data}"
 
