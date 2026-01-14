@@ -172,8 +172,15 @@ class S3StorageAgent(AbstractStorageAgent):
             for obj in self.fetch_all_bucket_keys(bucket):
                 # Use forward slash for S3 paths
                 current_files.add((Path(bucket) / obj).as_posix())
+                
+                # Add all intermediate directory paths
+                # This prevents intermediate directories from being incorrectly marked as deleted
+                parts = file_path.split('/')
+                for i in range(1, len(parts)):
+                    intermediate_path = '/'.join(parts[:i])
+                    current_files.add(intermediate_path)
 
-        # Get cached files from tree
+        # Get cached files from tree (only leaf nodes and buckets that exist in S3)
         cached_files = set(
             n.identifier
             for n in self.file_tree.all_nodes()
