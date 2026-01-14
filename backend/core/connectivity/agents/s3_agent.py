@@ -171,7 +171,8 @@ class S3StorageAgent(AbstractStorageAgent):
             current_files.add(bucket)
             for obj in self.fetch_all_bucket_keys(bucket):
                 # Use forward slash for S3 paths
-                current_files.add((Path(bucket) / obj).as_posix())
+                file_path = (Path(bucket) / obj).as_posix()
+                current_files.add(file_path)
                 
                 # Add all intermediate directory paths
                 # This prevents intermediate directories from being incorrectly marked as deleted
