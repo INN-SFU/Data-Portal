@@ -5,6 +5,7 @@ Handles storage instance CRUD operations and instance-related dashboard data.
 All endpoints require admin privileges as instances control system storage access.
 """
 
+import logging
 import os
 from pathlib import Path
 from uuid import uuid5, NAMESPACE_DNS, UUID
@@ -22,6 +23,7 @@ from ..auth_dependencies import require_admin
 from .models import InstanceCreate, InstanceManagementData
 
 instances_router = APIRouter(prefix='/instances', tags=["Storage Instance Management"])
+logger = logging.getLogger("api.endpoints")
 
 
 # Helper functions can be added here as needed
@@ -92,6 +94,7 @@ async def get_instance(
     try:
         instance_uuid = UUID(instance_id)
     except ValueError:
+        logger.error(f"Invalid instance ID format: {instance_id}")
         raise HTTPException(
             status_code=400, 
             detail="Invalid instance ID format. Must be a valid UUID."
@@ -100,6 +103,7 @@ async def get_instance(
     try:
         instance = instance_manager.get_instance_by_uuid(instance_uuid)
     except ValueError:
+        logger.error(f"Instance not found: {instance_id}")
         raise HTTPException(status_code=404, detail="Instance not found")
     
     return JSONResponse(
@@ -147,6 +151,7 @@ async def create_instance(
 
     name_value = getattr(config, "instance_name", None) or getattr(config, "name", None)
     if not name_value:
+        logger.error(f"Instance creation failed: 'instance_name' or 'name' is missing. Received: {name_value}")
         raise HTTPException(status_code=422,
                             detail="'instance_name' or 'name' field is required")
     flavour = config.flavour
@@ -163,6 +168,7 @@ async def create_instance(
     try:
         agent = agent_factory(config_dict)
     except Exception as e:
+        logger.error(f"Failed to create storage agent for instance '{name_value}': {str(e)}")
         raise HTTPException(
             status_code=400,
             detail=f"Failed to create storage agent: {str(e)}"
@@ -183,6 +189,7 @@ async def create_instance(
     try:
         instance_manager.save_configuration()
     except Exception as e:
+        logger.error(f"Failed to save configuration for instance '{config.instance_name}': {str(e)}")
         # Remove from instances list if save fails
         instance_manager.instances.remove(new_instance)
         raise HTTPException(
@@ -203,6 +210,7 @@ async def create_instance(
     # Add the admin policy
     try:
         if not policy_manager.add_policy(new_admin_policy):
+            logger.error(f"Failed to add admin policy for instance '{new_instance.name}' ({instance_uuid})")
             # If policy fails, remove the instance
             instance_manager.delete_instance(new_instance)
             raise HTTPException(
@@ -210,6 +218,7 @@ async def create_instance(
                 detail="Failed to add administrator policy for new instance"
             )
     except ValueError as e:
+        logger.error(f"ValueError when adding admin policy for instance '{new_instance.name}': {str(e)}")
         # If policy fails, remove the instance
         instance_manager.delete_instance(new_instance)
         raise HTTPException(
@@ -261,6 +270,7 @@ async def delete_instance(
     try:
         instance_uuid = UUID(instance_id)
     except ValueError:
+        logger.error(f"Invalid instance ID format for deletion: {instance_id}")
         raise HTTPException(
             status_code=400,
             detail="Invalid instance ID format. Must be a valid UUID."
@@ -270,6 +280,7 @@ async def delete_instance(
     try:
         instance = instance_manager.get_instance_by_uuid(instance_uuid)
     except ValueError:
+        logger.error(f"Instance not found for deletion: {instance_id}")
         raise HTTPException(status_code=404, detail="Instance not found")
 
     # Create instance object for deletion
@@ -284,6 +295,7 @@ async def delete_instance(
     try:
         instance_manager.delete_instance(instance_to_delete)
     except KeyError as e:
+        logger.error(f"Failed to remove instance '{instance.name}' ({instance_id}): {str(e)}")
         raise HTTPException(
             status_code=404,
             detail=f"Failed to remove instance: {str(e)}"
