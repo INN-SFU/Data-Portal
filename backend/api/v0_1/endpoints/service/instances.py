@@ -306,9 +306,11 @@ async def delete_instance(
         policies = policy_manager.get_instance_policies(instance_uuid)
         if policies:
             policy_manager.remove_policies(policies)
+            logger.info(f"Removed {len(policies)} policies associated with instance '{instance.name}'")
     except ValueError as e:
         # Log warning but don't fail the deletion
         # The instance is already removed
+        logger.warning(f"Failed to remove policies for deleted instance '{instance.name}': {str(e)}")
         pass
 
     return JSONResponse(
