@@ -5,6 +5,7 @@ Handles policy CRUD operations and policy-related dashboard data.
 All endpoints require admin privileges as policies control system access.
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 
@@ -21,6 +22,7 @@ from .models import (
 from .utils import convert_file_tree_to_dict
 
 policies_router = APIRouter(prefix='/policies', tags=["Policy Management"])
+logger = logging.getLogger("api.endpoints")
 
 
 @policies_router.get(
@@ -59,6 +61,7 @@ async def get_policies(
 
     policies = policy_manager.filter_policies(policy_filter)
     if policies is None:
+        logger.error("No policies found matching the filter criteria")
         raise HTTPException(status_code=404, detail="No policies found")
 
     return GetPolicyResponse(success=True, details=policies)
@@ -99,11 +102,13 @@ async def create_policy(
     try:
         user_uuid = user_manager.get_user_uuid(new_policy.username)
     except KeyError:
+        logger.error(f"User '{new_policy.username}' not found for policy creation")
         raise HTTPException(status_code=404, detail="User not found")
     
     try:
         instance_uuid = instance_manager.get_instance_uuid(new_policy.instance_name)
     except KeyError:
+        logger.error(f"Instance '{new_policy.instance_name}' not found for policy creation")
         raise HTTPException(status_code=404, detail="Instance not found")
 
     # Create policy object
@@ -116,14 +121,17 @@ async def create_policy(
 
     # Validate user and instance exist
     if user_manager.get_user(policy.user_uuid) is None:
+        logger.error(f"User UUID {policy.user_uuid} not found during policy validation")
         raise HTTPException(status_code=404, detail="User not found")
     if instance_manager.get_instance_by_uuid(policy.instance_uuid) is None:
+        logger.error(f"Instance UUID {policy.instance_uuid} not found during policy validation")
         raise HTTPException(status_code=404, detail="Instance not found")
 
     # Add policy
     try:
         policy_manager.add_policies([policy])
     except ValueError as e:
+        logger.error(f"Failed to add policy for user '{new_policy.username}' on instance '{new_policy.instance_name}': {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to add policy: {e}")
 
     return AddPolicyResponse(success=True, details=[policy])
@@ -165,6 +173,7 @@ async def delete_policy(
         # user_uuid = user_manager.get_user_uuid(old_policy.username)
         user_uuid = old_policy.user_uuid
     except KeyError:
+        logger.error(f"User not found for policy deletion: {old_policy.user_uuid}")
         raise HTTPException(status_code=404, detail="User not found")
     
     try:
@@ -172,6 +181,7 @@ async def delete_policy(
         # instance_uuid = instance_manager.get_instance_uuid(old_policy.instance_name)
         instance_uuid = old_policy.instance_uuid
     except KeyError:
+        logger.error(f"Instance not found for policy deletion: {old_policy.instance_uuid}")
         raise HTTPException(status_code=404, detail="Instance not found")
 
     # Create policy object to remove
@@ -186,6 +196,7 @@ async def delete_policy(
     try:
         policy_manager.remove_policy(policy)
     except ValueError as e:
+        logger.error(f"Failed to remove policy for user {user_uuid} on instance {instance_uuid}: {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to remove policy: {e}")
 
     return RemovePolicyResponse(success=True, details=[policy])
