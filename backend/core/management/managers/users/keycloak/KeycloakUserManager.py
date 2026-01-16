@@ -1,3 +1,4 @@
+import logging
 import requests
 
 
@@ -11,15 +12,15 @@ from core.management.users import AbstractUserManager
 from core.management.users.models import User, UserCreate
 
 
+logger = logging.getLogger("user-manager")
+
+
 class KeycloakUserManager(AbstractUserManager):
 
     def __init__(self, realm_name: str, client_id: str, client_secret: str, base_url: str):
 
-        print(f"DEBUG: KeycloakUserManager.__init__ called with:")
-        print(f"  realm_name: {realm_name}")
-        print(f"  client_id: {client_id}")
-        print(f"  client_secret: {client_secret[:8] if client_secret else 'None'}... (length: {len(client_secret) if client_secret else 0})")
-        print(f"  base_url: {base_url}")
+        logger.debug(f"Initializing KeycloakUserManager with realm={realm_name}, client_id={client_id}, base_url={base_url}")
+        logger.debug(f"Client Secret: {client_secret[:8] if client_secret else 'None'}... (length: {len(client_secret) if client_secret else 0})")
 
         keycloak_connection = KeycloakOpenIDConnection(
             server_url=base_url,
@@ -30,19 +31,20 @@ class KeycloakUserManager(AbstractUserManager):
         )
 
         self.identity_manager = KeycloakAdmin(connection=keycloak_connection)
-        print("DEBUG: KeycloakAdmin instance created, testing connection...")
+        logger.debug("KeycloakAdmin instance created, testing connection...")
 
         # Test the connection immediately to see if credentials work
         try:
             test_users = self.identity_manager.get_users(query={"max": 1})
-            print(f"DEBUG: Connection test successful - got {len(test_users)} user(s)")
+            logger.debug(f"Connection test successful - got {len(test_users)} user(s)")
         except Exception as e:
-            print(f"DEBUG: Connection test FAILED: {e}")
-            print(f"DEBUG: Exception type: {type(e)}")
+            logger.error(f"Connection test FAILED: {e}")
+            logger.debug(f"Exception type: {type(e)}")
             if hasattr(e, 'response_code'):
-                print(f"DEBUG: Response code: {e.response_code}")
+                logger.debug(f"Response code: {e.response_code}")
             if hasattr(e, 'response_body'):
-                print(f"DEBUG: Response body: {e.response_body}")
+                logger.debug(f"Response body: {e.response_body}")
+            raise
 
     def create_user(self, user_details: UserCreate) -> User:
         # Create user in Keycloak
@@ -56,6 +58,7 @@ class KeycloakUserManager(AbstractUserManager):
         user_uuid = self.identity_manager.create_user(user_payload)
 
         if user_uuid is None:
+            logger.error(f"Failed to create user in Keycloak: {user_details.username}")
             raise ValueError("Failed to create user")
 
         user_info = self.identity_manager.get_user(user_id=user_uuid)
@@ -72,6 +75,7 @@ class KeycloakUserManager(AbstractUserManager):
         )
 
         if user_uuid != user_info['id']:
+            logger.error(f"User UUID mismatch for {user_details.username}")
             raise ValueError("User UUID mismatch")
 
         # Get the roles assigned to the user
@@ -105,10 +109,13 @@ class KeycloakUserManager(AbstractUserManager):
     def get_user_roles(self, uuid: UUID) -> list[str]:
         role_info = self.identity_manager.get_all_roles_of_user(user_id=uuid.__str__())
         # Return only the role names
-        return [role['name'] for role in role_info['realmMappings']]
+        roles = [role['name'] for role in role_info['realmMappings']]
+        logger.debug(f"User {uuid} has {len(roles)} role(s): {roles}")
+        return roles
 
     def get_all_users(self) -> list[User]:
         users_ = self.identity_manager.get_users()
+        logger.debug(f"Found {len(users_)} user(s) in Keycloak")
         result = []
         for user in users_:
             user_roles = self.get_user_roles(UUID(user['id']))
