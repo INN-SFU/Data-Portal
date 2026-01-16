@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Tree from "./Tree.js";
+import { CircularProgress } from "@mui/material";
 
 export default function EndpointCard({
   endpointName,
@@ -154,21 +155,31 @@ export default function EndpointCard({
 
   // ------------------------------- HTML  --------------------------------
   return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
+    <div
+      style={{
+        border: "1px solid #e5e7eb",
+        borderRadius: 12,
+        overflow: "hidden",
+      }}
+    >
       <div
-        onClick={() => setOpen(v => !v)}
+        onClick={() => setOpen((v) => !v)}
         style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: 12, cursor: "pointer", background: "#f9fafb"
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: 12,
+          cursor: "pointer",
+          background: "#f9fafb",
         }}
       >
         <div>
           <strong>{endpointName}</strong>
-          <div style={{ fontSize: 12, color: "#6b7280" }}>UUID: {endpointUuid}</div>
+          <div style={{ fontSize: 12, color: "#6b7280" }}>
+            UUID: {endpointUuid}
+          </div>
         </div>
-        <div style={{ fontSize: 14, color: "#6b7280" }}>
-          {open ? "▼" : "▶"}
-        </div>
+        <div style={{ fontSize: 14, color: "#6b7280" }}>{open ? "▼" : "▶"}</div>
       </div>
 
       {open && (
@@ -179,13 +190,31 @@ export default function EndpointCard({
             <div style={{ display: "grid", gap: 16 }}>
               {hasRead && (
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
                     <div style={{ fontWeight: 600 }}>Read</div>
                     <button
                       onClick={handleDownload}
                       disabled={!!busy}
-                      style={{ background: "#3b82f6", color: "#fff", border: 0, borderRadius: 8, padding: "6px 10px", fontSize: 13 }}
+                      style={{
+                        background: "#3b82f6",
+                        color: "#fff",
+                        border: 0,
+                        borderRadius: 8,
+                        padding: "6px 10px",
+                        fontSize: 13,
+                        display: flex,
+                        alignItems: "center",
+                        gap: 6,
+                      }}
                     >
+                      {busy === "down" && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
                       {busy === "down" ? "Downloading…" : "Download"}
                     </button>
                   </div>
@@ -197,22 +226,56 @@ export default function EndpointCard({
                 </div>
               )}
               {hasWrite && (
-                <div style={{ borderTop: hasRead ? "1px dashed #e5e7eb" : "none", paddingTop: hasRead ? 8 : 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <div
+                  style={{
+                    borderTop: hasRead ? "1px dashed #e5e7eb" : "none",
+                    paddingTop: hasRead ? 8 : 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
                     <div style={{ fontWeight: 600 }}>Write</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         onClick={handleUpload}
                         disabled={!!busy}
-                        style={{ background: "#10b981", color: "#fff", border: 0, borderRadius: 8, padding: "6px 10px", fontSize: 13 }}
+                        style={{
+                          background: "#10b981",
+                          color: "#fff",
+                          border: 0,
+                          borderRadius: 8,
+                          padding: "6px 10px",
+                          fontSize: 13,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
                       >
+                        {busy === "down" && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
                         {busy === "up" ? "Uploading…" : "Upload"}
                       </button>
                       <button
                         onClick={handleDelete}
                         disabled={!!busy}
-                        style={{ background: "#ef4444", color: "#fff", border: 0, borderRadius: 8, padding: "6px 10px", fontSize: 13 }}
+                        style={{
+                          background: "#ef4444",
+                          color: "#fff",
+                          border: 0,
+                          borderRadius: 8,
+                          padding: "6px 10px",
+                          fontSize: 13,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
                       >
+                        {busy === "down" && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
                         {busy === "del" ? "Deleting…" : "Delete"}
                       </button>
                     </div>
