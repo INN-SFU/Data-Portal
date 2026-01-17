@@ -59,7 +59,7 @@ export default function EndpointCard({
       console.log(`[Download] Successfully downloaded ${readLeaves.length} file(s) from endpoint "${endpointName}"`);
     } catch (e) {
       console.error(`[Download] Download failed for endpoint "${endpointName}":`, e);
-      alert(`Download failed: ${e?.message || e}`);
+      alert(`Download failed!`);
     } finally {
       setBusy(null);
     }
@@ -106,7 +106,7 @@ export default function EndpointCard({
         alert("Upload complete.");
       } catch (e) {
         console.error(`[Upload] Upload failed for endpoint "${endpointName}" to destination "${destDir}":`, e);
-        alert(`Upload failed: ${e?.response?.data?.detail || e?.message || e}`);
+        alert(`Upload failed!`);
       } finally {
         setBusy(null);
         try { document.body.removeChild(input); } catch {}
@@ -146,7 +146,7 @@ export default function EndpointCard({
       alert("Delete complete.");
     } catch (e) {
       console.error(`[Delete] Delete failed for endpoint "${endpointName}" while attempting to delete ${writeLeaves.length} file(s):`, e);
-      alert(`Delete failed: ${e?.response?.data?.detail || e?.message || e}`);
+      alert(`Delete failed!`);
     } finally {
       setBusy(null);
     }
