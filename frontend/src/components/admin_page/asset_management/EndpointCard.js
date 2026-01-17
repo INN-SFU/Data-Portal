@@ -209,7 +209,7 @@ export default function EndpointCard({
                         borderRadius: 8,
                         padding: "6px 10px",
                         fontSize: 13,
-                        display: flex,
+                        display: "flex",
                         alignItems: "center",
                         gap: 6,
                       }}
