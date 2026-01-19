@@ -29,6 +29,8 @@ def put_asset(asset: PutAssetRequest = Depends(),
               instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
               ) -> PutAssetResponse:
 
+    logger.info(f"Asset upload request from user '{user['preferred_username']}' for instance '{asset.instance_name}', resource '{asset.resource}'")
+    
     # Get user UUID from token payload
     user_uuid = user_manager.get_user_uuid(user['preferred_username'])
     instance_name = asset.instance_name
@@ -71,6 +73,8 @@ def delete_asset(asset: DeleteAssetRequest = Depends(),
                  instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
                  ) -> DeleteAssetResponse:
 
+    logger.info(f"Asset deletion request from user '{user['preferred_username']}' for instance '{asset.instance_name}', resource '{asset.resource}'")
+    
     # Get user UUID from token payload
     user_uuid = user_manager.get_user_uuid(user['preferred_username'])
     instance_name = asset.instance_name
@@ -111,6 +115,8 @@ def get_asset(asset: GetAssetRequest = Depends(),
               instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
               ) -> GetAssetResponse:
 
+    logger.info(f"Asset download request from user '{user['preferred_username']}' for instance '{asset.instance_name}', resource '{asset.resource}', action '{asset.action}'")
+    
     # Get the user uuid
     user_uuid = user_manager.get_user_uuid(user['preferred_username'])
 
@@ -178,7 +184,9 @@ async def get_user_home_data(
         user_file_tree[instance] = convert_file_tree_to_dict(
             storage_instances[instance].filter_file_tree(node_filter)
         )
-
+        logger.debug(f"Filtered file tree for instance '{instance}' for user '{uid}'")
+    
+    logger.info(f"Successfully retrieved user home data for '{uid}' with {len(storage_instances)} instances")
     return UserHomeData(assets=user_file_tree, instances=storage_instances)
 
 
@@ -215,7 +223,8 @@ async def get_user_assets_data(
         )
 
     instance_names_map = {instance.name: str(uid) for uid, instance in instances.items()}
-
+    
+    logger.info(f"Successfully retrieved user assets data for UUID '{uuid}' with {len(instances)} instances")
     return UserAssetsData(assets=file_trees, instances=instance_names_map)
 
 
@@ -251,13 +260,12 @@ async def get_asset_dashboard(
     subject_uuid = user_manager.get_user_uuid(admin_user.get("preferred_username"))
 
     uuid = admin_user.get("sub")
-    print("preferred_username:", admin_user.get("preferred_username"))
-    print("sub (keycloak):", admin_user.get("sub"))
-
-    print("DEBUG internal subject_uuid:", subject_uuid)
+    logger.info(f"preferred_username: {admin_user.get('preferred_username')}")
+    logger.info(f"sub (keycloak): {admin_user.get('sub')}")
+    logger.info(f"internal subject_uuid: {subject_uuid}")
 
     policies = policy_manager.get_user_policies(subject_uuid)
-    print("DEBUG policies_len:", len(policies), "sample:", policies)
+    logger.debug(f"policies_len: {len(policies)}, sample: {policies}")
     # Get all storage access points the user has read access to
     instance_uuids = list(
         set(policy.instance_uuid for policy in policy_manager.get_user_policies(uuid))
