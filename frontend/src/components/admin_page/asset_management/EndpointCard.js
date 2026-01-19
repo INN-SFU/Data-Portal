@@ -257,7 +257,7 @@ export default function EndpointCard({
                           gap: 6,
                         }}
                       >
-                        {busy === "down" && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
+                        {busy === "up" && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
                         {busy === "up" ? "Uploading…" : "Upload"}
                       </button>
                       <button
@@ -275,7 +275,7 @@ export default function EndpointCard({
                           gap: 6,
                         }}
                       >
-                        {busy === "down" && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
+                        {busy === "del" && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
                         {busy === "del" ? "Deleting…" : "Delete"}
                       </button>
                     </div>
