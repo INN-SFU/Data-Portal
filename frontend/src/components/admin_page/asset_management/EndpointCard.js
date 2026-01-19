@@ -203,7 +203,8 @@ export default function EndpointCard({
                       onClick={handleDownload}
                       disabled={!!busy}
                       style={{
-                        background: "#3b82f6",
+                        background: busy ? "#9ca3af" : "#3b82f6",
+                        cursor: busy ? "not-allowed" : "pointer",
                         color: "#fff",
                         border: 0,
                         borderRadius: 8,
@@ -246,7 +247,8 @@ export default function EndpointCard({
                         onClick={handleUpload}
                         disabled={!!busy}
                         style={{
-                          background: "#10b981",
+                          background: busy ? "#9ca3af" : "#10b981",
+                          cursor: busy ? "not-allowed" : "pointer",
                           color: "#fff",
                           border: 0,
                           borderRadius: 8,
@@ -264,7 +266,8 @@ export default function EndpointCard({
                         onClick={handleDelete}
                         disabled={!!busy}
                         style={{
-                          background: "#ef4444",
+                          background: busy ? "#9ca3af": "#ef4444",
+                          cursor: busy ? "not-allowed" : "pointer",
                           color: "#fff",
                           border: 0,
                           borderRadius: 8,
