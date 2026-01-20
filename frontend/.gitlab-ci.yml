@@ -21,6 +21,9 @@ include:
 variables:
   DOCKERFILE_PATH: frontend/Dockerfile
   AUTO_DEVOPS_BUILD_IMAGE_CONTEXT: frontend
+  # Override Auto DevOps default repository to use service-specific name
+  CI_APPLICATION_REPOSITORY: ${CI_REGISTRY_IMAGE}/frontend
+  CI_APPLICATION_TAG: ${CI_COMMIT_SHA}
   
   # Enable BuildKit for faster builds and better caching
   DOCKER_BUILDKIT: "1"
