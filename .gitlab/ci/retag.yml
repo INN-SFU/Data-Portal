@@ -83,7 +83,10 @@
 
     # Push all new tags for the -ci image
     # - docker push --all-tags "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}"
+    
     # Explicitly push only the newly created tags (timestamp, short SHA, ref slug, optional: latest, latest-dev)
+    # Note: We push only the explicitly retagged tags instead of using --all-tags to avoid pushing old, cached, deprecated, or undesired tags that might be present locally. 
+    # Using --all-tags can inadvertently upload historical/leftover tags that should not be published.
     - docker push "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${ts}"
     - docker push "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${CI_COMMIT_SHORT_SHA}"
     - docker push "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${CI_COMMIT_REF_SLUG}"
