@@ -25,13 +25,13 @@ variables:
   CI_APPLICATION_REPOSITORY: ${CI_REGISTRY_IMAGE}/frontend
   CI_APPLICATION_TAG: ${CI_COMMIT_SHA}
   
-  # TEST 1: Re-enable BuildKit but keep attestations disabled
-  # Testing if BuildKit alone causes 0-byte images
+  # TEST 3: Enable attestations/provenance (full BuildKit on)
+  # Testing if attestations cause 0-byte images
   # See: .gitlab/BUILDKIT-TESTING-PLAN.md
   DOCKER_BUILDKIT: "1"
   BUILDKIT_PROGRESS: "plain"
-  BUILDX_NO_DEFAULT_ATTESTATIONS: "1"  # Keep attestations disabled
-  DOCKER_BUILDKIT_INLINE_CACHE: "0"    # Keep inline cache disabled for now
+  # BUILDX_NO_DEFAULT_ATTESTATIONS: "1"  # Test 3: allow attestations by removing this
+  DOCKER_BUILDKIT_INLINE_CACHE: "1"     # Keep inline cache enabled
   
   # Enable inline cache in images for future cache sources
   # Note: Without BuildKit, inline cache won't work, but regular Docker cache will
