@@ -134,6 +134,7 @@ async def create_policy(
         logger.error(f"Policy creation failed for user '{new_policy.username}' on instance '{new_policy.instance_name}' with action '{new_policy.action}' on resource '{new_policy.resource}': {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to add policy: {e}")
 
+    logger.info(f"Created policy for user UUID '{user_uuid}' on instance UUID '{instance_uuid}' with action '{new_policy.action}' on resource '{new_policy.resource}'")
     return AddPolicyResponse(success=True, details=[policy])
 
 
@@ -199,6 +200,7 @@ async def delete_policy(
         logger.error(f"Policy deletion failed for user UUID '{user_uuid}' on instance UUID '{instance_uuid}' with action '{old_policy.action}' on resource '{old_policy.resource}': {str(e)}")
         raise HTTPException(status_code=400, detail=f"Failed to remove policy: {e}")
 
+    logger.info(f"Deleted policy for user UUID '{user_uuid}' on instance UUID '{instance_uuid}' with action '{old_policy.action}' on resource '{old_policy.resource}'")
     return RemovePolicyResponse(success=True, details=[policy])
 
 

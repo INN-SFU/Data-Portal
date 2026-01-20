@@ -197,6 +197,7 @@ async def create_user(
         raise HTTPException(status_code=500, detail="Failed to create user policy file")
 
     user_details = user_manager.get_user(uuid)
+    logger.info(f"Created user '{user_data.username}'")
     return AddUserResponse(success=True, details=user_details)
 
 
@@ -229,4 +230,5 @@ async def delete_user(
         logger.error(f"Failed to remove policy store for user '{username}' (UUID: {uuid})")
         raise HTTPException(status_code=500, detail="Failed to remove user policy file")
 
+    logger.info(f"Deleted user '{username}'")
     return RemoveUserResponse(success=True, details=user_details)
