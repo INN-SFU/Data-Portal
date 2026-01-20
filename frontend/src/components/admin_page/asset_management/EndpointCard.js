@@ -56,8 +56,10 @@ export default function EndpointCard({
 
       const blob = await zip.generateAsync({ type: "blob" });
       saveAs(blob, `${endpointName}_download.zip`);
+      console.log(`[Download] Successfully downloaded ${readLeaves.length} file(s) from endpoint "${endpointName}"`);
     } catch (e) {
-      alert(`Download failed: ${e?.message || e}`);
+      console.error(`[Download] Download failed for endpoint "${endpointName}":`, e);
+      alert(`Download failed!`);
     } finally {
       setBusy(null);
     }
@@ -100,9 +102,11 @@ export default function EndpointCard({
           }
         }
         if (onMutate) onMutate(); // refresh dashboard with ?refresh=1 upstream  ------> TODO: need to further investigate refresh dashboard after upload or cerated new policy
+        console.log(`[Upload] Successfully uploaded ${input.files.length} file(s) to "${destDir}" in endpoint "${endpointName}"`);
         alert("Upload complete.");
       } catch (e) {
-        alert(`Upload failed: ${e?.response?.data?.detail || e?.message || e}`);
+        console.error(`[Upload] Upload failed for endpoint "${endpointName}" to destination "${destDir}":`, e);
+        alert(`Upload failed!`);
       } finally {
         setBusy(null);
         try { document.body.removeChild(input); } catch {}
@@ -137,10 +141,12 @@ export default function EndpointCard({
           if (!resp.ok) throw new Error(`Storage DELETE failed (${resp.status}): ${await safeText(resp)}`);
         }
       }
+      console.log(`[Delete] Successfully deleted ${writeLeaves.length} file(s) from endpoint "${endpointName}"`);
       if (onMutate) onMutate(); // refresh dashboard
       alert("Delete complete.");
     } catch (e) {
-      alert(`Delete failed: ${e?.response?.data?.detail || e?.message || e}`);
+      console.error(`[Delete] Delete failed for endpoint "${endpointName}" while attempting to delete ${writeLeaves.length} file(s):`, e);
+      alert(`Delete failed!`);
     } finally {
       setBusy(null);
     }

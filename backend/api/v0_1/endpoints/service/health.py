@@ -361,9 +361,11 @@ async def readiness_check():
     try:
         # Check critical components
         if not os.getenv('ROOT_DIRECTORY'):
+            logger.error("Readiness check failed: Root directory not configured")
             raise HTTPException(status_code=503, detail="Root directory not configured")
         
         if not os.getenv('ENFORCER_MODEL') or not os.getenv('ENFORCER_POLICY'):
+            logger.error("Readiness check failed: Policy engine not configured")
             raise HTTPException(status_code=503, detail="Policy engine not configured")
         
         return {"status": "ready", "timestamp": datetime.now(timezone.utc)}

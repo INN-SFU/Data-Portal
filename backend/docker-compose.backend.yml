@@ -55,7 +55,7 @@ services:
 
     volumes:
       - .:/app
-      - ./logs:/app/data/logs
+      - ./data/logs:/app/data/logs
       - ./data/policies:/app/data/policies
       - ./data/configs:/app/data/configs
     secrets:

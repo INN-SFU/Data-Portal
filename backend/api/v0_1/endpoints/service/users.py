@@ -5,6 +5,7 @@ Handles user CRUD operations using FastAPI dependency injection for authorizatio
 Supports admin-only, authenticated, and owner-or-admin access patterns.
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import JSONResponse
 
@@ -22,6 +23,7 @@ from .models import (
 from .utils import convert_file_tree_to_dict
 
 users_router = APIRouter(prefix='/users', tags=["User Management"])
+logger = logging.getLogger("api.endpoints")
 
 
 @users_router.get(
@@ -51,12 +53,14 @@ async def get_current_user_info(
     """Get current user's own information (authenticated user)."""
     current_username = current_user.get("preferred_username")
     if not current_username:
+        logger.error("Username not found in token for current user")
         raise HTTPException(status_code=400, detail="Username not found in token")
 
     try:
         uuid = user_manager.get_user_uuid(current_username)
         return user_manager.get_user(uuid)
     except KeyError:
+        logger.error(f"User '{current_username}' not found in system")
         raise HTTPException(status_code=404, detail="User not found in system")
 
 
@@ -128,6 +132,7 @@ async def get_user(
         uuid = user_manager.get_user_uuid(username)
         return user_manager.get_user(uuid)
     except KeyError:
+        logger.error(f"User '{username}' not found")
         raise HTTPException(status_code=404, detail="User not found")
 
 
@@ -154,11 +159,13 @@ async def create_user(
 
     # Check if email field is present
     if not user_data.email:
+        logger.error(f"Email is required for user creation: {user_data.username}")
         raise HTTPException(status_code=400, detail="Email is required")
 
     # Check if user exists
     try:
         if user_manager.get_user_uuid(user_create.username):
+            logger.error(f"User '{user_create.username}' already exists")
             raise HTTPException(status_code=400, detail="User already exists")
     except KeyError:
         pass
@@ -171,21 +178,26 @@ async def create_user(
         # Catch Keycloak validation errors (invalid email, missing fields, etc.)
         error_msg = str(e)
         if "error-invalid-email" in error_msg:
+            logger.error(f"Invalid email format for user '{user_data.username}' and email '{user_data.email}': {error_msg}")
             raise HTTPException(status_code=400, detail="Invalid email format")
         elif "User name is missing" in error_msg or "username" in error_msg.lower():
+            logger.error(f"Username is required for user creation: {error_msg}")
             raise HTTPException(status_code=400, detail="Username is required")
         elif "already exists" in error_msg.lower():
+            logger.error(f"User '{user_data.username}' already exists: {error_msg}")
             raise HTTPException(status_code=400, detail="User already exists")
         else:
-            # Log the full error for debugging
+            logger.error(f"Failed to create user '{user_data.username}': {error_msg}")
             raise HTTPException(status_code=400, detail=f"Failed to create user: {error_msg}")
 
     # Create policy store (rollback on failure)
     if not policy_manager.create_user_policy_store(uuid):
+        logger.error(f"Failed to create policy store for user '{user_data.username}' (UUID: {uuid})")
         user_manager.delete_user(uuid)
         raise HTTPException(status_code=500, detail="Failed to create user policy file")
 
     user_details = user_manager.get_user(uuid)
+    logger.info(f"Created user '{user_data.username}'")
     return AddUserResponse(success=True, details=user_details)
 
 
@@ -207,12 +219,16 @@ async def delete_user(
         uuid = user_manager.get_user_uuid(username)
         user_details = user_manager.get_user(uuid)
     except KeyError:
+        logger.error(f"User '{username}' not found for deletion")
         raise HTTPException(status_code=404, detail="User not found")
 
     if not user_manager.delete_user(uuid):
+        logger.error(f"Failed to delete user '{username}' (UUID: {uuid})")
         raise HTTPException(status_code=400, detail="Failed to delete user")
 
     if not policy_manager.remove_user_policy_store(uuid):
+        logger.error(f"Failed to remove policy store for user '{username}' (UUID: {uuid})")
         raise HTTPException(status_code=500, detail="Failed to remove user policy file")
 
+    logger.info(f"Deleted user '{username}'")
     return RemoveUserResponse(success=True, details=user_details)
