@@ -82,4 +82,9 @@
       done
 
     # Push all new tags for the -ci image
-    - docker push --all-tags "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}"
+    # - docker push --all-tags "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}"
+    # Explicitly push only the newly created tags (timestamp, short SHA, ref slug, optional: latest, latest-dev)
+    - docker push "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${ts}"
+    - docker push "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${CI_COMMIT_SHORT_SHA}"
+    - docker push "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${CI_COMMIT_REF_SLUG}"
+    # Note: 'latest' and 'latest-dev' are already pushed conditionally above if created
