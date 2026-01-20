@@ -37,10 +37,12 @@
                           docker inspect "$SOURCE_IMAGE" --format='{{index .Config.Labels "vcs.ref"}}' 2>/dev/null || \
                           echo "")
         
+        # temporary debug output
         echo "IMAGE_COMMIT_SHA: $IMAGE_COMMIT_SHA, CI_COMMIT_SHA: $CI_COMMIT_SHA"
         echo "org.opencontainers.image.revision: $(docker inspect "$SOURCE_IMAGE" --format='{{index .Config.Labels "org.opencontainers.image.revision"}}' 2>/dev/null)"
         echo "CI_COMMIT_SHA: $(docker inspect "$SOURCE_IMAGE" --format='{{index .Config.Labels "CI_COMMIT_SHA"}}' 2>/dev/null)"
         echo "vcs.ref: $(docker inspect "$SOURCE_IMAGE" --format='{{index .Config.Labels "vcs.ref"}}' 2>/dev/null)"
+
         if [ -z "$IMAGE_COMMIT_SHA" ] || [ "$IMAGE_COMMIT_SHA" != "$CI_COMMIT_SHA" ]; then
           [ -z "$IMAGE_COMMIT_SHA" ] && echo "Error: Could not extract commit SHA from image labels."
           [ -n "$IMAGE_COMMIT_SHA" ] && echo "Error: Image commit SHA ($IMAGE_COMMIT_SHA) does not match current commit ($CI_COMMIT_SHA)"
