@@ -37,6 +37,15 @@ variables:
   AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
     --tag ${CI_REGISTRY_IMAGE}/frontend:ci
     --build-arg BUILDKIT_INLINE_CACHE=1
+    --label org.opencontainers.image.version=${PIPELINE_TIMESTAMP}
+    --label org.opencontainers.image.created=${CI_COMMIT_TIMESTAMP}
+    --label org.opencontainers.image.revision=${CI_COMMIT_SHA}
+    --label org.opencontainers.image.source=${CI_PROJECT_URL}
+    --label org.opencontainers.image.title=${CI_PROJECT_NAME}
+    --label org.opencontainers.image.description=${CI_PROJECT_NAME}
+    --label org.opencontainers.image.url=${CI_PROJECT_URL}
+    --label org.opencontainers.image.ref.name=${CI_COMMIT_REF_NAME}
+    --label org.opencontainers.image.authors=${GITLAB_USER_NAME:-${CI_COMMIT_AUTHOR}}
 
   # Nomad deployment configuration
   SERVICE_NAME: "frontend"
