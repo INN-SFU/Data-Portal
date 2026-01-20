@@ -38,9 +38,11 @@ variables:
   # Local runner cache is used automatically by Docker if configured
   # See docs/gitlab-runner-local-cache-config.md for runner configuration
   
-  # Add build arguments (no tags here - let Auto DevOps handle tagging via CI_APPLICATION_REPOSITORY)
-  # The retag job will create additional tags after build completes
+  # Add build arguments and a build-time tag for test 4
+  # Auto DevOps handles the primary tag via CI_APPLICATION_REPOSITORY/CI_APPLICATION_TAG
+  # The 'ci' tag is added here to exercise multiple tags at build time
   AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
+    --tag ${CI_REGISTRY_IMAGE}/frontend:ci
     --build-arg BUILDKIT_INLINE_CACHE=1
     --label org.opencontainers.image.version=${PIPELINE_TIMESTAMP}
     --label org.opencontainers.image.created=${CI_COMMIT_TIMESTAMP}
