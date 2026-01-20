@@ -18,7 +18,7 @@ from core.management.policies import AbstractPolicyManager, Policy
 from core.management.users import AbstractUserManager
 
 assets_router = APIRouter(prefix='/assets', tags=["Asset Management"])
-logger = logging.getLogger("uvicorn")
+logger = logging.getLogger("api.endpoints")
 
 
 @assets_router.put("/upload", dependencies=[Depends(decode_token)])
@@ -29,6 +29,8 @@ def put_asset(asset: PutAssetRequest = Depends(),
               instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
               ) -> PutAssetResponse:
 
+    logger.info(f"Asset upload request from user '{user['preferred_username']}' for instance '{asset.instance_name}', resource '{asset.resource}'")
+    
     # Get user UUID from token payload
     user_uuid = user_manager.get_user_uuid(user['preferred_username'])
     instance_name = asset.instance_name
@@ -46,6 +48,7 @@ def put_asset(asset: PutAssetRequest = Depends(),
         try:
             agent = instance_manager.get_instance_by_uuid(instance_uuid).agent
         except KeyError:
+            logger.error(f"Instance '{instance_name}' not found for asset upload")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instance {instance_name} not found.")
 
         presigned_urls, file_paths = agent.generate_access_link(str(resource), 'write', 3600)
@@ -57,6 +60,7 @@ def put_asset(asset: PutAssetRequest = Depends(),
 
 
     else:
+        logger.error(f"User {user['preferred_username']} denied write access to resource '{resource}' on instance '{instance_name}'")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="User does not have write access to this resource")
 
@@ -69,6 +73,8 @@ def delete_asset(asset: DeleteAssetRequest = Depends(),
                  instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
                  ) -> DeleteAssetResponse:
 
+    logger.info(f"Asset deletion request from user '{user['preferred_username']}' for instance '{asset.instance_name}', resource '{asset.resource}'")
+    
     # Get user UUID from token payload
     user_uuid = user_manager.get_user_uuid(user['preferred_username'])
     instance_name = asset.instance_name
@@ -86,6 +92,7 @@ def delete_asset(asset: DeleteAssetRequest = Depends(),
         try:
             agent = instance_manager.get_instance_by_uuid(instance_uuid).agent
         except KeyError:
+            logger.error(f"Instance '{instance_name}' not found for asset deletion")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instance {instance_name} not found.")
 
         presigned_urls, file_paths = agent.generate_access_link(str(resource), 'delete', 3600)
@@ -95,6 +102,7 @@ def delete_asset(asset: DeleteAssetRequest = Depends(),
         )
 
     else:
+        logger.error(f"User {user['preferred_username']} denied write access for deletion of resource '{resource}' on instance '{instance_name}'")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="User does not have write access to this resource")
 
@@ -107,6 +115,8 @@ def get_asset(asset: GetAssetRequest = Depends(),
               instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
               ) -> GetAssetResponse:
 
+    logger.info(f"Asset download request from user '{user['preferred_username']}' for instance '{asset.instance_name}', resource '{asset.resource}', action '{asset.action}'")
+    
     # Get the user uuid
     user_uuid = user_manager.get_user_uuid(user['preferred_username'])
 
@@ -114,6 +124,7 @@ def get_asset(asset: GetAssetRequest = Depends(),
     try:
         instance_uuid = instance_manager.get_instance_uuid(asset.instance_name)
     except KeyError:
+        logger.error(f"Instance '{asset.instance_name}' not found for asset download")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instance {asset.instance_name} not found.")
 
     # Build the policy
@@ -129,6 +140,7 @@ def get_asset(asset: GetAssetRequest = Depends(),
         try:
             presigned_urls, file_paths = agent.generate_access_link(policy.resource, policy.action, 600)
         except ValueError as e:
+            logger.error(f"Unable to generate presigned URL for resource '{policy.resource}' on instance '{asset.instance_name}': {str(e)}")
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                                 detail=f"Unable to generate presigned URL: {str(e)}")
         return GetAssetResponse(
@@ -136,6 +148,7 @@ def get_asset(asset: GetAssetRequest = Depends(),
             file_paths=file_paths
         )
     else:
+        logger.error(f"User {user['preferred_username']} denied {asset.action} access to resource '{asset.resource}' on instance '{asset.instance_name}'")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                             detail="User does not have access to the specified resource")
 
@@ -171,7 +184,9 @@ async def get_user_home_data(
         user_file_tree[instance] = convert_file_tree_to_dict(
             storage_instances[instance].filter_file_tree(node_filter)
         )
-
+        logger.debug(f"Filtered file tree for instance '{instance}' for user '{uid}'")
+    
+    logger.info(f"Successfully retrieved user home data for '{uid}' with {len(storage_instances)} instances")
     return UserHomeData(assets=user_file_tree, instances=storage_instances)
 
 
@@ -208,7 +223,8 @@ async def get_user_assets_data(
         )
 
     instance_names_map = {instance.name: str(uid) for uid, instance in instances.items()}
-
+    
+    logger.info(f"Successfully retrieved user assets data for UUID '{uuid}' with {len(instances)} instances")
     return UserAssetsData(assets=file_trees, instances=instance_names_map)
 
 
@@ -244,13 +260,12 @@ async def get_asset_dashboard(
     subject_uuid = user_manager.get_user_uuid(admin_user.get("preferred_username"))
 
     uuid = admin_user.get("sub")
-    print("preferred_username:", admin_user.get("preferred_username"))
-    print("sub (keycloak):", admin_user.get("sub"))
-
-    print("DEBUG internal subject_uuid:", subject_uuid)
+    logger.info(f"preferred_username: {admin_user.get('preferred_username')}")
+    logger.info(f"sub (keycloak): {admin_user.get('sub')}")
+    logger.info(f"internal subject_uuid: {subject_uuid}")
 
     policies = policy_manager.get_user_policies(subject_uuid)
-    print("DEBUG policies_len:", len(policies), "sample:", policies)
+    logger.debug(f"policies_len: {len(policies)}, sample: {policies}")
     # Get all storage access points the user has read access to
     instance_uuids = list(
         set(policy.instance_uuid for policy in policy_manager.get_user_policies(uuid))

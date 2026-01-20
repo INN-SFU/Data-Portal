@@ -91,12 +91,12 @@ if __name__ == "__main__":
     os.environ["APP_PORT"] = str(port)
 
     # Configure uvicorn to use our log config
-    log_config = logging.getLogger().manager.loggerDict
+    log_config_dict = yaml.safe_load(cfg_text)
     uvicorn.run(
         app="api.v0_1.app:app",
         host=host,
         port=port,
         reload=reload,
-        log_config=None,  # Disable uvicorn's default log config, use our logging config
+        log_config=log_config_dict,  # Pass our logging config to uvicorn
         access_log=True
     )
