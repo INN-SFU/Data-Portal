@@ -41,6 +41,7 @@ variables:
   # Add build arguments (no tags here - let Auto DevOps handle tagging via CI_APPLICATION_REPOSITORY)
   # The retag job will create additional tags after build completes
   AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
+    --build-arg BUILDKIT_INLINE_CACHE=1
     --label org.opencontainers.image.version=${PIPELINE_TIMESTAMP}
     --label org.opencontainers.image.created=${CI_COMMIT_TIMESTAMP}
     --label org.opencontainers.image.revision=${CI_COMMIT_SHA}

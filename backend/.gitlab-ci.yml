@@ -20,13 +20,13 @@ variables:
   CI_APPLICATION_REPOSITORY: ${CI_REGISTRY_IMAGE}/backend
   CI_APPLICATION_TAG: ${CI_COMMIT_SHA}
   
-  # TEST 1: Re-enable BuildKit but keep attestations disabled
-  # Testing if BuildKit alone causes 0-byte images
+  # TEST 2: Enable inline cache with BuildKit (attestations still disabled)
+  # Testing if inline cache causes 0-byte images
   # See: .gitlab/BUILDKIT-TESTING-PLAN.md
   DOCKER_BUILDKIT: "1"
   BUILDKIT_PROGRESS: "plain"
   BUILDX_NO_DEFAULT_ATTESTATIONS: "1"  # Keep attestations disabled
-  DOCKER_BUILDKIT_INLINE_CACHE: "0"    # Keep inline cache disabled for now
+  DOCKER_BUILDKIT_INLINE_CACHE: "1"    # Enable inline cache
   
   # Enable inline cache in images for future cache sources
   # Note: Without BuildKit, inline cache won't work, but regular Docker cache will
@@ -36,6 +36,7 @@ variables:
   # Add build arguments (no tags here - let Auto DevOps handle tagging via CI_APPLICATION_REPOSITORY)
   # The retag job will create additional tags after build completes
   AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
+    --build-arg BUILDKIT_INLINE_CACHE=1
     --label org.opencontainers.image.version=${PIPELINE_TIMESTAMP}
     --label org.opencontainers.image.created=${CI_COMMIT_TIMESTAMP}
     --label org.opencontainers.image.revision=${CI_COMMIT_SHA}
