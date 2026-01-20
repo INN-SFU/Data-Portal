@@ -25,8 +25,8 @@
     # Pull the image tagged with 'ci' and verify commit SHA matches
     - |
       SOURCE_IMAGE=""
-      ci_tag="${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:ci"
-      echo "Pulling image with 'ci' tag: $ci_tag"
+      ci_tag="${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:${CI_COMMIT_SHA}"
+      echo "Pulling image with commit SHA tag: $ci_tag"
       if docker pull "$ci_tag" 2>/dev/null; then
         SOURCE_IMAGE="$ci_tag"
         echo "Successfully pulled image: $SOURCE_IMAGE"
@@ -47,7 +47,7 @@
           exit 1
         fi
       else
-        echo "Error: Failed to pull image with 'ci' tag: $ci_tag"
+        echo "Error: Failed to pull image with commit SHA tag: $ci_tag"
         echo "Build job may not have completed or image not found in registry."
         exit 1
       fi
