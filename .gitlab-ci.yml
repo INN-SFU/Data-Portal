@@ -6,7 +6,7 @@ variables:
 
 # services:
 #   - docker:27-dind
-#   by commenting out the services section, using Docker socket - no DinD service needed
+#   By commenting out the services section, using Docker socket - no DinD service needed
 #   DOCKER_HOST is not set - uses socket by default
 
   # Disable deprecated CodeClimate-based Code Quality scanning
