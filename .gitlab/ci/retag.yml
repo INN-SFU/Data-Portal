@@ -72,7 +72,8 @@
         docker push "${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:latest-dev"
       fi
     
-      # Display all local tags of the image ${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}
+    # Display all local tags of the image ${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}
+    - |
       echo "All local tags for image: ${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}"
       docker images --format "{{.Repository}}:{{.Tag}}" | grep "^${CI_REGISTRY_IMAGE}/${SERVICE_CHANGED}:" | while read tag; do
         echo " - $tag"
