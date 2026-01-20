@@ -83,7 +83,7 @@ generate-timestamp:
         echo "CI_COMMIT_TIMESTAMP not available, using current time: $TIMESTAMP"
       fi
       echo "PIPELINE_TIMESTAMP=$TIMESTAMP" >> timestamp.env
-      echo "Generated pipeline timestamp: $TIMESTAMP"
+      echo "Using pipeline timestamp: $TIMESTAMP"
   artifacts:
     reports:
       dotenv: timestamp.env
