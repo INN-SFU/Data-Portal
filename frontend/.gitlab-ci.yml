@@ -25,11 +25,13 @@ variables:
   CI_APPLICATION_REPOSITORY: ${CI_REGISTRY_IMAGE}/frontend
   CI_APPLICATION_TAG: ${CI_COMMIT_SHA}
   
-  # Temporarily disable BuildKit to avoid manifest-only tag issue
-  # BuildKit can create 0-byte manifest-only tags instead of full images
+  # Disable BuildKit and attestations to avoid manifest-only tag issue
+  # Docker 23+ may still use BuildKit features (attestations/provenance) even when BuildKit is disabled
+  # These create OCI Image Indexes (manifest lists) that show as 0 bytes in GitLab UI
   # See: https://gitlab.com/gitlab-org/container-registry/-/issues/407
-  # DOCKER_BUILDKIT: "1"
-  # BUILDKIT_PROGRESS: "plain"
+  DOCKER_BUILDKIT: "0"
+  BUILDX_NO_DEFAULT_ATTESTATIONS: "1"
+  DOCKER_BUILDKIT_INLINE_CACHE: "0"
   
   # Enable inline cache in images for future cache sources
   # Note: Without BuildKit, inline cache won't work, but regular Docker cache will
