@@ -11,9 +11,12 @@ export default function EndpointCard({
   authHeaders,
   http,
   onMutate,               // call after upload to refresh parent
+  busy,
+  setBusy,
+  busyID,
+  setBusyID,
 }) {
   const [open, setOpen] = useState(true);
-  const [busy, setBusy] = useState(null); // "down" | "up" | null
 
   // Normalize to explicit read/write arrays
   const access = normalizeAccess(treesByAccess);
@@ -35,6 +38,7 @@ export default function EndpointCard({
     if (readLeaves.length === 0) return alert("Select files/folders in READ.");
 
     setBusy("down");
+    setBusyID(endpointUuid)
     try {
       const [{ default: JSZip }, { saveAs }] = await Promise.all([
         import("jszip"),
@@ -63,6 +67,7 @@ export default function EndpointCard({
       alert(`Download failed!`);
     } finally {
       setBusy(null);
+      setBusyID(null);
     }
   };
 
@@ -86,6 +91,7 @@ export default function EndpointCard({
         return;
       }
       setBusy("up");
+      setBusyID(endpointUuid)
       try {
         for (const file of Array.from(input.files)) {
           const resource = joinPath(destDir, file.name);
@@ -110,6 +116,7 @@ export default function EndpointCard({
         alert(`Upload failed!`);
       } finally {
         setBusy(null);
+        setBusyID(null);
         try { document.body.removeChild(input); } catch {}
       }
     };
@@ -126,6 +133,7 @@ export default function EndpointCard({
     if (!window.confirm(`Delete ${writeLeaves.length} file(s)? This cannot be undone.`)) return;
 
     setBusy("del");
+    setBusyID(endpointUuid)
     try {
       for (const resource of writeLeaves) {
         const headers = await authHeaders();
@@ -150,6 +158,7 @@ export default function EndpointCard({
       alert(`Delete failed!`);
     } finally {
       setBusy(null);
+      setBusyID(null);
     }
   };
 
@@ -215,8 +224,8 @@ export default function EndpointCard({
                         gap: 6,
                       }}
                     >
-                      {busy === "down" && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
-                      {busy === "down" ? "Downloading…" : "Download"}
+                      {busy === "down" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
+                      {busy === "down" && busyID == endpointUuid ? "Downloading…" : "Download"}
                     </button>
                   </div>
                   <Tree
@@ -259,8 +268,8 @@ export default function EndpointCard({
                           gap: 6,
                         }}
                       >
-                        {busy === "up" && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
-                        {busy === "up" ? "Uploading…" : "Upload"}
+                        {busy === "up" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
+                        {busy === "up" && busyID == endpointUuid ? "Uploading…" : "Upload"}
                       </button>
                       <button
                         onClick={handleDelete}
@@ -278,8 +287,8 @@ export default function EndpointCard({
                           gap: 6,
                         }}
                       >
-                        {busy === "del" && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
-                        {busy === "del" ? "Deleting…" : "Delete"}
+                        {busy === "del" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
+                        {busy === "del" && busyID == endpointUuid ? "Deleting…" : "Delete"}
                       </button>
                     </div>
                   </div>
