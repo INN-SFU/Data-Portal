@@ -69,8 +69,9 @@ variables:
   # Explicitly disable Auto DevOps review jobs to prevent job name conflicts
   REVIEW_DISABLED: "true"
   
-# Safety net test (kept until Auto Test/Herokuish consistently reliably detects tests)
-test-backend:
+# Override Auto DevOps test job for backend monorepo layout (we have separate test jobs for backend and frontend)
+# If necessary, disable Auto DevOps test via CI variable: TEST_DISABLED: "true"
+test:
   stage: test
   image: python:3.12
   before_script:
