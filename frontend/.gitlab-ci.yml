@@ -25,21 +25,20 @@ variables:
   CI_APPLICATION_REPOSITORY: ${CI_REGISTRY_IMAGE}/frontend
   CI_APPLICATION_TAG: ${CI_COMMIT_SHA}
   
-  # Enable BuildKit for faster builds and better caching
-  DOCKER_BUILDKIT: "1"
-  BUILDKIT_PROGRESS: "plain"
+  # Temporarily disable BuildKit to avoid manifest-only tag issue
+  # BuildKit can create 0-byte manifest-only tags instead of full images
+  # See: https://gitlab.com/gitlab-org/container-registry/-/issues/407
+  # DOCKER_BUILDKIT: "1"
+  # BUILDKIT_PROGRESS: "plain"
   
   # Enable inline cache in images for future cache sources
-  # Note: BUILDKIT_INLINE_CACHE=1 is added as build-arg in AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS
+  # Note: Without BuildKit, inline cache won't work, but regular Docker cache will
   # Local runner cache is used automatically by Docker if configured
   # See docs/gitlab-runner-local-cache-config.md for runner configuration
   
-  # Add multiple image tags at build time
-  # Auto DevOps will append these to the docker build as repeated --tag flags.
-  # Tag with 'ci' for retag job to pull and verify commit SHA
+  # Add build arguments (no tags here - let Auto DevOps handle tagging via CI_APPLICATION_REPOSITORY)
+  # The retag job will create additional tags after build completes
   AUTO_DEVOPS_BUILD_IMAGE_EXTRA_ARGS: >
-    --tag ${CI_REGISTRY_IMAGE}/frontend:ci
-    --build-arg BUILDKIT_INLINE_CACHE=1
     --label org.opencontainers.image.version=${PIPELINE_TIMESTAMP}
     --label org.opencontainers.image.created=${CI_COMMIT_TIMESTAMP}
     --label org.opencontainers.image.revision=${CI_COMMIT_SHA}
