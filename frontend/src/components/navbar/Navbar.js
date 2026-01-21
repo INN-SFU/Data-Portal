@@ -1,4 +1,5 @@
 import React from "react";
+import PersonIcon from '@mui/icons-material/Person';
 import keycloak from "../../setting/Keycloak";
 import "./Navbar.css";
 
@@ -11,6 +12,12 @@ function Navbar() {
       <div className="navbar-right">
         <a href="/" className="navbar-link">Home</a>
         <a href="/about" className="navbar-link">About</a>
+        {isLoggedIn && (
+          <div className="navbar-user">
+            <span>{keycloak.tokenParsed?.preferred_username}</span>
+            <PersonIcon />
+          </div>
+        )}
         <button
           className={`navbar-button ${isLoggedIn ? "logout" : ""}`}
           onClick={() =>
