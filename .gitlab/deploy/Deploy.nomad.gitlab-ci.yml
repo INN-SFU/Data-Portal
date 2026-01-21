@@ -234,6 +234,12 @@ prepare-nomad-scripts:
       # Go-based a8m/envsubst: format string must be single-quoted with $ prefix for each variable
       # cat "$NOMAD_JOB_TEMPLATE" | envsubst "$SHELL_FORMAT_STRING" > "$NOMAD_OUTPUT_FILE"
 
+      nomad fmt --check "$NOMAD_OUTPUT_FILE" || {
+        echo "===== Nomad job file is not formatted correctly ====="
+        cat "$NOMAD_OUTPUT_FILE"
+        exit 1
+      }
+
       echo "===== Rendered Nomad job ====="
       cat "$NOMAD_OUTPUT_FILE"
       
