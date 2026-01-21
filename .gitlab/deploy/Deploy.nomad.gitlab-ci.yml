@@ -171,6 +171,7 @@ prepare-nomad-scripts:
           RUNTIME_ENV="${__RUNTIME_ENV_BACKEND__}"
           PORT="__NOMAD_PORT_PLACEHOLDER__"
         fi
+        echo "Selected runtime environment for ${SERVICE_TYPE}: ${RUNTIME_ENV}"
         
         # Build Traefik tags
         if [ "$SERVICE_TYPE" = "frontend" ]; then
