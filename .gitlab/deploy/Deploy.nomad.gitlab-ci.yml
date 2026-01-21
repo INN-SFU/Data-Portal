@@ -124,6 +124,9 @@ prepare-nomad-scripts:
       export __RESOURCE_CPU__="${NOMAD_RESOURCE_CPU}"
       export __RESOURCE_MEMORY__="${NOMAD_RESOURCE_MEMORY}"
       export __COUNT__="${NOMAD_COUNT}"
+      
+      export __API_GATEWAY__="http://backend-${CI_COMMIT_REF_SLUG}.${NOMAD_DOMAIN:-example.com}"
+      
       echo "===== nomad-setup.sh completed successfully ====="
       SETUP_EOF
     # Create nomad-routing.sh: Generate hostname and Traefik tags

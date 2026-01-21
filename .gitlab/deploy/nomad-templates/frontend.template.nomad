@@ -109,6 +109,7 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
       env {
         CI_ENVIRONMENT_NAME = "${__ENVIRONMENT__}"
         SERVICE_NAME        = "${__SERVICE__}"
+        API_GATEWAY         = "${__API_GATEWAY__}" # "http://backend-staging.rmcintos.cedar.researchcomputinggroup.ca"
         SERVER_NAME         = "${__HOSTNAME__}"
       }
 
