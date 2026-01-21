@@ -126,7 +126,7 @@ prepare-nomad-scripts:
       export __COUNT__="${NOMAD_COUNT}"
       
       export __API_GATEWAY__="http://backend-${CI_COMMIT_REF_SLUG}.${NOMAD_DOMAIN:-example.com}"
-      export __RUNTIME_ENV__="${__RUNTIME_ENV_BACKEND__:-}"
+      export __RUNTIME_ENV__="${RUNTIME_ENV:-}"
       
       echo "===== nomad-setup.sh completed successfully ====="
       SETUP_EOF
