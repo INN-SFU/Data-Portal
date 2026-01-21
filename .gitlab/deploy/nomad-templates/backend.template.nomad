@@ -139,7 +139,7 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
       #          LOG_LEVEL=INFO
       template {
         data        = <<EOF
-        ${__RUNTIME_ENV__}
+${__RUNTIME_ENV__}
         EOF
         destination = "local/runtime.env"
         env         = true

@@ -113,15 +113,19 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
         SERVER_NAME         = "${__HOSTNAME__}"
       }
 
-      # Template for dynamic configuration (e.g., API gateway URL via service discovery)
-      # template {
-      #   data        = <<EOF
-      #   API_GATEWAY={{- range nomadService "api-gateway-${__ENVIRONMENT__}" }}http://{{ .Address }}:{{ .Port }}{{- end }}
-      #   EOF
-      #   destination = "local/env.txt"
-      #   env         = true
-      #   change_mode = "restart"
-      # }
+      # Dynamic runtime environment variables
+      # __RUNTIME_ENV__ should contain newline-separated KEY=VALUE pairs
+      # Example: REACT_APP_KEYCLOAK_URL=https://keycloak.example.com
+      #          REACT_APP_KEYCLOAK_REALM=ams-portal
+      #          API_GATEWAY=http://backend.example.com
+      template {
+        data        = <<EOF
+${__RUNTIME_ENV__}
+        EOF
+        destination = "local/runtime.env"
+        env         = true
+        change_mode = "restart"
+      }
 
       # Resources
       resources {
