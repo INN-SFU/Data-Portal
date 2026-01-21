@@ -117,7 +117,7 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
         auth {
           username       = "${__USERNAME__}"
           password       = "${__PASSWORD__}"
-          server_address = "${CI_REGISTRY}"
+          server_address = "${__CI_REGISTRY__}"
         }
       }
 

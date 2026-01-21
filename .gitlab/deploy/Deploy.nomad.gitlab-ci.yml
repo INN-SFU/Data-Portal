@@ -118,6 +118,7 @@ prepare-nomad-scripts:
       export __NAMESPACE__="${NOMAD_NAMESPACE:-default}"
       export __JOB_DRIVER__="${NOMAD_JOB_DRIVER}"
       export __IMAGE_FORCE_PULL__="${NOMAD_IMAGE_FORCE_PULL}"
+      export __CI_REGISTRY__="${CI_REGISTRY}"
       export __USERNAME__="${CI_REGISTRY_USER}"
       export __PASSWORD__="${CI_REGISTRY_PASSWORD}"
       export __RESOURCE_CPU__="${NOMAD_RESOURCE_CPU}"
