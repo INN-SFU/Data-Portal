@@ -169,7 +169,7 @@ prepare-nomad-scripts:
         else
           SERVICE_TYPE="backend"
           RUNTIME_ENV="${__RUNTIME_ENV_BACKEND__}"
-          PORT="__NOMAD_PORT_PLACEHOLDER__"
+          PORT="__NOMAD_PORT_http__"
         fi
         echo "Selected runtime environment for ${SERVICE_TYPE}: ${RUNTIME_ENV}"
         export __RUNTIME_ENV__="${RUNTIME_ENV}"
