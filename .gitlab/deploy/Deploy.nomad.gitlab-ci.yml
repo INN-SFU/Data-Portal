@@ -126,7 +126,7 @@ prepare-nomad-scripts:
       export __COUNT__="${NOMAD_COUNT}"
       
       export __API_GATEWAY__="http://backend-${CI_COMMIT_REF_SLUG}.${NOMAD_DOMAIN:-example.com}"
-      export __RUNTIME_ENV__="${__RUNTIME_ENV__:-}"
+      export __RUNTIME_ENV__="${RUNTIME_ENV:-}"
       
       echo "===== nomad-setup.sh completed successfully ====="
       SETUP_EOF
@@ -164,11 +164,11 @@ prepare-nomad-scripts:
         # Determine service type and port
         if [ "$SERVICE_NAME" = "frontend" ]; then
           SERVICE_TYPE="frontend"
-          __RUNTIME_ENV__="${__RUNTIME_ENV_FRONTEND__}"
+          RUNTIME_ENV="${__RUNTIME_ENV_FRONTEND__}"
           PORT="80"
         else
           SERVICE_TYPE="backend"
-          __RUNTIME_ENV__="${__RUNTIME_ENV_BACKEND__}"
+          RUNTIME_ENV="${__RUNTIME_ENV_BACKEND__}"
           PORT="__NOMAD_PORT_PLACEHOLDER__"
         fi
         
