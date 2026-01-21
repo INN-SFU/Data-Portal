@@ -172,7 +172,8 @@ prepare-nomad-scripts:
           PORT="__NOMAD_PORT_PLACEHOLDER__"
         fi
         echo "Selected runtime environment for ${SERVICE_TYPE}: ${RUNTIME_ENV}"
-        
+        export __RUNTIME_ENV__="${RUNTIME_ENV}"
+
         # Build Traefik tags
         if [ "$SERVICE_TYPE" = "frontend" ]; then
           export __SERVICE_TAGS__="[\"${SERVICE_TYPE}\",\"traefik.enable=true\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.rule=Host(\`${__HOSTNAME__}\`)\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.entrypoints=websecure\",\"traefik.http.routers.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.tls=true\",\"traefik.http.services.${__SERVICE__}-${__ENVIRONMENT_SANITIZED__}.loadbalancer.server.port=${PORT}\"]"
