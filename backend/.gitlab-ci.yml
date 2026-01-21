@@ -67,7 +67,7 @@ variables:
   # This prevents Auto DevOps from trying to deploy to Kubernetes
   DEPLOY_DISABLED: "${DEPLOY_DISABLED:-true}"
   # Explicitly disable Auto DevOps review jobs to prevent job name conflicts
-  REVIEW_DISABLED: "true"
+  # REVIEW_DISABLED: "true"
   
 # Override Auto DevOps test job for backend monorepo layout (we have separate test jobs for backend and frontend)
 # If necessary, disable Auto DevOps test via CI variable: TEST_DISABLED: "true"
