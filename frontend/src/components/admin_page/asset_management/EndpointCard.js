@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Tree from "./Tree.js";
+import { CircularProgress } from "@mui/material";
 
 export default function EndpointCard({
   endpointName,
@@ -10,9 +11,12 @@ export default function EndpointCard({
   authHeaders,
   http,
   onMutate,               // call after upload to refresh parent
+  busy,
+  setBusy,
+  busyID,
+  setBusyID,
 }) {
   const [open, setOpen] = useState(true);
-  const [busy, setBusy] = useState(null); // "down" | "up" | null
 
   // Normalize to explicit read/write arrays
   const access = normalizeAccess(treesByAccess);
@@ -34,6 +38,7 @@ export default function EndpointCard({
     if (readLeaves.length === 0) return alert("Select files/folders in READ.");
 
     setBusy("down");
+    setBusyID(endpointUuid)
     try {
       const [{ default: JSZip }, { saveAs }] = await Promise.all([
         import("jszip"),
@@ -62,6 +67,7 @@ export default function EndpointCard({
       alert(`Download failed!`);
     } finally {
       setBusy(null);
+      setBusyID(null);
     }
   };
 
@@ -85,6 +91,7 @@ export default function EndpointCard({
         return;
       }
       setBusy("up");
+      setBusyID(endpointUuid)
       try {
         for (const file of Array.from(input.files)) {
           const resource = joinPath(destDir, file.name);
@@ -109,6 +116,7 @@ export default function EndpointCard({
         alert(`Upload failed!`);
       } finally {
         setBusy(null);
+        setBusyID(null);
         try { document.body.removeChild(input); } catch {}
       }
     };
@@ -125,6 +133,7 @@ export default function EndpointCard({
     if (!window.confirm(`Delete ${writeLeaves.length} file(s)? This cannot be undone.`)) return;
 
     setBusy("del");
+    setBusyID(endpointUuid)
     try {
       for (const resource of writeLeaves) {
         const headers = await authHeaders();
@@ -149,26 +158,37 @@ export default function EndpointCard({
       alert(`Delete failed!`);
     } finally {
       setBusy(null);
+      setBusyID(null);
     }
   };
 
   // ------------------------------- HTML  --------------------------------
   return (
-    <div style={{ border: "1px solid #e5e7eb", borderRadius: 12, overflow: "hidden" }}>
+    <div
+      style={{
+        border: "1px solid #e5e7eb",
+        borderRadius: 12,
+        overflow: "hidden",
+      }}
+    >
       <div
-        onClick={() => setOpen(v => !v)}
+        onClick={() => setOpen((v) => !v)}
         style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: 12, cursor: "pointer", background: "#f9fafb"
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: 12,
+          cursor: "pointer",
+          background: "#f9fafb",
         }}
       >
         <div>
           <strong>{endpointName}</strong>
-          <div style={{ fontSize: 12, color: "#6b7280" }}>UUID: {endpointUuid}</div>
+          <div style={{ fontSize: 12, color: "#6b7280" }}>
+            UUID: {endpointUuid}
+          </div>
         </div>
-        <div style={{ fontSize: 14, color: "#6b7280" }}>
-          {open ? "▼" : "▶"}
-        </div>
+        <div style={{ fontSize: 14, color: "#6b7280" }}>{open ? "▼" : "▶"}</div>
       </div>
 
       {open && (
@@ -179,14 +199,33 @@ export default function EndpointCard({
             <div style={{ display: "grid", gap: 16 }}>
               {hasRead && (
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
                     <div style={{ fontWeight: 600 }}>Read</div>
                     <button
                       onClick={handleDownload}
                       disabled={!!busy}
-                      style={{ background: "#3b82f6", color: "#fff", border: 0, borderRadius: 8, padding: "6px 10px", fontSize: 13 }}
+                      style={{
+                        background: busy ? "#9ca3af" : "#3b82f6",
+                        cursor: busy ? "not-allowed" : "pointer",
+                        color: "#fff",
+                        border: 0,
+                        borderRadius: 8,
+                        padding: "6px 10px",
+                        fontSize: 13,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
                     >
-                      {busy === "down" ? "Downloading…" : "Download"}
+                      {busy === "down" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
+                      {busy === "down" && busyID == endpointUuid ? "Downloading…" : "Download"}
                     </button>
                   </div>
                   <Tree
@@ -197,23 +236,59 @@ export default function EndpointCard({
                 </div>
               )}
               {hasWrite && (
-                <div style={{ borderTop: hasRead ? "1px dashed #e5e7eb" : "none", paddingTop: hasRead ? 8 : 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <div
+                  style={{
+                    borderTop: hasRead ? "1px dashed #e5e7eb" : "none",
+                    paddingTop: hasRead ? 8 : 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
                     <div style={{ fontWeight: 600 }}>Write</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         onClick={handleUpload}
                         disabled={!!busy}
-                        style={{ background: "#10b981", color: "#fff", border: 0, borderRadius: 8, padding: "6px 10px", fontSize: 13 }}
+                        style={{
+                          background: busy ? "#9ca3af" : "#10b981",
+                          cursor: busy ? "not-allowed" : "pointer",
+                          color: "#fff",
+                          border: 0,
+                          borderRadius: 8,
+                          padding: "6px 10px",
+                          fontSize: 13,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
                       >
-                        {busy === "up" ? "Uploading…" : "Upload"}
+                        {busy === "up" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
+                        {busy === "up" && busyID == endpointUuid ? "Uploading…" : "Upload"}
                       </button>
                       <button
                         onClick={handleDelete}
                         disabled={!!busy}
-                        style={{ background: "#ef4444", color: "#fff", border: 0, borderRadius: 8, padding: "6px 10px", fontSize: 13 }}
+                        style={{
+                          background: busy ? "#9ca3af": "#ef4444",
+                          cursor: busy ? "not-allowed" : "pointer",
+                          color: "#fff",
+                          border: 0,
+                          borderRadius: 8,
+                          padding: "6px 10px",
+                          fontSize: 13,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
                       >
-                        {busy === "del" ? "Deleting…" : "Delete"}
+                        {busy === "del" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
+                        {busy === "del" && busyID == endpointUuid ? "Deleting…" : "Delete"}
                       </button>
                     </div>
                   </div>

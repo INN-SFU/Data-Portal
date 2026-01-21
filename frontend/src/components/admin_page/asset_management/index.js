@@ -41,6 +41,8 @@ export default function AssetManagement({ bootstrap }) {
   const [error, setError] = useState(null);
   // { [endpointUuid]: { read: Set, write: Set } }
   const [selected, setSelected] = useState({});
+  const [busy, setBusy] = useState(null); // "down" | "up" | "del" | null
+  const [busyID, setBusyID] = useState(null); // UUID of the endpoint that is busy | null
 
   const getSel = (uuid) => {
     const ent = selected[uuid];
@@ -105,6 +107,10 @@ export default function AssetManagement({ bootstrap }) {
               authHeaders={authHeaders}
               http={http}
               onMutate={() => reload(true)}   // auto-refresh after upload/delete/policy changes
+              busy={busy}
+              setBusy={setBusy}
+              busyID={busyID}
+              setBusyID={setBusyID}
             />
           ))}
         </div>
