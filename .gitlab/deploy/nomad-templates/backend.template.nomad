@@ -130,6 +130,22 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
         # DATABASE_URL = "${DATABASE_URL}"
       }
 
+      # Dynamic runtime environment variables
+      # __RUNTIME_ENV__ should contain newline-separated KEY=VALUE pairs
+      # Example: KEYCLOAK_DOMAIN=https://keycloak.example.com
+      #          KEYCLOAK_REALM=ams-portal
+      #          KEYCLOAK_UI_CLIENT_ID=ams-portal-ui
+      #          AMS_HOST=0.0.0.0
+      #          LOG_LEVEL=INFO
+      template {
+        data        = <<EOF
+        ${__RUNTIME_ENV__}
+        EOF
+        destination = "local/runtime.env"
+        env         = true
+        change_mode = "restart"
+      }
+
       # Template for service discovery (e.g., database URL or other service URLs)
       # Example: API Gateway discovering data-service
       # template {
