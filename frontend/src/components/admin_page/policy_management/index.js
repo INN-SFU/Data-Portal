@@ -200,8 +200,8 @@ export default function PolicyManagement() {
             <tbody>
               {policies.map((p, idx) => (
                 <tr key={idx}>
-                  <td><code className="pm-mono">{String(p.user_uuid || "").slice(0, 12)}…</code></td>
-                  <td><code className="pm-mono">{String(p.instance_uuid || "").slice(0, 12)}…</code></td>
+                  <td><code className="pm-mono">{String(p.username || "")}</code></td>
+                  <td><code className="pm-mono">{String(p.instance_name || "")}</code></td>
                   <td>{p.resource || "—"}</td>
                   <td>{p.action || "—"}</td>
                   <td className="pm-actions-right">

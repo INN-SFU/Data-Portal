@@ -13,6 +13,7 @@ from core.injection import get_user_manager, get_policy_manager, get_instance_ma
 from core.management.users import AbstractUserManager
 from core.management.policies import AbstractPolicyManager, Policy
 from core.management.instances import AbstractInstanceManager
+from core.management.users import AbstractUserManager
 
 from ..auth_dependencies import require_admin, get_current_user
 from .models import (
@@ -34,7 +35,9 @@ logger = logging.getLogger("api.endpoints")
 async def get_policies(
     policy_filter: Policy = Depends(),
     admin_user: dict = Depends(require_admin),
-    policy_manager: AbstractPolicyManager = Depends(get_policy_manager)
+    policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+    user_manager: AbstractUserManager = Depends(get_user_manager),
+    instance_manager: AbstractInstanceManager = Depends(get_instance_manager),
 ) -> GetPolicyResponse:
     """
     Retrieve policies based on filter criteria (admin only).
@@ -43,6 +46,8 @@ async def get_policies(
         policy_filter: Policy filter criteria from query parameters
         admin_user: Current user (must have admin privileges)
         policy_manager: Policy manager dependency
+        user_manager: User manager dependency
+        instance_manager: Instance manager dependency
         
     Returns:
         GetPolicyResponse: Filtered policies
@@ -63,6 +68,21 @@ async def get_policies(
     if policies is None:
         logger.error("No policies found matching the filter criteria")
         raise HTTPException(status_code=404, detail="No policies found")
+    
+    # Collect unique instance UUIDs
+    instance_uuids = [policy.instance_uuid for policy in policies if policy.instance_uuid is not None]
+    
+    # Get instances and create a mapping from UUID to name
+    instance_map = {}
+    if instance_uuids:
+        instances = instance_manager.get_instances_by_uuid(instance_uuids)
+        instance_map = {instance.uuid: instance.name for instance in instances}
+    
+    # Populate username and instance_name for each policy
+    for policy in policies:
+        policy.username = user_manager.get_user_slug(policy.user_uuid)
+        if policy.instance_uuid in instance_map:
+            policy.instance_name = instance_map[policy.instance_uuid]
 
     return GetPolicyResponse(success=True, details=policies)
 
