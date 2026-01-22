@@ -58,36 +58,6 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
       }
     }
 
-    # Service definition with Traefik integration for external routing
-    # Frontend services always need Traefik tags for hostname-based routing
-    service {
-      name                = "${__SERVICE__}-${__ENVIRONMENT__}"
-      provider            = "nomad"
-      port                = "http"
-      tags                = ${__SERVICE_TAGS__}
-      enable_tag_override = true
-
-      # Health check
-      check {
-        type     = "http"
-        port     = "http"
-        path     = "/health"
-        interval = "10s"
-        timeout  = "2s"
-        method   = "GET"
-      }
-
-      # Readiness check
-      check {
-        type     = "http"
-        port     = "http"
-        path     = "/ready"
-        interval = "10s"
-        timeout  = "2s"
-        method   = "GET"
-      }
-    }
-
     task "${__SERVICE__}-${__ENVIRONMENT__}" {
       driver = "${__JOB_DRIVER__}"
 
@@ -109,6 +79,7 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
       env {
         CI_ENVIRONMENT_NAME = "${__ENVIRONMENT__}"
         SERVICE_NAME        = "${__SERVICE__}"
+        SERVER_PORT         = "${NOMAD_PORT_http}"
         API_GATEWAY         = "${__API_GATEWAY__}" # "http://backend-staging.rmcintos.cedar.researchcomputinggroup.ca"
         SERVER_NAME         = "${__HOSTNAME__}"
       }
@@ -139,6 +110,36 @@ ${__RUNTIME_ENV__}
         interval = "5m"
         delay    = "15s"
         mode     = "delay"
+      }
+    }
+
+    # Service definition with Traefik integration for external routing
+    # Frontend services always need Traefik tags for hostname-based routing
+    service {
+      name                = "${__SERVICE__}-${__ENVIRONMENT__}"
+      provider            = "nomad"
+      port                = "http"
+      tags                = ${__SERVICE_TAGS__}
+      enable_tag_override = true
+
+      # Health check
+      check {
+        type     = "http"
+        port     = "http"
+        path     = "/health"
+        interval = "10s"
+        timeout  = "2s"
+        method   = "GET"
+      }
+
+      # Readiness check
+      check {
+        type     = "http"
+        port     = "http"
+        path     = "/ready"
+        interval = "10s"
+        timeout  = "2s"
+        method   = "GET"
       }
     }
   }

@@ -73,37 +73,6 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
     #   read_only = false
     # }
 
-    # Service definition
-    # - Review Apps: Need Traefik tags for external access (testing)
-    # - Production/Staging/Development: Simple tags for internal service discovery
-    service {
-      name                = "${__SERVICE__}-${__ENVIRONMENT__}"
-      provider            = "nomad"
-      port                = "http"
-      tags                = ${__SERVICE_TAGS__}
-      enable_tag_override = true
-
-      # Health check
-      check {
-        type     = "http"
-        port     = "http"
-        path     = "/health"
-        interval = "10s"
-        timeout  = "2s"
-        method   = "GET"
-      }
-
-      # Readiness check
-      check {
-        type     = "http"
-        port     = "http"
-        path     = "/ready"
-        interval = "10s"
-        timeout  = "2s"
-        method   = "GET"
-      }
-    }
-
     task "${__SERVICE__}-${__ENVIRONMENT__}" {
       driver = "${__JOB_DRIVER__}"
 
@@ -176,6 +145,37 @@ ${__RUNTIME_ENV__}
         interval = "5m"
         delay    = "15s"
         mode     = "delay"
+      }
+    }
+
+    # Service definition
+    # - Review Apps: Need Traefik tags for external access (testing)
+    # - Production/Staging/Development: Simple tags for internal service discovery
+    service {
+      name                = "${__SERVICE__}-${__ENVIRONMENT__}"
+      provider            = "nomad"
+      port                = "http"
+      tags                = ${__SERVICE_TAGS__}
+      enable_tag_override = true
+
+      # Health check
+      check {
+        type     = "http"
+        port     = "http"
+        path     = "/health"
+        interval = "10s"
+        timeout  = "2s"
+        method   = "GET"
+      }
+
+      # Readiness check
+      check {
+        type     = "http"
+        port     = "http"
+        path     = "/ready"
+        interval = "10s"
+        timeout  = "2s"
+        method   = "GET"
       }
     }
   }
