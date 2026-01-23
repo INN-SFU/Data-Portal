@@ -22,8 +22,10 @@ export default function EndpointCard({
   const access = normalizeAccess(treesByAccess);
   const readArray = access.read;
   const writeArray = access.write;
+  const deleteArray = access.delete;
   const hasRead = readArray.length > 0;
   const hasWrite = writeArray.length > 0;
+  const hasDelete = deleteArray.length > 0;
 
   // Compute selections we need
   const readLeaves = getSelectedLeaves(readArray, selectedByAccess.read || new Set());
@@ -34,7 +36,6 @@ export default function EndpointCard({
 
   // --------------------- Download (from READ selection) ---------------------
   const handleDownload = async () => {
-    if (!hasRead) return alert("No readable items.");
     if (readLeaves.length === 0) return alert("Select files/folders in READ.");
 
     setBusy("down");
@@ -73,7 +74,6 @@ export default function EndpointCard({
 
   // ---------------------- Upload (to WRITE selection) ----------------------
   const handleUpload = async () => {
-    if (!hasWrite) return alert("No writable items.");
     if (writeTopFolders.length !== 1) return alert("Select exactly ONE folder in WRITE.");
 
     const destDir = String(writeTopFolders[0]);
@@ -193,7 +193,7 @@ export default function EndpointCard({
 
       {open && (
         <div style={{ padding: 12 }}>
-          {!hasRead && !hasWrite ? (
+          {!hasRead && !hasWrite  && !hasDelete ? (
             <div style={{ color: "#6b7280" }}>No tree data.</div>
           ) : (
             <div style={{ display: "grid", gap: 16 }}>
@@ -235,7 +235,7 @@ export default function EndpointCard({
                   />
                 </div>
               )}
-              {hasWrite && (
+              {(hasWrite || hasDelete) && (
                 <div
                   style={{
                     borderTop: hasRead ? "1px dashed #e5e7eb" : "none",
@@ -293,7 +293,7 @@ export default function EndpointCard({
                     </div>
                   </div>
                   <Tree
-                    nodes={writeArray}
+                    nodes={[...new Set([...writeArray, ...deleteArray])]}
                     selected={selectedByAccess.write || new Set()}
                     onChange={onTreeChange("write")}
                   />
@@ -310,15 +310,16 @@ export default function EndpointCard({
 /* ---------------- helpers ---------------- */
 
 function normalizeAccess(input) {
-  if (!input) return { read: [], write: [] };
-  if (Array.isArray(input)) return { read: input, write: [] };
+  if (!input) return { read: [], write: [], delete: [] };
+  if (Array.isArray(input)) return { read: input, write: [], delete: [] };
   if (typeof input === "object") {
     return {
       read: Array.isArray(input.read) ? input.read : [],
       write: Array.isArray(input.write) ? input.write : [],
+      delete: Array.isArray(input.delete) ? input.delete : [],
     };
   }
-  return { read: [], write: [] };
+  return { read: [], write: [], delete: [] };
 }
 
 // selected leaf files for READ (ids that are not any node's parent)
