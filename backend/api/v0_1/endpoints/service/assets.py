@@ -285,7 +285,7 @@ async def get_asset_dashboard(
     for instance in instances:
 
         f_trees = instance.agent.partition_file_tree_by_access(
-            policy_manager, uuid, instance.uuid, ["read", "write"]
+            policy_manager, uuid, instance.uuid, ["read", "write", "delete"]
         )
         if f_trees is not None:
             file_trees[str(instance.uuid)] = {
