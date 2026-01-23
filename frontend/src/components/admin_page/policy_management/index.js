@@ -190,8 +190,8 @@ export default function PolicyManagement() {
           <table className="pm-table">
             <thead>
               <tr>
-                <th>User UUID</th>
-                <th>Instance UUID</th>
+                <th>User</th>
+                <th>Instance</th>
                 <th>Resource</th>
                 <th>Action</th>
                 <th></th>
