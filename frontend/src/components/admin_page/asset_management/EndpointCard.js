@@ -30,12 +30,14 @@ export default function EndpointCard({
   // Compute selections we need
   const readLeaves = getSelectedLeaves(readArray, selectedByAccess.read || new Set());
   const writeTopFolders = getSelectedTopFolders(writeArray, selectedByAccess.write || new Set());
+  const deleteLeaves = getSelectedLeaves(deleteArray, selectedByAccess.write || new Set());
 
   const onTreeChange = (accessKey) => (nextSet) =>
     onSelectedChange(accessKey, new Set(nextSet));
 
   // --------------------- Download (from READ selection) ---------------------
   const handleDownload = async () => {
+    if (!hasRead) return alert("No read permission.");
     if (readLeaves.length === 0) return alert("Select files/folders in READ.");
 
     setBusy("down");
@@ -74,7 +76,15 @@ export default function EndpointCard({
 
   // ---------------------- Upload (to WRITE selection) ----------------------
   const handleUpload = async () => {
-    if (writeTopFolders.length !== 1) return alert("Select exactly ONE folder in WRITE.");
+    if (!hasWrite) {
+      return alert("Upload failed: You do not have write permission for this endpoint");
+    }
+    if (writeTopFolders.length === 0) {
+      return alert("Upload failed: You do not have write access to this folder");
+    }
+    if (writeTopFolders.length > 1) {
+      return alert("Upload failed: Please select exactly ONE folder to upload to");
+    }
 
     const destDir = String(writeTopFolders[0]);
 
@@ -124,18 +134,17 @@ export default function EndpointCard({
     input.click();
   };
 
-  // ---------------------- Delete (from WRITE selection) ----------------------
+  // ---------------------- Delete (from DELETE selection) ----------------------
   const handleDelete = async () => {
-    if (!hasWrite) return alert("No writable items.");
-    const writeLeaves = getSelectedLeaves(writeArray, selectedByAccess.write || new Set());
-    if (writeLeaves.length === 0) return alert("Select files to delete in WRITE.");
+    if (!hasDelete) return alert("No delete permission.");
+    if (deleteLeaves.length === 0) return alert("Select files to delete.");
 
-    if (!window.confirm(`Delete ${writeLeaves.length} file(s)? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete ${deleteLeaves.length} file(s)? This cannot be undone.`)) return;
 
     setBusy("del");
     setBusyID(endpointUuid)
     try {
-      for (const resource of writeLeaves) {
+      for (const resource of deleteLeaves) {
         const headers = await authHeaders();
 
         // Ask backend for presigned DELETE URL
@@ -150,11 +159,11 @@ export default function EndpointCard({
           if (!resp.ok) throw new Error(`Storage DELETE failed (${resp.status}): ${await safeText(resp)}`);
         }
       }
-      console.log(`[Delete] Successfully deleted ${writeLeaves.length} file(s) from endpoint "${endpointName}"`);
+      console.log(`[Delete] Successfully deleted ${deleteLeaves.length} file(s) from endpoint "${endpointName}"`);
       if (onMutate) onMutate(); // refresh dashboard
       alert("Delete complete.");
     } catch (e) {
-      console.error(`[Delete] Delete failed for endpoint "${endpointName}" while attempting to delete ${writeLeaves.length} file(s):`, e);
+      console.error(`[Delete] Delete failed for endpoint "${endpointName}" while attempting to delete ${deleteLeaves.length} file(s):`, e);
       alert(`Delete failed!`);
     } finally {
       setBusy(null);
@@ -293,7 +302,7 @@ export default function EndpointCard({
                     </div>
                   </div>
                   <Tree
-                    nodes={[...new Set([...writeArray, ...deleteArray])]}
+                    nodes={mergeTreeArrays(writeArray, deleteArray)}
                     selected={selectedByAccess.write || new Set()}
                     onChange={onTreeChange("write")}
                   />
@@ -420,4 +429,18 @@ async function safeText(res) {
 // cehck if presigned URLs are always from an array ([], [p], or p if already array)
 function normalizePresigns(p) {
   return Array.isArray(p) ? p : (p ? [p] : []);
+}
+
+// Merge two tree arrays into a unique set of nodes by id
+function mergeTreeArrays(arr1, arr2) {
+  const map = new Map(arr1.map(node => [node.id, node]));
+
+  // Add unique elements of second array
+  for (const node of arr2) {
+    if (!map.has(node.id)) {
+      map.set(node.id, node);
+    }
+  }
+
+  return Array.from(map.values());
 }
