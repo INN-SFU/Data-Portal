@@ -5,9 +5,9 @@ import { CircularProgress } from "@mui/material";
 export default function EndpointCard({
   endpointName,
   endpointUuid,
-  treesByAccess,          // { read: jsTree[], write: jsTree[] } or jsTree[]
-  selectedByAccess,       // { read: Set<string>, write: Set<string> }
-  onSelectedChange,       // (access: 'read'|'write', nextSet: Set<string>) => void
+  treesByAccess,          // { read: jsTree[], write: jsTree[], delete: jsTree[] } or jsTree[]
+  selectedByAccess,       // { read: Set<string>, write: Set<string>, delete: Set<string> }
+  onSelectedChange,       // (access: 'read'|'write'|'delete', nextSet: Set<string>) => void
   authHeaders,
   http,
   onMutate,               // call after upload to refresh parent
@@ -30,7 +30,7 @@ export default function EndpointCard({
   // Compute selections we need
   const readLeaves = getSelectedLeaves(readArray, selectedByAccess.read || new Set());
   const writeTopFolders = getSelectedTopFolders(writeArray, selectedByAccess.write || new Set());
-  const deleteLeaves = getSelectedLeaves(deleteArray, selectedByAccess.write || new Set());
+  const deleteLeaves = getSelectedLeaves(deleteArray, selectedByAccess.delete || new Set());
 
   const onTreeChange = (accessKey) => (nextSet) =>
     onSelectedChange(accessKey, new Set(nextSet));
@@ -259,7 +259,7 @@ export default function EndpointCard({
                       marginBottom: 6,
                     }}
                   >
-                    <div style={{ fontWeight: 600 }}>Write</div>
+                    <div style={{ fontWeight: 600 }}>Write / Delete</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         onClick={handleUpload}
@@ -303,8 +303,11 @@ export default function EndpointCard({
                   </div>
                   <Tree
                     nodes={mergeTreeArrays(writeArray, deleteArray)}
-                    selected={selectedByAccess.write || new Set()}
-                    onChange={onTreeChange("write")}
+                    selected={new Set([...(selectedByAccess.write || []), ...(selectedByAccess.delete || [])])}
+                    onChange={(nextSet) => {
+                      onTreeChange("write")(nextSet);
+                      onTreeChange("delete")(nextSet);
+                    }}
                   />
                 </div>
               )}
