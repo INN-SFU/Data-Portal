@@ -76,14 +76,32 @@ export default function EndpointCard({
 
   // ---------------------- Upload (to WRITE selection) ----------------------
   const handleUpload = async () => {
+    // Check if user has write permission at all for this endpoint
     if (!hasWrite) {
-      return alert("Upload failed: You do not have write permission for this endpoint");
+      return alert("No write permission for this endpoint.");
     }
+
+    // Ensure a folder is selected in the UI
+    if (!selectedByAccess.write || selectedByAccess.write.size === 0) {
+      return alert("Select a folder to upload to.");
+    }
+
+    // Validate all selected items actually have write permission
+    const writeTreeIds = new Set(writeArray.map(n => String(n.id)));
+    for (const id of selectedByAccess.write) {
+      if (!writeTreeIds.has(String(id))) {
+        return alert("Some selected items do not have write permission.");
+      }
+    }
+
+    // Verify writeTopFolders is not empty after filtering
     if (writeTopFolders.length === 0) {
-      return alert("Upload failed: You do not have write access to this folder");
+      return alert("No valid folder selected for upload.");
     }
+
+    // Ensure exactly one folder is selected
     if (writeTopFolders.length > 1) {
-      return alert("Upload failed: Please select exactly ONE folder to upload to");
+      return alert("Please select exactly ONE folder to upload to.");
     }
 
     const destDir = String(writeTopFolders[0]);
