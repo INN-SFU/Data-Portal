@@ -136,8 +136,26 @@ export default function EndpointCard({
 
   // ---------------------- Delete (from DELETE selection) ----------------------
   const handleDelete = async () => {
-    if (!hasDelete) return alert("No delete permission.");
-    if (deleteLeaves.length === 0) return alert("Select files to delete.");
+    // Check if user has delete permission at all for this endpoint
+    if (!hasDelete) return alert("No delete permission for this endpoint.");
+
+    // Ensure files are selected in the UI
+    if (!selectedByAccess.delete || selectedByAccess.delete.size === 0) {
+      return alert("Select files to delete.");
+    }
+
+    // Validate all selected files actually have delete permission
+    const deleteTreeIds = new Set(deleteArray.map(n => String(n.id)));
+    for (const id of selectedByAccess.delete) {
+      if (!deleteTreeIds.has(String(id))) {
+        return alert("Some selected files do not have delete permission.");
+      }
+    }
+
+    // Verify deleteLeaves is not empty
+    if (deleteLeaves.length === 0) {
+      return alert("No valid files selected for deletion.");
+    }
 
     if (!window.confirm(`Delete ${deleteLeaves.length} file(s)? This cannot be undone.`)) return;
 
