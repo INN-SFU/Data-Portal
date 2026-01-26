@@ -250,7 +250,7 @@ class CasbinPolicyManager(AbstractPolicyManager, ABC):
         user_policy_file.unlink()
 
         # Remove user policies from enforcer
-        self.enforcer.remove_filtered_policy(0, user_uuid)
+        self.enforcer.remove_filtered_policy(0, user_uuid.__str__())
 
         return True
 
