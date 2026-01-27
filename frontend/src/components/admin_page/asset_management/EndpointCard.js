@@ -90,14 +90,6 @@ export default function EndpointCard({
       return alert("Select a folder to upload to.");
     }
 
-    // Validate all selected items actually have write permission
-    const writeTreeIds = new Set(writeArray.map(n => String(n.id)));
-    for (const id of selectedByAccess.write) {
-      if (!writeTreeIds.has(String(id))) {
-        return alert("Some selected items do not have write permission.");
-      }
-    }
-
     // Verify writeTopFolders is not empty after filtering
     if (writeTopFolders.length === 0) {
       return alert("No valid folder selected for upload.");
