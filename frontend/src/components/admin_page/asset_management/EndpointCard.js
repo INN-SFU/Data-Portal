@@ -162,14 +162,6 @@ export default function EndpointCard({
       return alert("Select files to delete.");
     }
 
-    // Validate all selected files actually have delete permission
-    const deleteTreeIds = new Set(deleteArray.map(n => String(n.id)));
-    for (const id of selectedByAccess.delete) {
-      if (!deleteTreeIds.has(String(id))) {
-        return alert("Some selected files do not have delete permission.");
-      }
-    }
-
     // Verify deleteLeaves is not empty
     if (deleteLeaves.length === 0) {
       return alert("No valid files selected for deletion.");
@@ -242,7 +234,7 @@ export default function EndpointCard({
 
       {open && (
         <div style={{ padding: 12 }}>
-          {!hasRead && !hasWrite  && !hasDelete ? (
+          {!hasRead && !hasWrite && !hasDelete ? (
             <div style={{ color: "#6b7280" }}>No tree data.</div>
           ) : (
             <div style={{ display: "grid", gap: 16 }}>
@@ -273,8 +265,12 @@ export default function EndpointCard({
                         gap: 6,
                       }}
                     >
-                      {busy === "down" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
-                      {busy === "down" && busyID == endpointUuid ? "Downloading…" : "Download"}
+                      {busy === "down" && busyID == endpointUuid && (
+                        <CircularProgress size={14} sx={{ color: "#fff" }} />
+                      )}
+                      {busy === "down" && busyID == endpointUuid
+                        ? "Downloading…"
+                        : "Download"}
                     </button>
                   </div>
                   <Tree
@@ -284,10 +280,10 @@ export default function EndpointCard({
                   />
                 </div>
               )}
-              {(hasWrite || hasDelete) && (
+              {hasWrite && (
                 <div
                   style={{
-                    borderTop: hasRead ? "1px dashed #e5e7eb" : "none",
+                    borderTop: hasRead ? "2px dashed #c9c9c9" : "none",
                     paddingTop: hasRead ? 8 : 0,
                   }}
                 >
@@ -299,7 +295,7 @@ export default function EndpointCard({
                       marginBottom: 6,
                     }}
                   >
-                    <div style={{ fontWeight: 600 }}>Write / Delete</div>
+                    <div style={{ fontWeight: 600 }}>Write</div>
                     <div style={{ display: "flex", gap: 8 }}>
                       <button
                         onClick={handleUpload}
@@ -317,14 +313,44 @@ export default function EndpointCard({
                           gap: 6,
                         }}
                       >
-                        {busy === "up" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
-                        {busy === "up" && busyID == endpointUuid ? "Uploading…" : "Upload"}
+                        {busy === "up" && busyID == endpointUuid && (
+                          <CircularProgress size={14} sx={{ color: "#fff" }} />
+                        )}
+                        {busy === "up" && busyID == endpointUuid
+                          ? "Uploading…"
+                          : "Upload"}
                       </button>
+                    </div>
+                  </div>
+                  <Tree
+                    nodes={writeArray}
+                    selected={selectedByAccess.write || new Set()}
+                    onChange={onTreeChange("write")}
+                  />
+                </div>
+              )}
+              {hasDelete && (
+                <div
+                  style={{
+                    borderTop: hasRead | hasWrite ? "2px dashed #c9c9c9" : "none",
+                    paddingTop: hasRead ? 8 : 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600 }}>Delete</div>
+                    <div style={{ display: "flex", gap: 8 }}>
                       <button
                         onClick={handleDelete}
                         disabled={!!busy}
                         style={{
-                          background: busy ? "#9ca3af": "#ef4444",
+                          background: busy ? "#9ca3af" : "#ef4444",
                           cursor: busy ? "not-allowed" : "pointer",
                           color: "#fff",
                           border: 0,
@@ -336,18 +362,19 @@ export default function EndpointCard({
                           gap: 6,
                         }}
                       >
-                        {busy === "del" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
-                        {busy === "del" && busyID == endpointUuid ? "Deleting…" : "Delete"}
+                        {busy === "del" && busyID == endpointUuid && (
+                          <CircularProgress size={14} sx={{ color: "#fff" }} />
+                        )}
+                        {busy === "del" && busyID == endpointUuid
+                          ? "Deleting…"
+                          : "Delete"}
                       </button>
                     </div>
                   </div>
-                  <Tree
-                    nodes={mergeTreeArrays(writeArray, deleteArray)}
-                    selected={new Set([...(selectedByAccess.write || []), ...(selectedByAccess.delete || [])])}
-                    onChange={(nextSet) => {
-                      onTreeChange("write")(nextSet);
-                      onTreeChange("delete")(nextSet);
-                    }}
+                    <Tree
+                    nodes={deleteArray}
+                    selected={selectedByAccess.delete || new Set()}
+                    onChange={onTreeChange("delete")}
                   />
                 </div>
               )}
@@ -472,18 +499,4 @@ async function safeText(res) {
 // cehck if presigned URLs are always from an array ([], [p], or p if already array)
 function normalizePresigns(p) {
   return Array.isArray(p) ? p : (p ? [p] : []);
-}
-
-// Merge two tree arrays into a unique set of nodes by id
-function mergeTreeArrays(arr1, arr2) {
-  const map = new Map(arr1.map(node => [node.id, node]));
-
-  // Add unique elements of second array
-  for (const node of arr2) {
-    if (!map.has(node.id)) {
-      map.set(node.id, node);
-    }
-  }
-
-  return Array.from(map.values());
 }
