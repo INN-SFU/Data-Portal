@@ -67,7 +67,11 @@ export default function EndpointCard({
       console.log(`[Download] Successfully downloaded ${readLeaves.length} file(s) from endpoint "${endpointName}"`);
     } catch (e) {
       console.error(`[Download] Download failed for endpoint "${endpointName}":`, e);
-      alert(`Download failed!`);
+      if (e?.response?.status === 403) {
+        alert(`Download failed! No permission for download.`);
+      } else {
+        alert(`Download failed!`);
+      }
     } finally {
       setBusy(null);
       setBusyID(null);
@@ -141,7 +145,11 @@ export default function EndpointCard({
         alert("Upload complete.");
       } catch (e) {
         console.error(`[Upload] Upload failed for endpoint "${endpointName}" to destination "${destDir}":`, e);
-        alert(`Upload failed!`);
+        if (e?.response?.status === 403) {
+          alert(`Upload failed! No permission for upload.`);
+        } else {
+          alert(`Upload failed!`);
+        }
       } finally {
         setBusy(null);
         setBusyID(null);
@@ -200,7 +208,11 @@ export default function EndpointCard({
       alert("Delete complete.");
     } catch (e) {
       console.error(`[Delete] Delete failed for endpoint "${endpointName}" while attempting to delete ${deleteLeaves.length} file(s):`, e);
-      alert(`Delete failed!`);
+      if (e?.response?.status === 403) {
+        alert(`Delete failed! No permission for delete.`);
+      } else {
+        alert(`Delete failed!`);
+      }
     } finally {
       setBusy(null);
       setBusyID(null);
