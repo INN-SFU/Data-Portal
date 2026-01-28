@@ -39,14 +39,18 @@ export default function AssetManagement({ bootstrap }) {
   const [boot, setBoot] = useState(bootstrap ? normalizeBootstrap(bootstrap) : null);
   const [loading, setLoading] = useState(!bootstrap);
   const [error, setError] = useState(null);
-  // { [endpointUuid]: { read: Set, write: Set } }
+  // { [endpointUuid]: { read: Set, write: Set, delete: Set } }
   const [selected, setSelected] = useState({});
   const [busy, setBusy] = useState(null); // "down" | "up" | "del" | null
   const [busyID, setBusyID] = useState(null); // UUID of the endpoint that is busy | null
 
   const getSel = (uuid) => {
     const ent = selected[uuid];
-    return { read: (ent && ent.read) || new Set(), write: (ent && ent.write) || new Set() };
+    return { 
+      read: (ent && ent.read) || new Set(), 
+      write: (ent && ent.write) || new Set(),
+      delete: (ent && ent.delete) || new Set()
+    };
   };
 
   const authHeaders = async () => {
