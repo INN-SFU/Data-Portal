@@ -5,9 +5,9 @@ import { CircularProgress } from "@mui/material";
 export default function EndpointCard({
   endpointName,
   endpointUuid,
-  treesByAccess,          // { read: jsTree[], write: jsTree[] } or jsTree[]
-  selectedByAccess,       // { read: Set<string>, write: Set<string> }
-  onSelectedChange,       // (access: 'read'|'write', nextSet: Set<string>) => void
+  treesByAccess,          // { read: jsTree[], write: jsTree[], delete: jsTree[] } or jsTree[]
+  selectedByAccess,       // { read: Set<string>, write: Set<string>, delete: Set<string> }
+  onSelectedChange,       // (access: 'read'|'write'|'delete', nextSet: Set<string>) => void
   authHeaders,
   http,
   onMutate,               // call after upload to refresh parent
@@ -22,19 +22,22 @@ export default function EndpointCard({
   const access = normalizeAccess(treesByAccess);
   const readArray = access.read;
   const writeArray = access.write;
+  const deleteArray = access.delete;
   const hasRead = readArray.length > 0;
   const hasWrite = writeArray.length > 0;
+  const hasDelete = deleteArray.length > 0;
 
   // Compute selections we need
   const readLeaves = getSelectedLeaves(readArray, selectedByAccess.read || new Set());
   const writeTopFolders = getSelectedTopFolders(writeArray, selectedByAccess.write || new Set());
+  const deleteLeaves = getSelectedLeaves(deleteArray, selectedByAccess.delete || new Set());
 
   const onTreeChange = (accessKey) => (nextSet) =>
     onSelectedChange(accessKey, new Set(nextSet));
 
   // --------------------- Download (from READ selection) ---------------------
   const handleDownload = async () => {
-    if (!hasRead) return alert("No readable items.");
+    if (!hasRead) return alert("No read permission.");
     if (readLeaves.length === 0) return alert("Select files/folders in READ.");
 
     setBusy("down");
@@ -64,7 +67,11 @@ export default function EndpointCard({
       console.log(`[Download] Successfully downloaded ${readLeaves.length} file(s) from endpoint "${endpointName}"`);
     } catch (e) {
       console.error(`[Download] Download failed for endpoint "${endpointName}":`, e);
-      alert(`Download failed!`);
+      if (e?.response?.status === 403) {
+        alert(`Download failed! No permission for download.`);
+      } else {
+        alert(`Download failed!`);
+      }
     } finally {
       setBusy(null);
       setBusyID(null);
@@ -73,8 +80,25 @@ export default function EndpointCard({
 
   // ---------------------- Upload (to WRITE selection) ----------------------
   const handleUpload = async () => {
-    if (!hasWrite) return alert("No writable items.");
-    if (writeTopFolders.length !== 1) return alert("Select exactly ONE folder in WRITE.");
+    // Check if user has write permission at all for this endpoint
+    if (!hasWrite) {
+      return alert("No write permission for this endpoint.");
+    }
+
+    // Ensure a folder is selected in the UI
+    if (!selectedByAccess.write || selectedByAccess.write.size === 0) {
+      return alert("Select a folder to upload to.");
+    }
+
+    // Verify writeTopFolders is not empty after filtering
+    if (writeTopFolders.length === 0) {
+      return alert("No valid folder selected for upload.");
+    }
+
+    // Ensure exactly one folder is selected
+    if (writeTopFolders.length > 1) {
+      return alert("Please select exactly ONE folder to upload to.");
+    }
 
     const destDir = String(writeTopFolders[0]);
 
@@ -113,7 +137,11 @@ export default function EndpointCard({
         alert("Upload complete.");
       } catch (e) {
         console.error(`[Upload] Upload failed for endpoint "${endpointName}" to destination "${destDir}":`, e);
-        alert(`Upload failed!`);
+        if (e?.response?.status === 403) {
+          alert(`Upload failed! No permission for upload.`);
+        } else {
+          alert(`Upload failed!`);
+        }
       } finally {
         setBusy(null);
         setBusyID(null);
@@ -124,18 +152,27 @@ export default function EndpointCard({
     input.click();
   };
 
-  // ---------------------- Delete (from WRITE selection) ----------------------
+  // ---------------------- Delete (from DELETE selection) ----------------------
   const handleDelete = async () => {
-    if (!hasWrite) return alert("No writable items.");
-    const writeLeaves = getSelectedLeaves(writeArray, selectedByAccess.write || new Set());
-    if (writeLeaves.length === 0) return alert("Select files to delete in WRITE.");
+    // Check if user has delete permission at all for this endpoint
+    if (!hasDelete) return alert("No delete permission for this endpoint.");
 
-    if (!window.confirm(`Delete ${writeLeaves.length} file(s)? This cannot be undone.`)) return;
+    // Ensure files are selected in the UI
+    if (!selectedByAccess.delete || selectedByAccess.delete.size === 0) {
+      return alert("Select files to delete.");
+    }
+
+    // Verify deleteLeaves is not empty
+    if (deleteLeaves.length === 0) {
+      return alert("No valid files selected for deletion.");
+    }
+
+    if (!window.confirm(`Delete ${deleteLeaves.length} file(s)? This cannot be undone.`)) return;
 
     setBusy("del");
     setBusyID(endpointUuid)
     try {
-      for (const resource of writeLeaves) {
+      for (const resource of deleteLeaves) {
         const headers = await authHeaders();
 
         // Ask backend for presigned DELETE URL
@@ -150,12 +187,16 @@ export default function EndpointCard({
           if (!resp.ok) throw new Error(`Storage DELETE failed (${resp.status}): ${await safeText(resp)}`);
         }
       }
-      console.log(`[Delete] Successfully deleted ${writeLeaves.length} file(s) from endpoint "${endpointName}"`);
+      console.log(`[Delete] Successfully deleted ${deleteLeaves.length} file(s) from endpoint "${endpointName}"`);
       if (onMutate) onMutate(); // refresh dashboard
       alert("Delete complete.");
     } catch (e) {
-      console.error(`[Delete] Delete failed for endpoint "${endpointName}" while attempting to delete ${writeLeaves.length} file(s):`, e);
-      alert(`Delete failed!`);
+      console.error(`[Delete] Delete failed for endpoint "${endpointName}" while attempting to delete ${deleteLeaves.length} file(s):`, e);
+      if (e?.response?.status === 403) {
+        alert(`Delete failed! No permission for delete.`);
+      } else {
+        alert(`Delete failed!`);
+      }
     } finally {
       setBusy(null);
       setBusyID(null);
@@ -193,7 +234,7 @@ export default function EndpointCard({
 
       {open && (
         <div style={{ padding: 12 }}>
-          {!hasRead && !hasWrite ? (
+          {!hasRead && !hasWrite && !hasDelete ? (
             <div style={{ color: "#6b7280" }}>No tree data.</div>
           ) : (
             <div style={{ display: "grid", gap: 16 }}>
@@ -224,8 +265,12 @@ export default function EndpointCard({
                         gap: 6,
                       }}
                     >
-                      {busy === "down" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
-                      {busy === "down" && busyID == endpointUuid ? "Downloading…" : "Download"}
+                      {busy === "down" && busyID == endpointUuid && (
+                        <CircularProgress size={14} sx={{ color: "#fff" }} />
+                      )}
+                      {busy === "down" && busyID == endpointUuid
+                        ? "Downloading…"
+                        : "Download"}
                     </button>
                   </div>
                   <Tree
@@ -238,7 +283,7 @@ export default function EndpointCard({
               {hasWrite && (
                 <div
                   style={{
-                    borderTop: hasRead ? "1px dashed #e5e7eb" : "none",
+                    borderTop: hasRead ? "2px dashed #c9c9c9" : "none",
                     paddingTop: hasRead ? 8 : 0,
                   }}
                 >
@@ -268,14 +313,44 @@ export default function EndpointCard({
                           gap: 6,
                         }}
                       >
-                        {busy === "up" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
-                        {busy === "up" && busyID == endpointUuid ? "Uploading…" : "Upload"}
+                        {busy === "up" && busyID == endpointUuid && (
+                          <CircularProgress size={14} sx={{ color: "#fff" }} />
+                        )}
+                        {busy === "up" && busyID == endpointUuid
+                          ? "Uploading…"
+                          : "Upload"}
                       </button>
+                    </div>
+                  </div>
+                  <Tree
+                    nodes={writeArray}
+                    selected={selectedByAccess.write || new Set()}
+                    onChange={onTreeChange("write")}
+                  />
+                </div>
+              )}
+              {hasDelete && (
+                <div
+                  style={{
+                    borderTop: hasRead | hasWrite ? "2px dashed #c9c9c9" : "none",
+                    paddingTop: hasRead ? 8 : 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600 }}>Delete</div>
+                    <div style={{ display: "flex", gap: 8 }}>
                       <button
                         onClick={handleDelete}
                         disabled={!!busy}
                         style={{
-                          background: busy ? "#9ca3af": "#ef4444",
+                          background: busy ? "#9ca3af" : "#ef4444",
                           cursor: busy ? "not-allowed" : "pointer",
                           color: "#fff",
                           border: 0,
@@ -287,15 +362,19 @@ export default function EndpointCard({
                           gap: 6,
                         }}
                       >
-                        {busy === "del" && busyID == endpointUuid && (<CircularProgress size={14} sx={{ color: "#fff" }} />)}
-                        {busy === "del" && busyID == endpointUuid ? "Deleting…" : "Delete"}
+                        {busy === "del" && busyID == endpointUuid && (
+                          <CircularProgress size={14} sx={{ color: "#fff" }} />
+                        )}
+                        {busy === "del" && busyID == endpointUuid
+                          ? "Deleting…"
+                          : "Delete"}
                       </button>
                     </div>
                   </div>
-                  <Tree
-                    nodes={writeArray}
-                    selected={selectedByAccess.write || new Set()}
-                    onChange={onTreeChange("write")}
+                    <Tree
+                    nodes={deleteArray}
+                    selected={selectedByAccess.delete || new Set()}
+                    onChange={onTreeChange("delete")}
                   />
                 </div>
               )}
@@ -310,15 +389,16 @@ export default function EndpointCard({
 /* ---------------- helpers ---------------- */
 
 function normalizeAccess(input) {
-  if (!input) return { read: [], write: [] };
-  if (Array.isArray(input)) return { read: input, write: [] };
+  if (!input) return { read: [], write: [], delete: [] };
+  if (Array.isArray(input)) return { read: input, write: [], delete: [] };
   if (typeof input === "object") {
     return {
       read: Array.isArray(input.read) ? input.read : [],
       write: Array.isArray(input.write) ? input.write : [],
+      delete: Array.isArray(input.delete) ? input.delete : [],
     };
   }
-  return { read: [], write: [] };
+  return { read: [], write: [], delete: [] };
 }
 
 // selected leaf files for READ (ids that are not any node's parent)

@@ -85,7 +85,7 @@ def delete_asset(asset: DeleteAssetRequest = Depends(),
         user_uuid=user_uuid,
         instance_uuid=instance_uuid,
         resource=resource,
-        action='write'  # Write permission includes delete
+        action='delete'
     )
 
     if policy_manager.validate_policy(policy):
@@ -102,9 +102,9 @@ def delete_asset(asset: DeleteAssetRequest = Depends(),
         )
 
     else:
-        logger.error(f"User {user['preferred_username']} denied write access for deletion of resource '{resource}' on instance '{instance_name}'")
+        logger.error(f"User {user['preferred_username']} denied delete access to resource '{resource}' on instance '{instance_name}'")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail="User does not have write access to this resource")
+                            detail="User does not have delete access to this resource")
 
 
 @assets_router.get("/download", dependencies=[Depends(decode_token)])
@@ -285,7 +285,7 @@ async def get_asset_dashboard(
     for instance in instances:
 
         f_trees = instance.agent.partition_file_tree_by_access(
-            policy_manager, uuid, instance.uuid, ["read", "write"]
+            policy_manager, uuid, instance.uuid, ["read", "write", "delete"]
         )
         if f_trees is not None:
             file_trees[str(instance.uuid)] = {
