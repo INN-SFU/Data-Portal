@@ -25,18 +25,10 @@ function ErrorNote({ children }) {
   );
 }
 
-// Normalize backend payload to { endpoints, assets }
-function normalizeBootstrap(data) {
-  if (!data || typeof data !== "object") return { endpoints: {}, assets: {} };
-  if (data.endpoints) return { endpoints: data.endpoints, assets: data.assets || {} };
-  if (data.instances) return { endpoints: data.instances, assets: data.assets || {} };
-  return { endpoints: {}, assets: {} };
-}
-
 export default function AssetManagement({ bootstrap }) {
   const { keycloak, initialized } = useKeycloak();
 
-  const [boot, setBoot] = useState(bootstrap ? normalizeBootstrap(bootstrap) : null);
+  const [boot, setBoot] = useState(bootstrap || null);
   const [loading, setLoading] = useState(!bootstrap);
   const [error, setError] = useState(null);
   // { [endpointUuid]: { read: Set, write: Set, delete: Set } }
@@ -67,40 +59,13 @@ export default function AssetManagement({ bootstrap }) {
       const headers = await authHeaders();
       const { data } = await http.get("/assets/dashboard", {
         headers,
-        params: { _t: Date.now(), ...(forceRefresh ? { refresh: 1 } : {}) },
+        params: { _t: Date.now() },
       });
-      setBoot(normalizeBootstrap(data));
+      setBoot(data);
     } catch (e) {
       setError(e?.response?.data?.detail || e?.message || "Failed to load");
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Fetch and update a single endpoint
-  const reloadInstance = async (uuid) => {
-    try {
-      const headers = await authHeaders();
-
-      // Fetch and normalize using smart refresh
-      const { data } = await http.get(`/assets/dashboard/${encodeURIComponent(uuid)}`, {
-        headers,
-        params: { _t: Date.now(), refresh: 1 },
-      });
-      const newData = normalizeBootstrap(data);
-
-      // Update the state
-      setBoot((prev) => {
-        // If no state initialize with the new data
-        if (!prev) return newData;
-        // Merge in the new assets
-        return {
-          ...prev,
-          assets: { ...prev.assets, ...newData.assets },
-        };
-      });
-    } catch (e) {
-      console.error(`[Reload] Failed to reload instance ${uuid}:`, e);
     }
   };
 
@@ -118,31 +83,35 @@ export default function AssetManagement({ bootstrap }) {
     }));
   };
 
+  const instances = boot.instances || {};
+
   return (
     <div style={{ padding: 16, fontFamily: "Inter, system-ui, Arial" }}>
       <h2 style={{ margin: "0 0 12px" }}>Storage Endpoints</h2>
 
-      {Object.entries(boot.endpoints).length === 0 ? (
+      {Object.entries(instances).length === 0 ? (
         <ErrorNote>No endpoints available.</ErrorNote>
       ) : (
         <div style={{ display: "grid", gap: 16 }}>
-          {Object.entries(boot.endpoints).map(([endpointName, endpointUuid]) => (
-            <EndpointCard
-              key={endpointUuid}
-              endpointName={endpointName}
-              endpointUuid={endpointUuid}
-              treesByAccess={boot.assets[endpointUuid] || {}}
-              selectedByAccess={getSel(endpointUuid)}
-              onSelectedChange={(access, nextSet) => handleSelectedChange(endpointUuid, access, nextSet)}
-              authHeaders={authHeaders}
-              http={http}
-              onMutate={() => reloadInstance(endpointUuid)}   // auto-refresh after upload/delete/policy changes
-              busy={busy}
-              setBusy={setBusy}
-              busyID={busyID}
-              setBusyID={setBusyID}
-            />
-          ))}
+          {Object.entries(instances).map(
+            ([endpointName, endpointUuid]) => (
+              <EndpointCard
+                key={endpointUuid}
+                endpointName={endpointName}
+                endpointUuid={endpointUuid}
+                selectedByAccess={getSel(endpointUuid)}
+                onSelectedChange={(access, nextSet) =>
+                  handleSelectedChange(endpointUuid, access, nextSet)
+                }
+                authHeaders={authHeaders}
+                http={http}
+                busy={busy}
+                setBusy={setBusy}
+                busyID={busyID}
+                setBusyID={setBusyID}
+              />
+            ),
+          )}
         </div>
       )}
     </div>
