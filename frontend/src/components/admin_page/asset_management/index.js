@@ -57,7 +57,12 @@ export default function AssetManagement({ bootstrap }) {
       setLoading(true);
       setError(null);
       const headers = await authHeaders();
-      const { data } = await http.get("/assets/dashboard", {
+      // Get username from keycloak token
+      const username = keycloak?.tokenParsed?.preferred_username;
+      if (!username) {
+        throw new Error("Username not found in token");
+      }
+      const { data } = await http.get(`/users/${encodeURIComponent(username)}`, {
         headers,
         params: { _t: Date.now() },
       });
