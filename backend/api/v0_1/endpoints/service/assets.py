@@ -298,3 +298,71 @@ async def get_asset_dashboard(
 
     return AssetManagementData(assets=file_trees, instances=instance_names)
 
+@assets_router.get(
+    "/{instance}",
+    response_model=AssetManagementData,
+    summary="Fetch dashboard assets for a specific instance",
+    description="Retrieve file trees and instance information for a specific storage instance."
+)
+async def get_instance_assets(
+    instance: str,
+    admin_user: dict = Depends(require_admin), # TEMPORARY, maybe better to use require_user_owner_or_admin
+    policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+    instance_manager: AbstractInstanceManager = Depends(get_instance_manager),
+    refresh: bool = Query(True, description="If true, rebuild file trees before responding"),
+) -> AssetManagementData:
+    """
+    Gets a list of accessible assets for a specific instance.
+    
+    Provides file trees and instance information for the specified instance,
+    partitioned by access type (read, write, delete).
+    
+    Args:
+        instance: UUID of the instance to fetch assets
+        admin_user: Current user (must have admin privileges)
+        policy_manager: Policy manager dependency
+        instance_manager: Instance manager dependency
+        refresh: Whether the tree should be rebuilt before responding
+        
+    Returns:
+        AssetManagementData: Dashboard data with assets and instances
+    """
+    # Get the UUID of the current user
+    subject_uuid = admin_user.get("sub")
+
+    # Get the details about the specified instance
+    try:
+        instance_uuid = UUID(instance)
+        instance_details = instance_manager.get_instance_by_uuid(instance_uuid)
+    except ValueError:
+        logger.error(f"Invalid UUID format: '{instance}'")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid UUID format: {instance}")
+    except KeyError:
+        logger.error(f"Instance '{instance}' not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Instance {instance} not found.")
+
+    # Refresh file trees if requested (using smart refresh for efficiency)
+    if refresh:
+        try:
+            instance_details.agent.smart_refresh_file_tree()
+        except Exception as e:
+            logger.warning(f"Failed to refresh tree for {instance_details.name}: {e}")
+
+    # Build the file trees partitioned by access type
+    file_trees = {}
+    f_trees = instance_details.agent.partition_file_tree_by_access(
+        policy_manager, subject_uuid, instance_details.uuid, ["read", "write", "delete"]
+    )
+    
+    if f_trees is not None:
+        file_trees[str(instance_details.uuid)] = {
+            access_type: convert_file_tree_to_dict(tree)
+            for access_type, tree in f_trees.items()
+        }
+
+    # Create instance name mapping
+    instance_names = {instance_details.name: str(instance_details.uuid)}
+    
+    logger.info(f"Successfully retrieved instance assets for '{instance}' requested by user '{admin_user.get('preferred_username')}'")
+    
+    return AssetManagementData(assets=file_trees, instances=instance_names)
