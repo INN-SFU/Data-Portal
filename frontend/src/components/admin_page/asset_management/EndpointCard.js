@@ -132,7 +132,7 @@ export default function EndpointCard({
             await uploadViaPresigned(entry, file);
           }
         }
-        if (onMutate) onMutate(); // refresh dashboard with ?refresh=1 upstream  ------> TODO: need to further investigate refresh dashboard after upload or cerated new policy
+        if (onMutate) await onMutate(); // refresh dashboard with ?refresh=1 upstream  ------> TODO: need to further investigate refresh dashboard after upload or cerated new policy
         console.log(`[Upload] Successfully uploaded ${input.files.length} file(s) to "${destDir}" in endpoint "${endpointName}"`);
         alert("Upload complete.");
       } catch (e) {
@@ -188,7 +188,7 @@ export default function EndpointCard({
         }
       }
       console.log(`[Delete] Successfully deleted ${deleteLeaves.length} file(s) from endpoint "${endpointName}"`);
-      if (onMutate) onMutate(); // refresh dashboard
+      if (onMutate) await onMutate(); // refresh dashboard
       alert("Delete complete.");
     } catch (e) {
       console.error(`[Delete] Delete failed for endpoint "${endpointName}" while attempting to delete ${deleteLeaves.length} file(s):`, e);

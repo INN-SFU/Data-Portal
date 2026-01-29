@@ -299,14 +299,14 @@ async def get_asset_dashboard(
     return AssetManagementData(assets=file_trees, instances=instance_names)
 
 @assets_router.get(
-    "/{instance}",
+    "/dashboard/{instance}",
     response_model=AssetManagementData,
     summary="Fetch dashboard assets for a specific instance",
     description="Retrieve file trees and instance information for a specific storage instance."
 )
 async def get_instance_assets(
     instance: str,
-    admin_user: dict = Depends(require_admin), # TEMPORARY, maybe better to use require_user_owner_or_admin
+    admin_user: dict = Depends(require_admin), # TEMPORARY, maybe better to use require_user_owner_or_admin or just current user
     policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
     instance_manager: AbstractInstanceManager = Depends(get_instance_manager),
     refresh: bool = Query(True, description="If true, rebuild file trees before responding"),

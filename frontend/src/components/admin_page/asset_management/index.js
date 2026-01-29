@@ -60,12 +60,11 @@ export default function AssetManagement({ bootstrap }) {
   };
 
   // Fetch dashboard; set refresh=1 only when we want the backend to rebuild trees
-  const reload = async (forceRefresh = false) => {
+  const reloadDashboard = async (forceRefresh = false) => {
     try {
       setLoading(true);
       setError(null);
       const headers = await authHeaders();
-      // const { data } = await http.get("/api/assets/dashboard", {
       const { data } = await http.get("/assets/dashboard", {
         headers,
         params: { _t: Date.now(), ...(forceRefresh ? { refresh: 1 } : {}) },
@@ -78,8 +77,35 @@ export default function AssetManagement({ bootstrap }) {
     }
   };
 
+  // Fetch and update a single endpoint
+  const reloadInstance = async (uuid) => {
+    try {
+      const headers = await authHeaders();
+
+      // Fetch and normalize using smart refresh
+      const { data } = await http.get(`/assets/dashboard/${encodeURIComponent(uuid)}`, {
+        headers,
+        params: { _t: Date.now(), refresh: 1 },
+      });
+      const newData = normalizeBootstrap(data);
+
+      // Update the state
+      setBoot((prev) => {
+        // If no state initialize with the new data
+        if (!prev) return newData;
+        // Merge in the new assets
+        return {
+          ...prev,
+          assets: { ...prev.assets, ...newData.assets },
+        };
+      });
+    } catch (e) {
+      console.error(`[Reload] Failed to reload instance ${uuid}:`, e);
+    }
+  };
+
   // Initial load
-  useEffect(() => { if (!boot) reload(false); }, [boot]);
+  useEffect(() => { if (!boot) reloadDashboard(false); }, [boot]);
 
   if (loading) return <Spinner />;
   if (error) return <ErrorNote>{String(error)}</ErrorNote>;
@@ -110,7 +136,7 @@ export default function AssetManagement({ bootstrap }) {
               onSelectedChange={(access, nextSet) => handleSelectedChange(endpointUuid, access, nextSet)}
               authHeaders={authHeaders}
               http={http}
-              onMutate={() => reload(true)}   // auto-refresh after upload/delete/policy changes
+              onMutate={() => reloadInstance(endpointUuid)}   // auto-refresh after upload/delete/policy changes
               busy={busy}
               setBusy={setBusy}
               busyID={busyID}
