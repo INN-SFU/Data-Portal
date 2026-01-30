@@ -73,6 +73,11 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
           password       = "${__PASSWORD__}"
           server_address = "${__CI_REGISTRY__}"
         }
+
+        # Disable Docker's native HEALTHCHECK; Nomad doesn't use it for its own health monitoring, so disabling avoids redundant health checks.
+        healthchecks {
+          disable = true
+        }
       }
 
       # Environment variables
