@@ -54,6 +54,7 @@ variables:
 
   # Nomad deployment configuration
   SERVICE_NAME: "backend"
+  HEALTH_BASE: "api"
   NOMAD_DEPLOY_ENABLED: "${NOMAD_DEPLOY_ENABLED:-true}"
   # NOMAD_EXTERNAL_ACCESS not set - uses defaults:
   #   - Review Apps: external access enabled (for testing)

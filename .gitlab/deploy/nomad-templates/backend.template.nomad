@@ -162,7 +162,7 @@ ${__RUNTIME_ENV__}
       check {
         type     = "http"
         port     = "http"
-        path     = "/health"
+        path     = "/${__HEALTH_BASE__}/health"
         interval = "10s"
         timeout  = "2s"
         method   = "GET"
@@ -172,7 +172,7 @@ ${__RUNTIME_ENV__}
       check {
         type     = "http"
         port     = "http"
-        path     = "/ready"
+        path     = "/${__HEALTH_BASE__}/ready"
         interval = "10s"
         timeout  = "2s"
         method   = "GET"
