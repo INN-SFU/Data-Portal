@@ -68,8 +68,8 @@ All endpoints use the `/api` prefix.
 - `GET /api/asset/user-home-data` - User home directory
 - `GET /api/asset/user-assets-data` - User assets list
 
-**User:**
-- `GET /api/users/{username}` - Get user details and their instances
+**Instances:**
+- `GET /api/instances/user/{username}` - Get user's available storage instances
 
 **Administration (all require admin privileges):**
 - `GET /api/users/` - List users

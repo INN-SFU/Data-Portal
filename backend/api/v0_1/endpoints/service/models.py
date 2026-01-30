@@ -188,6 +188,10 @@ class UserWithStorageData(BaseModel):
     instances: Dict[str, str] = Field(..., description="Instance name to UUID mapping.")
 
 
+class UserInstancesList(BaseModel):
+    instances: Dict[str, str] = Field(..., description="Instance name to UUID mapping for the user.")
+
+
 # Storage Instance Models (moved from interface/schemas to avoid circular imports)
 
 # shared base:

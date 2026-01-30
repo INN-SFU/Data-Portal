@@ -62,7 +62,7 @@ export default function AssetManagement({ bootstrap }) {
       if (!username) {
         throw new Error("Username not found in token");
       }
-      const { data } = await http.get(`/users/${encodeURIComponent(username)}`, {
+      const { data } = await http.get(`instances/user/${encodeURIComponent(username)}`, {
         headers,
         params: { _t: Date.now() },
       });

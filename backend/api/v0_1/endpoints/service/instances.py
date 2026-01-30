@@ -12,15 +12,16 @@ from uuid import uuid5, NAMESPACE_DNS, UUID
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from fastapi.responses import JSONResponse
 
-from core.injection import get_instance_manager, get_policy_manager
+from core.injection import get_instance_manager, get_policy_manager, get_user_manager
 from core.connectivity import agent_factory
 from core.connectivity import AVAILABLE_FLAVOURS
 from core.management.instances.models import Instance
 from core.management.instances import AbstractInstanceManager
 from core.management.policies import AbstractPolicyManager, Policy
+from core.management.users import AbstractUserManager
 
-from ..auth_dependencies import require_admin
-from .models import InstanceCreate, InstanceManagementData
+from ..auth_dependencies import require_admin, require_user_owner_or_admin
+from .models import InstanceCreate, InstanceManagementData, UserInstancesList
 
 instances_router = APIRouter(prefix='/instances', tags=["Storage Instance Management"])
 logger = logging.getLogger("api.endpoints")
@@ -64,6 +65,38 @@ async def list_instances(
         status_code=200,
         content={"instances": instance_list}
     )
+
+
+@instances_router.get(
+    "/user/{username}",
+    response_model=UserInstancesList,
+    summary="Get user's available instances",
+    description="Retrieve list of storage instances accessible to a specific user. Users can view their own instances, admins can view any user's instances."
+)
+async def get_user_instances(
+    username: str,
+    current_user: dict = Depends(require_user_owner_or_admin()),
+    user_manager: AbstractUserManager = Depends(get_user_manager),
+    policy_manager: AbstractPolicyManager = Depends(get_policy_manager),
+    instance_manager: AbstractInstanceManager = Depends(get_instance_manager)
+) -> UserInstancesList:
+    """Get list of instances available to a user (owner or admin)."""
+    try:
+        uuid = user_manager.get_user_uuid(username)
+    except KeyError:
+        logger.error(f"User '{username}' not found")
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get all storage instances the user has access to
+    instance_uuids = list(
+        set(policy.instance_uuid for policy in policy_manager.get_user_policies(str(uuid)))
+    )
+    instances = instance_manager.get_instances_by_uuid(instance_uuids)
+    
+    # Convert to instance name → UUID mapping
+    instance_names = {instance.name: str(instance.uuid) for instance in instances}
+    
+    return UserInstancesList(instances=instance_names)
 
 
 @instances_router.get(
