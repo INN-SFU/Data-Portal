@@ -183,11 +183,6 @@ class UserAssetsData(BaseModel):
     instances: Dict[str, str] = Field(..., description="Instance name to UUID mapping.")
 
 
-class UserWithStorageData(BaseModel):
-    user: User = Field(..., description="User information.")
-    instances: Dict[str, str] = Field(..., description="Instance name to UUID mapping.")
-
-
 class UserInstancesList(BaseModel):
     instances: Dict[str, str] = Field(..., description="Instance name to UUID mapping for the user.")
 

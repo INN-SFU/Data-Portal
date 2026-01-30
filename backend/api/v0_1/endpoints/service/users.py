@@ -115,6 +115,27 @@ async def get_user_dashboard(
     return UserManagementData(users=users, file_trees=file_trees, models=json_registry)
 
 
+@users_router.get(
+    "/{username}",
+    response_model=User,
+    summary="Get user information",
+    description="Users can view their own profile, admins can view any user."
+)
+async def get_user(
+    username: str,
+    request: Request,
+    current_user: dict = Depends(require_user_owner_or_admin()),
+    user_manager: AbstractUserManager = Depends(get_user_manager)
+) -> User:
+    """Get user details (owner or admin)."""
+    try:
+        uuid = user_manager.get_user_uuid(username)
+        return user_manager.get_user(uuid)
+    except KeyError:
+        logger.error(f"User '{username}' not found")
+        raise HTTPException(status_code=404, detail="User not found")
+
+
 @users_router.post(
     "/",
     response_model=AddUserResponse,
