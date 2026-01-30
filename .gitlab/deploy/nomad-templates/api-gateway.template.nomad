@@ -37,6 +37,9 @@ job "${__SERVICE__}-${__ENVIRONMENT__}" {
   }
 
   # Update strategy
+  # health_check = "checks" # deployment waits for service check blocks to pass; "task_states" = only wait for task running.
+  # health_check = "task_states" so deployment does not wait on service checks. The service check blocks in this job still run:
+  #                 Nomad runs them, reports status to Consul (if used), and they show in the Nomad/Consul UI for monitoring—they just do not gate the update strategy.
   update {
     stagger      = "10s"
     max_parallel = 1
