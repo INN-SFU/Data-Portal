@@ -126,7 +126,20 @@ prepare-nomad-scripts:
       export __COUNT__="${NOMAD_COUNT}"
       export __HEALTH_BASE__="${HEALTH_BASE:-api}"
       
+      # Runtime environment variables
       export __API_GATEWAY__="http://backend-${CI_COMMIT_REF_SLUG}.${NOMAD_DOMAIN:-example.com}"
+      # Set __RUNTIME_ENV__ from NOMAD_RUNTIME_ENV if provided
+      # NOMAD_RUNTIME_ENV should contain newline-separated KEY=VALUE pairs
+      # Example for frontend:
+      #   REACT_APP_KEYCLOAK_URL=https://keycloak.example.com
+      #   REACT_APP_KEYCLOAK_REALM=ams-portal
+      #   API_GATEWAY=http://backend.example.com
+      # Example for backend:
+      #   KEYCLOAK_DOMAIN=https://keycloak.example.com
+      #   KEYCLOAK_REALM=ams-portal
+      #   AMS_HOST=0.0.0.0
+      #   LOG_LEVEL=INFO
+      # If NOMAD_RUNTIME_ENV is not set, __RUNTIME_ENV__ will be empty (no runtime env vars)
       export __RUNTIME_ENV__="${RUNTIME_ENV:-}"
       
       echo "===== nomad-setup.sh completed successfully ====="
@@ -269,64 +282,56 @@ prepare-nomad-scripts:
         -verbose \
         "$NOMAD_OUTPUT_FILE"
       
-      # Wait for deployment to be healthy
+      # Wait for deployment to be healthy (poll deployment status so it works for both health_check=checks and health_check=task_states)
       echo "===== Waiting for deployment to be healthy ====="
+      JOB_ID="${__SERVICE__}-${__ENVIRONMENT__}"
+      DEPLOY_ID=""
+      for _ in 1 2 3 4 5; do
+        DEPLOY_ID=$(nomad deployment list \
+          -address="$NOMAD_SERVER_ADDRESS" \
+          -token="$NOMAD_SERVER_TOKEN" \
+          -namespace="$__NAMESPACE__" \
+          -filter "JobID == \"${JOB_ID}\"" \
+          -t '{{range .}}{{.ID}}{{println}}{{end}}' 2>/dev/null | head -1)
+        [ -n "$DEPLOY_ID" ] && break
+        sleep 2
+      done
+      if [ -z "$DEPLOY_ID" ]; then
+        echo "Could not get deployment ID for job $JOB_ID"
+        nomad job status -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" -namespace="$__NAMESPACE__" "$JOB_ID"
+        exit 1
+      fi
+      echo "Monitoring deployment ID: $DEPLOY_ID"
       MAX_WAIT=300
       WAIT_INTERVAL=10
       ELAPSED=0
       HEALTHY=false
-      
       while [ $ELAPSED -lt $MAX_WAIT ]; do
-        # Check job status
-        JOB_STATUS=$(nomad job status \
+        DEPLOY_STATUS=$(nomad deployment status \
           -address="$NOMAD_SERVER_ADDRESS" \
           -token="$NOMAD_SERVER_TOKEN" \
           -namespace="$__NAMESPACE__" \
-          -short \
-          "${__SERVICE__}-${__ENVIRONMENT__}" 2>/dev/null | head -5 || echo "")
-        
-        # Check if job is running
-        if echo "$JOB_STATUS" | grep -q "Status.*=.*running"; then
-          # Check if health checks are passing
-          ALLOC_STATUS=$(nomad job allocs \
-            -address="$NOMAD_SERVER_ADDRESS" \
-            -token="$NOMAD_SERVER_TOKEN" \
-            -namespace="$__NAMESPACE__" \
-            "${__SERVICE__}-${__ENVIRONMENT__}" 2>/dev/null | grep -E "running|healthy" | head -1 || echo "")
-          
-          if echo "$ALLOC_STATUS" | grep -q "running"; then
-            echo "Deployment is running and healthy"
-            HEALTHY=true
-            break
-          fi
+          "$DEPLOY_ID" 2>/dev/null | grep -i "Status" | head -1 || echo "")
+        if echo "$DEPLOY_STATUS" | grep -q "successful"; then
+          echo "Deployment is successful"
+          HEALTHY=true
+          break
         fi
-        
-        # Check for failure
-        if echo "$JOB_STATUS" | grep -qE "dead|failed"; then
-          echo "Deployment failed: $JOB_STATUS"
-          nomad job status \
-            -address="$NOMAD_SERVER_ADDRESS" \
-            -token="$NOMAD_SERVER_TOKEN" \
-            -namespace="$__NAMESPACE__" \
-            "${__SERVICE__}-${__ENVIRONMENT__}"
+        if echo "$DEPLOY_STATUS" | grep -q "failed"; then
+          echo "Deployment failed: $DEPLOY_STATUS"
+          nomad deployment status -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" -namespace="$__NAMESPACE__" "$DEPLOY_ID"
           exit 1
         fi
-        
         echo "Waiting for deployment to be healthy... ($ELAPSED/$MAX_WAIT seconds)"
         sleep $WAIT_INTERVAL
         ELAPSED=$((ELAPSED + WAIT_INTERVAL))
       done
-      
       if [ "$HEALTHY" != "true" ]; then
         echo "Timeout waiting for deployment to be healthy"
-        nomad job status \
-          -address="$NOMAD_SERVER_ADDRESS" \
-          -token="$NOMAD_SERVER_TOKEN" \
-          -namespace="$__NAMESPACE__" \
-          "${__SERVICE__}-${__ENVIRONMENT__}"
+        nomad deployment status -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" -namespace="$__NAMESPACE__" "$DEPLOY_ID"
+        nomad job status -address="$NOMAD_SERVER_ADDRESS" -token="$NOMAD_SERVER_TOKEN" -namespace="$__NAMESPACE__" "$JOB_ID"
         exit 1
       fi
-      
       echo "===== Deployment successful and healthy ====="
       DEPLOY_EOF
     # Make scripts executable
